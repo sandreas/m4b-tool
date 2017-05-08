@@ -1,0 +1,2 @@
+#!/bin/sh
+box build && chmod +x dist/*.phar

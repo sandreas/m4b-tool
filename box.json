@@ -1,0 +1,17 @@
+{
+  "directories": [
+    "src"
+  ],
+  "finder": [
+    {
+      "name": "*.php",
+      "exclude": [
+        "Tests"
+      ],
+      "in": "vendor"
+    }
+  ],
+  "main": "src/index.php",
+  "output": "dist/m4b-tool.phar",
+  "stub": true
+}

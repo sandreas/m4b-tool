@@ -1,0 +1,15 @@
+{
+  "require": {
+    "ulrichsg/getopt-php": "^2.3",
+    "gravitymedia/metadata": "dev-master",
+    "monolog/monolog": "^1.22"
+  },
+  "autoload": {
+    "psr-4": {
+      "M4bTool\\": "../src/library/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true
+  }
+}

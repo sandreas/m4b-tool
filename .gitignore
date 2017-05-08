@@ -1,0 +1,6 @@
+# Created by .ignore support plugin (hsz.mobi)
+/dist
+!/dist/.gitkeep
+/vendor
+/composer.lock
+/box.phar
