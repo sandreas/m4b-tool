@@ -1,8 +1,10 @@
 # Created by .ignore support plugin (hsz.mobi)
 /.idea
 /_experiments
-/dist
+/dist/*
 !/dist/.gitkeep
+/data/*
+!/data/.gitkeep
 /vendor
 /composer.lock
-/box.phar
+

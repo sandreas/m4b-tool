@@ -1,2 +1,2 @@
 #!/bin/sh
-box build && chmod +x dist/*.phar
+php tools/box.phar build && chmod +x dist/*.phar

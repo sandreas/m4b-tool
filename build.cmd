@@ -1,2 +1,2 @@
 @echo off
-php box.phar build
+php tools\box.phar build
