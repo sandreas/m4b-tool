@@ -1,7 +1,9 @@
 {
   "require": {
     "monolog/monolog": "^1.22",
-    "symfony/console": "^3.2"
+    "symfony/console": "^3.2",
+    "symfony/process": "^3.2",
+    "symfony/cache": "^3.2"
   },
   "autoload": {
     "psr-4": {
@@ -10,5 +12,9 @@
   },
   "config": {
     "optimize-autoloader": true
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^6.1",
+    "mockery/mockery": "^0.9.9"
   }
 }

@@ -16,7 +16,7 @@
     }
   ],
   "git-version": "package_version",
-  "main": "bin/m4b-tool",
+  "main": "bin/m4b-tool.php",
   "output": "dist/m4b-tool.phar",
   "stub": true
 }

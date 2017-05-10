@@ -16,10 +16,10 @@ ffmpeg -i "input.mov" -af silencedetect=noise=-30dB:d=3 -f null - 2> vol.txt
 
 ####  skip first 10 seconds
 ```
-ffmpeg -i "data\src.m4b" -ss 10 -acodec copy -vn -f mp4 data\dest.m4b
+ffmpeg -i data/src.m4b -ss 10 -acodec copy -vn -f mp4 data/dest.m4b
 ```
 
 ####  from second 10 to 40
 ```
-ffmpeg -i "data\src.m4b" -ss 10 -t 30 -acodec copy -vn -f mp4 data\dest.m4b
+ffmpeg -i "data/src.m4b" -ss 10 -t 30 -acodec copy -vn -f mp4 data/dest.m4b
 ```

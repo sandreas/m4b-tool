@@ -7,5 +7,5 @@ use M4bTool\Command;
 use Symfony\Component\Console\Application;
 
 $application = new Application('m4b-tool', '@package_version@');
-$application->add(new Command\ChapterCommand());
+$application->add(new Command\ChaptersCommand());
 $application->run();
