@@ -1,4 +1,6 @@
 # Created by .ignore support plugin (hsz.mobi)
+/.idea
+/_experiments
 /dist
 !/dist/.gitkeep
 /vendor

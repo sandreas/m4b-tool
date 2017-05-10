@@ -1,12 +1,11 @@
 {
   "require": {
-    "ulrichsg/getopt-php": "^2.3",
-    "gravitymedia/metadata": "dev-master",
-    "monolog/monolog": "^1.22"
+    "monolog/monolog": "^1.22",
+    "symfony/console": "^3.2"
   },
   "autoload": {
     "psr-4": {
-      "M4bTool\\": "../src/library/"
+      "M4bTool\\": "src/library/"
     }
   },
   "config": {

@@ -1,6 +1,10 @@
 {
+  "chmod": "0755",
   "directories": [
     "src"
+  ],
+  "files": [
+    "LICENSE"
   ],
   "finder": [
     {
@@ -11,7 +15,8 @@
       "in": "vendor"
     }
   ],
-  "main": "src/index.php",
+  "git-version": "package_version",
+  "main": "bin/m4b-tool",
   "output": "dist/m4b-tool.phar",
   "stub": true
 }
