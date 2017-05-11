@@ -9,6 +9,7 @@
 namespace M4bTool\Command;
 
 
+use M4bTool\Time\TimeUnit;
 use Mockery\Exception;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -64,6 +65,10 @@ class ChaptersCommand extends Command
         $this->addOption("silence-max-offset-after", "oa", InputOption::VALUE_OPTIONAL, "maximum silence offset after chapter position", 100);
         $this->addOption("silence-min-length", "lmin", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", 2000);
         $this->addOption("silence-max-length", "lmax", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
+        $this->addOption("merge-parts-distance", "mp", InputOption::VALUE_OPTIONAL, "merge similar chapter names via levenshtein", 2);
+        $this->addOption("chapter-pattern", null, InputOption::VALUE_OPTIONAL, "regular expression for matching chapter name", "/^[^:]+:[\s](.*),.*$/i");
+        $this->addOption("chapter-replacement", null, InputOption::VALUE_OPTIONAL, "regular expression replacement for matching chapter name", "$1");
+        $this->addOption("chapter-remove-chars", null, InputOption::VALUE_OPTIONAL, "remove these chars from chapter name", "„“");
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -89,6 +94,7 @@ class ChaptersCommand extends Command
         $this->loadXmlFromMusicBrainz();
         $this->parseRecordings();
         $this->buildChapters();
+        $this->displayChapters();
 
     }
 
@@ -219,50 +225,80 @@ class ChaptersCommand extends Command
     {
 
         $totalDurationMilliSeconds = 0;
+        $lastTitle = "";
         foreach ($this->recordings as $recordingNumber => $recording) {
-            $bestMatch = [];
-            if(substr($recording->title, -2) == " 1") {
-                foreach($this->silences as $silenceStart => $silenceDuration) {
-                    $silenceStartMilliseconds = $silenceStart * 1000;
-                    $silenceDurationMilliseconds = $silenceDuration*1000;
+            if($recordingNumber === 0 || $this->shouldCreateNextChapter($lastTitle, $recording->title)) {
+                $bestMatch = [];
+                if($recordingNumber > 0 && substr($recording->title, -2) == " 1") {
+                    foreach($this->silences as $silenceStart => $silenceDuration) {
+                        $silenceStartMilliseconds = $silenceStart * 1000;
+                        $silenceDurationMilliseconds = $silenceDuration*1000;
 
-                    if($silenceDurationMilliseconds < $this->input->getOption('silence-min-length')) {
-                        continue;
-                    }
+                        if($silenceDurationMilliseconds < $this->input->getOption('silence-min-length')) {
+                            continue;
+                        }
 
-                    if($this->input->getOption('silence-max-length') && $silenceDurationMilliseconds > $this->input->getOption('silence-max-length')) {
-                        continue;
-                    }
+                        if($this->input->getOption('silence-max-length') && $silenceDurationMilliseconds > $this->input->getOption('silence-max-length')) {
+                            continue;
+                        }
 
-                    $diff = ($totalDurationMilliSeconds - $silenceStartMilliseconds);
+                        $diff = ($totalDurationMilliSeconds - $silenceStartMilliseconds);
 
-                    if($diff > $this->input->getOption('silence-max-offset-before') * 1000) {
-                        continue;
-                    }
+                        if($diff > $this->input->getOption('silence-max-offset-before') * 1000) {
+                            continue;
+                        }
 
-                    if(!isset($bestMatch["duration"]) || $bestMatch["duration"] < $silenceDurationMilliseconds) {
-                        $bestMatch = [
-                            "start" => $silenceStartMilliseconds,
-                            "duration" => $silenceDurationMilliseconds
-                        ];
-                    }
+                        if(!isset($bestMatch["duration"]) || $bestMatch["duration"] < $silenceDurationMilliseconds) {
+                            $bestMatch = [
+                                "start" => $silenceStartMilliseconds,
+                                "duration" => $silenceDurationMilliseconds
+                            ];
+                        }
 
-                    if($diff < $this->input->getOption('silence-max-offset-after') * 1000) {
-                        break;
+                        if($diff < $this->input->getOption('silence-max-offset-after') * 1000) {
+                            break;
+                        }
                     }
                 }
+
+                $chapterStart = $totalDurationMilliSeconds;
+                if(count($bestMatch) > 0) {
+                    $chapterStart = $bestMatch["start"] + 750; //+ ($bestMatch["duration"] / 2);
+                }
+
+                $this->chapters[$chapterStart] = $recording;
             }
 
-            $chapterStart = $totalDurationMilliSeconds;
-            if(count($bestMatch) > 0) {
-                $chapterStart = $bestMatch["start"] + 750; //+ ($bestMatch["duration"] / 2);
-            }
-
-            $this->chapters[$chapterStart] = $recording;
+            $lastTitle = (string)$recording->title;
             $totalDurationMilliSeconds += (int)$recording->length;
         }
 
-        $this->output->writeln(print_r($this->chapters, true));
+        //;
 
+        //$this->output->writeln(print_r($this->chapters, true));
+
+    }
+
+    private function shouldCreateNextChapter($lastTitle, $title)
+    {
+        if($lastTitle === "") {
+            return true;
+        }
+
+        if($this->input->getOption("merge-parts-distance") == 0) {
+            return true;
+        }
+
+        return (levenshtein($lastTitle, $title) > $this->input->getOption("merge-parts-distance"));
+    }
+
+    private function displayChapters()
+    {
+        foreach($this->chapters as $chapterStart => $chapter) {
+            $chapterName =  preg_replace($this->input->getOption('chapter-pattern'), "$1", $chapter->title);
+            $chapterName = preg_replace("/[".preg_quote($this->input->getOption("chapter-remove-chars"), "/")."]/", "", $chapterName);
+            $startUnit = new TimeUnit($chapterStart, TimeUnit::MILLISECOND);
+            $this->output->writeln($startUnit->format("%H:%I:%S.%V")." ".$chapterName);
+        }
     }
 }
