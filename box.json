@@ -4,15 +4,28 @@
     "src"
   ],
   "files": [
-    "LICENSE"
+    "LICENSE",
+    "vendor/autoload.php"
   ],
   "finder": [
     {
       "name": "*.php",
       "exclude": [
-        "Tests"
+        "tests",
+        "Tests",
+        "examples"
       ],
-      "in": "vendor"
+      "in": [
+        "vendor/composer",
+        "vendor/doctrine",
+        "vendor/hamcrest",
+        "vendor/monolog",
+        "vendor/myclabs",
+        "vendor/phar-io",
+        "vendor/psr",
+        "vendor/symfony",
+        "vendor/theseer"
+      ]
     }
   ],
   "git-version": "package_version",
