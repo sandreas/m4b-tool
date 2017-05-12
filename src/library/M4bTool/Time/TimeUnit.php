@@ -10,8 +10,7 @@ class TimeUnit
     const MINUTE = 60000;
     const HOUR = 3600000;
 
-    protected $milliseconds;
-    private $formatReference = [
+    protected $sprintfFormatReference = [
         "H" => "%02d",
         "h" => "%d",
         "I" => "%02d",
@@ -23,7 +22,7 @@ class TimeUnit
         "v" => "%d",
     ];
 
-    private $unitReference = [
+    protected $unitReference = [
         "H" => self::HOUR,
         "h" => self::HOUR,
         "I" => self::MINUTE,
@@ -34,6 +33,18 @@ class TimeUnit
         "V" => self::MILLISECOND,
         "v" => self::MILLISECOND,
     ];
+
+    protected $milliseconds;
+
+    /**
+     * @var array
+     */
+    protected $formatsOrder;
+
+    /**
+     * @var string
+     */
+    protected $vsprintfString = '';
 
     public function __construct($value, $unit)
     {
@@ -69,7 +80,8 @@ class TimeUnit
 
     public function format($formatString)
     {
-        $vsprintfString = "";
+        $this->parseFormatString($formatString, $this->sprintfFormatReference);
+
         $usedUnits = [
             static::HOUR => false,
             static::MINUTE => false,
@@ -77,47 +89,86 @@ class TimeUnit
             static::MILLISECOND => false,
         ];
 
+
         $unitsOrder = [];
-
-        for ($i = 0; $i < strlen($formatString); $i++) {
-            if ($formatString[$i] !== "%") {
-                $vsprintfString .= $formatString[$i];
-                continue;
-            }
-
-            $format = $formatString[++$i];
-            $this->ensureValidFormat($format);
-            $vsprintfString .= $this->formatReference[$format];
-
+        foreach ($this->formatsOrder as $format) {
             $unit = $this->unitReference[$format];
             $unitsOrder[] = $unit;
             $usedUnits[$unit] = true;
         }
 
-        $milliseconds = $this->milliseconds;
+
+        $tempMilliseconds = $this->milliseconds;
         $timeValues = [];
-        foreach($usedUnits as $unit => $isUsed) {
-            if(!$isUsed) {
+        foreach ($usedUnits as $unit => $isUsed) {
+            if (!$isUsed) {
                 $timeValues[$unit] = 0;
                 continue;
             }
 
-            $timeValues[$unit] = floor($milliseconds / $unit);
-            $milliseconds-= $timeValues[$unit] * $unit;
+            $timeValues[$unit] = floor($tempMilliseconds / $unit);
+            $tempMilliseconds -= $timeValues[$unit] * $unit;
         }
 
         $vsprintfParameters = [];
-        foreach($unitsOrder as $unit) {
+        foreach ($unitsOrder as $unit) {
             $vsprintfParameters[] = $timeValues[$unit];
         }
 
-        return vsprintf($vsprintfString, $vsprintfParameters);
+        return vsprintf($this->vsprintfString, $vsprintfParameters);
     }
 
-    private function ensureValidFormat($param)
+    public function fromFormat($valueString, $formatString)
     {
-        if(!isset($this->formatReference[$param])) {
-            throw new \Exception('Invalid format string, %'.$param." is not a valid literal");
+        $this->milliseconds = 0;
+
+        $this->parseFormatString($formatString, $this->sprintfFormatReference);
+
+        $params = [
+            $valueString,
+            $this->vsprintfString,
+        ];
+
+        $times = [];
+        foreach ($this->formatsOrder as $format) {
+            $unit = $this->unitReference[$format];
+            $times[$unit] = null;
+            $params[] = &$times[$unit];
+        }
+
+        call_user_func_array("sscanf", $params);
+
+        foreach ($times as $timeUnit => $value) {
+            $this->add($value, $timeUnit);
+        }
+    }
+
+    /**
+     * @param $formatString
+     * @param $formatReference
+     * @return void
+     */
+    private function parseFormatString($formatString, $formatReference)
+    {
+        $this->vsprintfString = '';
+        $this->formatsOrder = [];
+        for ($i = 0; $i < strlen($formatString); $i++) {
+            if ($formatString[$i] !== "%") {
+                $this->vsprintfString .= $formatString[$i];
+                continue;
+            }
+
+            $format = $formatString[++$i];
+            $this->formatsOrder[] = $format;
+            $this->ensureValidFormat($format, $formatReference);
+            $this->vsprintfString .= $formatReference[$format];
+        }
+    }
+
+    private function ensureValidFormat($param, $formatReference)
+    {
+        if (!isset($formatReference[$param])) {
+            throw new \Exception('Invalid format string, %' . $param . " is not a valid literal");
         }
     }
 

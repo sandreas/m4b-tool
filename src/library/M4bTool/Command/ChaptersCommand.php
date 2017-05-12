@@ -11,6 +11,7 @@ namespace M4bTool\Command;
 
 use M4bTool\Time\TimeUnit;
 use Mockery\Exception;
+use SplFileInfo;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Command\Command;
@@ -22,6 +23,13 @@ use Symfony\Component\Process\ProcessBuilder;
 
 class ChaptersCommand extends Command
 {
+
+    const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
+    const OPTION_SILENCE_MIN_LENGTH = "silence-min-length";
+    const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
+    const OPTION_MERGE_PARTS_DISTANCE = "merge-parts-distance";
+    const CHAPTER_START_OFFSET = 750;
+    const BEST_MATCH_KEY_DURATION = "duration";
     /**
      * @var AbstractAdapter
      */
@@ -46,6 +54,10 @@ class ChaptersCommand extends Command
     protected $mbxml;
     protected $xml;
     protected $recordings;
+    /**
+     * @var SplFileInfo
+     */
+    protected $filesToProcess;
 
 
     protected function configure()
@@ -58,39 +70,40 @@ class ChaptersCommand extends Command
         $this->setHelp('Can add Chapters to m4b files via different types of inputs');
         // configure an argument
         $this->addArgument('input-file', InputArgument::REQUIRED, 'The file or folder to create chapters from');
-        $this->addOption("musicbrainz-id", "m", InputOption::VALUE_OPTIONAL, "musicbrainz id so load chapters from");
+        $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_OPTIONAL, "musicbrainz id so load chapters from");
         $this->addOption("clear-cache", "c", InputOption::VALUE_NONE, "clear all cached values");
         $this->addOption("adjust-by-silence", "a", InputOption::VALUE_NONE, "adjust chapter position by nearest found silence");
         $this->addOption("silence-max-offset-before", "ob", InputOption::VALUE_OPTIONAL, "maximum silence offset before chapter position", 100);
         $this->addOption("silence-max-offset-after", "oa", InputOption::VALUE_OPTIONAL, "maximum silence offset after chapter position", 100);
-        $this->addOption("silence-min-length", "lmin", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", 2000);
-        $this->addOption("silence-max-length", "lmax", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
-        $this->addOption("merge-parts-distance", "mp", InputOption::VALUE_OPTIONAL, "merge similar chapter names via levenshtein", 2);
+        $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "lmin", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", 2000);
+        $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "lmax", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
+        $this->addOption(static::OPTION_MERGE_PARTS_DISTANCE, "mp", InputOption::VALUE_OPTIONAL, "merge similar chapter names via levenshtein", 2);
         $this->addOption("chapter-pattern", null, InputOption::VALUE_OPTIONAL, "regular expression for matching chapter name", "/^[^:]+:[\s](.*),.*$/i");
         $this->addOption("chapter-replacement", null, InputOption::VALUE_OPTIONAL, "regular expression replacement for matching chapter name", "$1");
         $this->addOption("chapter-remove-chars", null, InputOption::VALUE_OPTIONAL, "remove these chars from chapter name", "„“");
+        $this->addOption("output-file", "-o", InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->input = $input;
         $this->output = $output;
-        $this->cache  = new FilesystemAdapter();
+        $this->cache = new FilesystemAdapter();
 
-        $this->mbId = $this->input->getOption("musicbrainz-id");
+        $this->mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
 
-        $filesToProcess = new \SplFileInfo($input->getArgument('input-file'));
-        if (!$filesToProcess->isFile()) {
+        $this->filesToProcess = new SplFileInfo($input->getArgument('input-file'));
+        if (!$this->filesToProcess->isFile()) {
             $this->output->writeln("Currently only files are supported");
             return;
         }
 
 
-        if($this->input->getOption("clear-cache")) {
+        if ($this->input->getOption("clear-cache")) {
             $this->cache->clear();
         }
 
-        $this->detectSilencesForChapterGuessing($filesToProcess);
+        $this->detectSilencesForChapterGuessing($this->filesToProcess);
         $this->loadXmlFromMusicBrainz();
         $this->parseRecordings();
         $this->buildChapters();
@@ -100,7 +113,7 @@ class ChaptersCommand extends Command
 
     protected function detectSilencesForChapterGuessing(\SplFileInfo $file)
     {
-        if(!$this->input->getOption('adjust-by-silence')) {
+        if (!$this->input->getOption('adjust-by-silence')) {
             return;
         }
 
@@ -110,15 +123,15 @@ class ChaptersCommand extends Command
 
         $fileHash = hash_file('sha256', $file);
 
-        $cacheItem = $this->cache->getItem("chapter.silences.".$fileHash);
-        if($cacheItem->isHit()) {
+        $cacheItem = $this->cache->getItem("chapter.silences." . $fileHash);
+        if ($cacheItem->isHit()) {
             $this->silences = $cacheItem->get();
             return;
         }
         $builder = new ProcessBuilder([
             "ffmpeg",
             "-i", $file,
-            "-af", "silencedetect=noise=-30dB:d=".((float)$this->input->getOption("silence-min-length") / 1000),
+            "-af", "silencedetect=noise=-30dB:d=" . ((float)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH) / 1000),
             "-f", "null",
             "-",
 
@@ -133,31 +146,18 @@ class ChaptersCommand extends Command
                 $this->output->writeln('+');
             } else {
                 $this->output->write('+');
-                sleep(1);
+                usleep(1000);
             }
         }
+        $this->output->writeln('');
 
-        $output = $process->getOutput();
-        $output .= $process->getErrorOutput();
+        $processOutput = $process->getOutput();
+        $processOutput .= $process->getErrorOutput();
 
-        $this->silences = $this->parseSilences($output);
+        $this->parseSilences($processOutput);
 
         $cacheItem->set($this->silences);
-        // $cacheItem->expiresAfter(86400);
         $this->cache->save($cacheItem);
-
-
-
-
-//        echo $process->getOutput();
-//
-//        ->run(function ($type, $buffer) {
-//            if (Process::ERR === $type) {
-//                echo 'ERR > '.$buffer;
-//            } else {
-//                echo 'OUT > '.$buffer;
-//            }
-//        });
     }
 
 
@@ -166,7 +166,7 @@ class ChaptersCommand extends Command
 
         $parts = explode("silence_start:", $content);
 
-        $silences = [];
+        $this->silences = [];
         foreach ($parts as $part) {
             $durationPos = strpos($part, "silence_duration:");
             if ($durationPos === false) {
@@ -176,21 +176,18 @@ class ChaptersCommand extends Command
             $start = trim(substr($part, 0, strpos($part, '[silencedetect')));
             $durationTmp = substr($part, $durationPos + 17);
             $duration = trim(substr($durationTmp, 0, strpos($durationTmp, "\n")));
-            $silences[$start] = $duration;
-
-
+            $this->silences[$start] = $duration;
         }
-        return $silences;
     }
 
     private function loadXmlFromMusicBrainz()
     {
-        $cacheItem = $this->cache->getItem("chapter.mbxml.".$this->input->getOption('musicbrainz-id'));
-        if($cacheItem->isHit()) {
+        $cacheItem = $this->cache->getItem("chapter.mbxml." . $this->input->getOption(static::OPTION_MUSICBRAINZ_ID));
+        if ($cacheItem->isHit()) {
             $this->mbxml = $cacheItem->get();
             return;
         }
-        $urlToGet = "http://musicbrainz.org/ws/2/release/" . $this->input->getOption("musicbrainz-id") . "?inc=recordings";
+        $urlToGet = "http://musicbrainz.org/ws/2/release/" . $this->input->getOption(static::OPTION_MUSICBRAINZ_ID) . "?inc=recordings";
         $options = array(
             'http' => array(
                 'method' => "GET",
@@ -203,15 +200,14 @@ class ChaptersCommand extends Command
         $context = stream_context_create($options);
         $this->mbxml = @file_get_contents($urlToGet, false, $context);
 
-        if(!$this->mbxml) {
-            throw new Exception("Could not load record for musicbrainz-id: ".$this->input->getOption("musicbrainz-id"));
+        if (!$this->mbxml) {
+            throw new Exception("Could not load record for musicbrainz-id: " . $this->input->getOption(static::OPTION_MUSICBRAINZ_ID));
         }
 
         $this->mbxml = preg_replace('/xmlns[^=]*="[^"]*"/i', '', $this->mbxml);
 
 
         $cacheItem->set($this->mbxml);
-        // $cacheItem->expiresAfter(86400);
         $this->cache->save($cacheItem);
     }
 
@@ -227,43 +223,15 @@ class ChaptersCommand extends Command
         $totalDurationMilliSeconds = 0;
         $lastTitle = "";
         foreach ($this->recordings as $recordingNumber => $recording) {
-            if($recordingNumber === 0 || $this->shouldCreateNextChapter($lastTitle, $recording->title)) {
+            if ($recordingNumber === 0 || $this->shouldCreateNextChapter($lastTitle, $recording->title)) {
                 $bestMatch = [];
-                if($recordingNumber > 0 && substr($recording->title, -2) == " 1") {
-                    foreach($this->silences as $silenceStart => $silenceDuration) {
-                        $silenceStartMilliseconds = $silenceStart * 1000;
-                        $silenceDurationMilliseconds = $silenceDuration*1000;
-
-                        if($silenceDurationMilliseconds < $this->input->getOption('silence-min-length')) {
-                            continue;
-                        }
-
-                        if($this->input->getOption('silence-max-length') && $silenceDurationMilliseconds > $this->input->getOption('silence-max-length')) {
-                            continue;
-                        }
-
-                        $diff = ($totalDurationMilliSeconds - $silenceStartMilliseconds);
-
-                        if($diff > $this->input->getOption('silence-max-offset-before') * 1000) {
-                            continue;
-                        }
-
-                        if(!isset($bestMatch["duration"]) || $bestMatch["duration"] < $silenceDurationMilliseconds) {
-                            $bestMatch = [
-                                "start" => $silenceStartMilliseconds,
-                                "duration" => $silenceDurationMilliseconds
-                            ];
-                        }
-
-                        if($diff < $this->input->getOption('silence-max-offset-after') * 1000) {
-                            break;
-                        }
-                    }
+                if ($recordingNumber > 0 && substr($recording->title, -2) == " 1") {
+                    $bestMatch = $this->calculateSilenceBestMatch($totalDurationMilliSeconds, $bestMatch);
                 }
 
                 $chapterStart = $totalDurationMilliSeconds;
-                if(count($bestMatch) > 0) {
-                    $chapterStart = $bestMatch["start"] + 750; //+ ($bestMatch["duration"] / 2);
+                if (count($bestMatch) > 0) {
+                    $chapterStart = $bestMatch["start"] + static::CHAPTER_START_OFFSET;
                 }
 
                 $this->chapters[$chapterStart] = $recording;
@@ -273,32 +241,88 @@ class ChaptersCommand extends Command
             $totalDurationMilliSeconds += (int)$recording->length;
         }
 
-        //;
-
-        //$this->output->writeln(print_r($this->chapters, true));
 
     }
 
+
     private function shouldCreateNextChapter($lastTitle, $title)
     {
-        if($lastTitle === "") {
+        if ($lastTitle === "") {
             return true;
         }
 
-        if($this->input->getOption("merge-parts-distance") == 0) {
+        if ($this->input->getOption(static::OPTION_MERGE_PARTS_DISTANCE) == 0) {
             return true;
         }
 
-        return (levenshtein($lastTitle, $title) > $this->input->getOption("merge-parts-distance"));
+        return (levenshtein($lastTitle, $title) > $this->input->getOption(static::OPTION_MERGE_PARTS_DISTANCE));
     }
 
     private function displayChapters()
     {
-        foreach($this->chapters as $chapterStart => $chapter) {
-            $chapterName =  preg_replace($this->input->getOption('chapter-pattern'), "$1", $chapter->title);
-            $chapterName = preg_replace("/[".preg_quote($this->input->getOption("chapter-remove-chars"), "/")."]/", "", $chapterName);
+        $chaptersText = "";
+        foreach ($this->chapters as $chapterStart => $chapter) {
+            $chapterName = preg_replace($this->input->getOption('chapter-pattern'), "$1", $chapter->title);
+            $chapterName = preg_replace("/[" . preg_quote($this->input->getOption("chapter-remove-chars"), "/") . "]/", "", $chapterName);
             $startUnit = new TimeUnit($chapterStart, TimeUnit::MILLISECOND);
-            $this->output->writeln($startUnit->format("%H:%I:%S.%V")." ".$chapterName);
+            $chaptersText .= $startUnit->format("%H:%I:%S.%V") . " " . $chapterName . PHP_EOL;
         }
+
+        $outputFileLink = $this->input->getOption('output-file');
+        if (!$outputFileLink) {
+            $outputFileLink = $this->filesToProcess->getPath() . DIRECTORY_SEPARATOR . $this->filesToProcess->getBasename("." . $this->filesToProcess->getExtension()) . ".chapters.txt";
+        }
+
+        $outputFilePath = dirname($outputFileLink);
+        if (!is_dir($outputFilePath) && !mkdir($outputFilePath, 0777, true)) {
+            $this->output->writeln("Could not create output directory: " . $outputFilePath);
+            return;
+        }
+
+        if (!file_put_contents($outputFileLink, $chaptersText)) {
+            $this->output->writeln("Could not create output file: " . $outputFileLink);
+            return;
+        }
+
+        $this->output->writeln($chaptersText);
+    }
+
+    /**
+     * @param $totalDurationMilliSeconds
+     * @param $bestMatch
+     * @return array
+     */
+    private function calculateSilenceBestMatch($totalDurationMilliSeconds, $bestMatch): array
+    {
+        foreach ($this->silences as $silenceStart => $silenceDuration) {
+            $silenceStartMilliseconds = $silenceStart * 1000;
+            $silenceDurationMilliseconds = $silenceDuration * 1000;
+
+            if ($silenceDurationMilliseconds < $this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH)) {
+                continue;
+            }
+
+            if ($this->input->getOption(static::OPTION_SILENCE_MAX_LENGTH) && $silenceDurationMilliseconds > $this->input->getOption(static::OPTION_SILENCE_MAX_LENGTH)) {
+                continue;
+            }
+
+            $diff = ($totalDurationMilliSeconds - $silenceStartMilliseconds);
+
+            if ($diff > $this->input->getOption('silence-max-offset-before') * 1000) {
+                continue;
+            }
+
+            if (!isset($bestMatch[static::BEST_MATCH_KEY_DURATION]) || $bestMatch[static::BEST_MATCH_KEY_DURATION] < $silenceDurationMilliseconds) {
+                $bestMatch = [
+                    "start" => $silenceStartMilliseconds,
+                    static::BEST_MATCH_KEY_DURATION => $silenceDurationMilliseconds
+                ];
+            }
+
+            if ($diff < $this->input->getOption('silence-max-offset-after') * 1000) {
+                break;
+            }
+        }
+        return $bestMatch;
     }
 }
