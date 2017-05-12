@@ -1,10 +1,5 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: andreas
- * Date: 10.05.17
- * Time: 01:57
- */
+
 
 namespace M4bTool\Command;
 
@@ -27,8 +22,9 @@ class ChaptersCommand extends Command
     const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
     const OPTION_SILENCE_MIN_LENGTH = "silence-min-length";
     const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
-    const OPTION_MERGE_PARTS_DISTANCE = "merge-parts-distance";
-    const CHAPTER_START_OFFSET = 750;
+    const OPTION_MERGE_SIMILAR = "merge-similar";
+
+
     const BEST_MATCH_KEY_DURATION = "duration";
     /**
      * @var AbstractAdapter
@@ -58,6 +54,13 @@ class ChaptersCommand extends Command
      * @var SplFileInfo
      */
     protected $filesToProcess;
+    protected $silenceLastChapterOffset;
+    protected $silenceMaxOffsetBefore;
+    protected $silenceMaxOffsetAfter;
+    protected $potentialChapters = [];
+
+    protected $chapterStartOffset = 750;
+    protected $potentialChapterWindowSize = 1;
 
 
     protected function configure()
@@ -77,11 +80,13 @@ class ChaptersCommand extends Command
         $this->addOption("silence-max-offset-after", "oa", InputOption::VALUE_OPTIONAL, "maximum silence offset after chapter position", 100);
         $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "lmin", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", 2000);
         $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "lmax", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
-        $this->addOption(static::OPTION_MERGE_PARTS_DISTANCE, "mp", InputOption::VALUE_OPTIONAL, "merge similar chapter names via levenshtein", 2);
+        $this->addOption(static::OPTION_MERGE_SIMILAR, "mp", InputOption::VALUE_OPTIONAL, "merge similar chapter names via levenshtein", 2);
         $this->addOption("chapter-pattern", null, InputOption::VALUE_OPTIONAL, "regular expression for matching chapter name", "/^[^:]+:[\s](.*),.*$/i");
         $this->addOption("chapter-replacement", null, InputOption::VALUE_OPTIONAL, "regular expression replacement for matching chapter name", "$1");
         $this->addOption("chapter-remove-chars", null, InputOption::VALUE_OPTIONAL, "remove these chars from chapter name", "„“");
         $this->addOption("output-file", "-o", InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
+        $this->addOption("potential-window-size", null, InputOption::VALUE_OPTIONAL, "dump silence markers for potential chapters", 1);
+        $this->addOption("chapter-start-offset", null, InputOption::VALUE_OPTIONAL, "milliseconds to add after silence on chapter start", 750);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -102,6 +107,11 @@ class ChaptersCommand extends Command
         if ($this->input->getOption("clear-cache")) {
             $this->cache->clear();
         }
+
+        $this->potentialChapterWindowSize = (int)$this->input->getOption("potential-window-size");
+        $this->chapterStartOffset = (int)$this->input->getOption("chapter-start-offset");
+
+
 
         $this->detectSilencesForChapterGuessing($this->filesToProcess);
         $this->loadXmlFromMusicBrainz();
@@ -146,7 +156,7 @@ class ChaptersCommand extends Command
                 $this->output->writeln('+');
             } else {
                 $this->output->write('+');
-                usleep(1000);
+                usleep(1000000);
             }
         }
         $this->output->writeln('');
@@ -222,6 +232,11 @@ class ChaptersCommand extends Command
 
         $totalDurationMilliSeconds = 0;
         $lastTitle = "";
+        $this->silenceMaxOffsetAfter = $this->input->getOption("silence-max-offset-after");
+        $this->silenceMaxOffsetBefore = $this->input->getOption("silence-max-offset-before");
+        $this->silenceLastChapterOffset = 0;
+
+
         foreach ($this->recordings as $recordingNumber => $recording) {
             if ($recordingNumber === 0 || $this->shouldCreateNextChapter($lastTitle, $recording->title)) {
                 $bestMatch = [];
@@ -230,11 +245,16 @@ class ChaptersCommand extends Command
                 }
 
                 $chapterStart = $totalDurationMilliSeconds;
+                $index = 0;
                 if (count($bestMatch) > 0) {
-                    $chapterStart = $bestMatch["start"] + static::CHAPTER_START_OFFSET;
+                    $chapterStart = $bestMatch["start"] + $this->chapterStartOffset;
+                    $index = $bestMatch["index"];
                 }
 
-                $this->chapters[$chapterStart] = $recording;
+                $this->chapters[$chapterStart] = [
+                    "title" => (string)$recording->title,
+                    "index" => $index,
+                ];
             }
 
             $lastTitle = (string)$recording->title;
@@ -251,22 +271,113 @@ class ChaptersCommand extends Command
             return true;
         }
 
-        if ($this->input->getOption(static::OPTION_MERGE_PARTS_DISTANCE) == 0) {
+        if ($this->input->getOption(static::OPTION_MERGE_SIMILAR) == 0) {
             return true;
         }
 
-        return (levenshtein($lastTitle, $title) > $this->input->getOption(static::OPTION_MERGE_PARTS_DISTANCE));
+        return (levenshtein($lastTitle, $title) > $this->input->getOption(static::OPTION_MERGE_SIMILAR));
+    }
+
+    /**
+     * @param $totalDurationMilliSeconds
+     * @param $bestMatch
+     * @return array
+     */
+    private function calculateSilenceBestMatch($totalDurationMilliSeconds, $bestMatch): array
+    {
+//        if($this->silenceLastChapterOffset != 0) {
+//            $totalDurationMilliSeconds += $this->silenceLastChapterOffset;
+//        }
+
+//        if(count($this->chapters) > 0) {
+//            end($this->chapters);
+//            $lastChapterStart = key($this->chapters);
+//            foreach($this->silences as $silenceStart => $silenceDuration) {
+//                if($silenceStart >= $lastChapterStart) {
+//                    break;
+//                }
+//                unset($this->silences[$silenceStart]);
+//            }
+//        }
+
+        $index = -1;
+        foreach ($this->silences as $silenceStart => $silenceDuration) {
+            $silenceStartMilliseconds = $silenceStart * 1000;
+            $silenceDurationMilliseconds = $silenceDuration * 1000;
+            $index++;
+            if ($silenceDurationMilliseconds < $this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH)) {
+                continue;
+            }
+
+            if ($this->input->getOption(static::OPTION_SILENCE_MAX_LENGTH) && $silenceDurationMilliseconds > $this->input->getOption(static::OPTION_SILENCE_MAX_LENGTH)) {
+                continue;
+            }
+
+            $diff = ($totalDurationMilliSeconds - $silenceStartMilliseconds);
+
+            if ($diff > $this->silenceMaxOffsetBefore * 1000) {
+                continue;
+            }
+
+
+            // $this->potentialChapters[$silenceStartMilliseconds] = $title;
+
+            if (!isset($bestMatch[static::BEST_MATCH_KEY_DURATION]) || $bestMatch[static::BEST_MATCH_KEY_DURATION] < $silenceDurationMilliseconds) {
+                $bestMatch = [
+                    "start" => $silenceStartMilliseconds,
+                    static::BEST_MATCH_KEY_DURATION => $silenceDurationMilliseconds,
+                    "index" => $index
+                ];
+            }
+
+            if ($diff < $this->silenceMaxOffsetAfter * 1000) {
+                break;
+            }
+        }
+
+        return $bestMatch;
     }
 
     private function displayChapters()
     {
         $chaptersText = "";
-        foreach ($this->chapters as $chapterStart => $chapter) {
-            $chapterName = preg_replace($this->input->getOption('chapter-pattern'), "$1", $chapter->title);
-            $chapterName = preg_replace("/[" . preg_quote($this->input->getOption("chapter-remove-chars"), "/") . "]/", "", $chapterName);
+
+        $chapters = $this->chapters;
+
+        $silenceWindowSize = $this->potentialChapterWindowSize;
+        if ($silenceWindowSize) {
+            $silences = [];
+            foreach ($chapters as $chapterStart => $chapter) {
+                if ($chapterStart === 0) {
+                    continue;
+                }
+
+                $offset = max($chapter["index"] - $silenceWindowSize, 0);
+                $length = 1 + $silenceWindowSize * 2 + min($chapter["index"], 0);
+                $silences = $silences + array_slice($this->silences, $offset, $length, true);
+            }
+
+            foreach ($silences as $silenceStart => $silenceDuration) {
+                $chapterStart = $silenceStart * 1000 + $this->chapterStartOffset;
+
+                if (!isset($chapters[$chapterStart])) {
+                    $chapters[$chapterStart] = ["title" => "- potential chapter start -"];
+                }
+            }
+
+            ksort($chapters);
+        }
+        foreach ($chapters as $chapterStart => $chapter) {
             $startUnit = new TimeUnit($chapterStart, TimeUnit::MILLISECOND);
+
+            if (isset($this->chapters[$chapterStart])) {
+                $chapterName = $this->replaceChapterName($chapter["title"]);
+            } else {
+                $chapterName = $chapter["title"];
+            }
             $chaptersText .= $startUnit->format("%H:%I:%S.%V") . " " . $chapterName . PHP_EOL;
         }
+
 
         $outputFileLink = $this->input->getOption('output-file');
         if (!$outputFileLink) {
@@ -287,42 +398,11 @@ class ChaptersCommand extends Command
         $this->output->writeln($chaptersText);
     }
 
-    /**
-     * @param $totalDurationMilliSeconds
-     * @param $bestMatch
-     * @return array
-     */
-    private function calculateSilenceBestMatch($totalDurationMilliSeconds, $bestMatch): array
+    private function replaceChapterName($chapter)
     {
-        foreach ($this->silences as $silenceStart => $silenceDuration) {
-            $silenceStartMilliseconds = $silenceStart * 1000;
-            $silenceDurationMilliseconds = $silenceDuration * 1000;
+        $chapterName = preg_replace($this->input->getOption('chapter-pattern'), "$1", $chapter);
+        $chapterName = preg_replace("/[" . preg_quote($this->input->getOption("chapter-remove-chars"), "/") . "]/", "", $chapterName);
+        return $chapterName;
 
-            if ($silenceDurationMilliseconds < $this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH)) {
-                continue;
-            }
-
-            if ($this->input->getOption(static::OPTION_SILENCE_MAX_LENGTH) && $silenceDurationMilliseconds > $this->input->getOption(static::OPTION_SILENCE_MAX_LENGTH)) {
-                continue;
-            }
-
-            $diff = ($totalDurationMilliSeconds - $silenceStartMilliseconds);
-
-            if ($diff > $this->input->getOption('silence-max-offset-before') * 1000) {
-                continue;
-            }
-
-            if (!isset($bestMatch[static::BEST_MATCH_KEY_DURATION]) || $bestMatch[static::BEST_MATCH_KEY_DURATION] < $silenceDurationMilliseconds) {
-                $bestMatch = [
-                    "start" => $silenceStartMilliseconds,
-                    static::BEST_MATCH_KEY_DURATION => $silenceDurationMilliseconds
-                ];
-            }
-
-            if ($diff < $this->input->getOption('silence-max-offset-after') * 1000) {
-                break;
-            }
-        }
-        return $bestMatch;
     }
 }
