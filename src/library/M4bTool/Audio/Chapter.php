@@ -9,9 +9,16 @@
 namespace M4bTool\Audio;
 
 
+use M4bTool\Time\TimeUnit;
+
 class Chapter extends AbstractPart
 {
     protected $name;
+
+    public function __construct(TimeUnit $start, TimeUnit $length, $name) {
+        parent::__construct($start, $length);
+        $this->name = $name;
+    }
 
     /**
      * @return string
