@@ -62,22 +62,6 @@ class TimeUnit
         return $this->milliseconds;
     }
 
-
-    public function seconds()
-    {
-        return round($this->milliseconds / static::SECOND, 0);
-    }
-
-    public function minutes()
-    {
-        return round($this->milliseconds / static::MINUTE, 0);
-    }
-
-    public function hours()
-    {
-        return round($this->milliseconds / static::HOUR, 0);
-    }
-
     public function format($formatString)
     {
         $this->parseFormatString($formatString, $this->sprintfFormatReference);

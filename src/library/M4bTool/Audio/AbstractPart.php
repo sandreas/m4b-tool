@@ -16,11 +16,10 @@ abstract class AbstractPart
      */
     protected $length;
 
-    /**
-     * @var TimeUnit
-     */
-    protected $end;
-
+    public function __construct(TimeUnit $start, TimeUnit $length) {
+        $this->start = $start;
+        $this->length = $length;
+    }
 
     /**
      * @return TimeUnit
@@ -54,13 +53,6 @@ abstract class AbstractPart
      * @return TimeUnit
      */
     public function getEnd() {
-        return $this->end;
-    }
-
-    /**
-     * @param TimeUnit $end
-     */
-    public function setEnd(TimeUnit $end) {
-        $this->end = $end;
+        return new TimeUnit($this->start->milliseconds()+$this->length->milliseconds(), TimeUnit::MILLISECOND);
     }
 }
