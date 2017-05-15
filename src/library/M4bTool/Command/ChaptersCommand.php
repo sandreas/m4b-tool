@@ -91,6 +91,8 @@ class ChaptersCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+
+
         $this->input = $input;
         $this->output = $output;
         $this->cache = new FilesystemAdapter();
@@ -197,6 +199,7 @@ class ChaptersCommand extends Command
             $this->mbxml = $cacheItem->get();
             return;
         }
+
         $urlToGet = "http://musicbrainz.org/ws/2/release/" . $this->input->getOption(static::OPTION_MUSICBRAINZ_ID) . "?inc=recordings";
         $options = array(
             'http' => array(

@@ -22,4 +22,5 @@ ffmpeg -i data/src.m4b -ss 10 -acodec copy -vn -f mp4 data/dest.m4b
 ####  from second 10 to 40
 ```
 ffmpeg -i "data/src.m4b" -ss 10 -t 30 -acodec copy -vn -f mp4 data/dest.m4b
+ffmpeg -i sample.avi -ss 00:03:05 -t 00:00:45.0 -q:a 0 -map a sample.mp3
 ```
