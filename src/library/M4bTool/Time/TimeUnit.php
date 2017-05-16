@@ -82,7 +82,7 @@ class TimeUnit
         }
 
 
-        $tempMilliseconds = $this->milliseconds;
+        $tempMilliseconds = abs($this->milliseconds);
         $timeValues = [];
         foreach ($usedUnits as $unit => $isUsed) {
             if (!$isUsed) {
@@ -99,7 +99,11 @@ class TimeUnit
             $vsprintfParameters[] = $timeValues[$unit];
         }
 
-        return vsprintf($this->vsprintfString, $vsprintfParameters);
+        $prefix = "";
+        if ($this->milliseconds < 0) {
+            $prefix = "-";
+        }
+        return $prefix . vsprintf($this->vsprintfString, $vsprintfParameters);
     }
 
     public function fromFormat($valueString, $formatString)

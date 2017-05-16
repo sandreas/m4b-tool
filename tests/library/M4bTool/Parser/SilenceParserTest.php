@@ -1,9 +1,9 @@
 <?php
 
-namespace library\M4bTool\Parser;
+namespace M4bTool\Parser;
 
 
-use M4bTool\Parser\SilenceParser;
+use M4bTool\Time\TimeUnit;
 use PHPUnit\Framework\TestCase;
 
 class SilenceParserTest extends TestCase
@@ -19,7 +19,9 @@ class SilenceParserTest extends TestCase
     }
 
     public function testParse() {
-        $chapterString = "[silencedetect @ 04e4c640] silence_end: 19.9924 | silence_duration: 4.27556
+        $chapterString = "
+  Duration: 13:35:02.34, start: 0.000000, bitrate: 64 kb/s        
+[silencedetect @ 04e4c640] silence_end: 19.9924 | silence_duration: 4.27556
 [silencedetect @ 04e4c640] silence_start: 80.6166
 [silencedetect @ 04e4c640] silence_end: 84.7528 | silence_duration: 4.13624
 frame=    1 fps=0.0 q=-0.0 size=N/A time=00:03:41.72 bitrate=N/A    
@@ -35,6 +37,8 @@ frame=    1 fps=1.0 q=-0.0 size=N/A time=00:07:18.71 bitrate=N/A
         $this->assertCount(4, $silences);
         $this->assertEquals(15716, key($silences));
         $this->assertEquals(4275.56, current($silences)->getLength()->milliseconds());
+        $this->assertInstanceOf(TimeUnit::class, $this->subject->getDuration());
+        $this->assertEquals(48902034, $this->subject->getDuration()->milliseconds());
 
     }
 }

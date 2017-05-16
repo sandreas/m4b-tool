@@ -12,11 +12,16 @@ class SilenceParser
     protected $silences = [];
     protected $lines = [];
 
+    /**
+     * @var TimeUnit
+     */
+    protected $duration;
+
     public function parse($silencesString)
     {
         $this->reset();
         $this->splitLines($silencesString);
-        $this->parseSilences();
+        $this->parseLines();
         return $this->silences;
     }
 
@@ -31,10 +36,15 @@ class SilenceParser
         $this->lines = [];
     }
 
-    private function parseSilences()
+    private function parseLines()
     {
         foreach ($this->lines as $line) {
             $trimmedLine = trim($line);
+
+            if(strpos($trimmedLine, "Duration:") !== false) {
+                $this->parseDuration($trimmedLine);
+                continue;
+            }
             if (strpos($trimmedLine, "silence_end") === false) {
                 continue;
             }
@@ -45,10 +55,24 @@ class SilenceParser
             }
 
             $end = new TimeUnit((float)$matches[1], TimeUnit::SECOND);
-            $duration = new TimeUnit((float)$matches[2], TimeUnit::SECOND);
-            $start = new TimeUnit($end->milliseconds() - $duration->milliseconds(), TimeUnit::MILLISECOND);
+            $silenceDuration = new TimeUnit((float)$matches[2], TimeUnit::SECOND);
+            $start = new TimeUnit($end->milliseconds() - $silenceDuration->milliseconds(), TimeUnit::MILLISECOND);
 
-            $this->silences[$start->milliseconds()] = new Silence($start, $duration);
+            $this->silences[$start->milliseconds()] = new Silence($start, $silenceDuration);
+        }
+    }
+
+    public function getDuration()
+    {
+        return $this->duration;
+    }
+
+    private function parseDuration($trimmedLine)
+    {
+        preg_match('/[\s]*Duration\:[\s]*([0-9\.\:]+)[\s]*.*/i', $trimmedLine, $matches);
+        if(count($matches) == 2) {
+            $this->duration = new TimeUnit(0, TimeUnit::MILLISECOND);
+            $this->duration->fromFormat($matches[1], "%H:%I:%S.%v");
         }
     }
 

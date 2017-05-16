@@ -12,28 +12,10 @@ use PHPUnit\Framework\TestCase;
 
 class TimeUnitTest extends TestCase
 {
-    public function testMillisecondsToSeconds()
-    {
-        $subject = new TimeUnit(1000, TimeUnit::MILLISECOND);
-        $this->assertEquals(1, $subject->seconds());
-
-        $subject = new TimeUnit(1234, TimeUnit::MILLISECOND);
-        $this->assertEquals(1, $subject->seconds());
-
-        $subject = new TimeUnit(1500, TimeUnit::MILLISECOND);
-        $this->assertEquals(2, $subject->seconds());
-    }
-
     public function testSecondsToMilliSeconds()
     {
         $subject = new TimeUnit(5, TimeUnit::SECOND);
         $this->assertEquals(5000, $subject->milliseconds());
-    }
-
-    public function testHoursToSeconds()
-    {
-        $subject = new TimeUnit(5, TimeUnit::HOUR);
-        $this->assertEquals(18000, $subject->seconds());
     }
 
     public function testAdd()
@@ -63,6 +45,14 @@ class TimeUnitTest extends TestCase
         $this->assertEquals("25501.433", $subject->format('%s.%v'));
         $this->assertEquals("425:01.433", $subject->format('%i:%S.%v'));
         $this->assertEquals("07:05:01.433", $subject->format('%H:%I:%S.%v'));
+    }
+
+    public function testFormatNegative()
+    {
+        $subject = new TimeUnit(-3327, TimeUnit::MILLISECOND);
+        $this->assertEquals("-3327", $subject->format('%v'));
+        $this->assertEquals("-3.327", $subject->format('%s.%v'));
+        $this->assertEquals("-00:00:03.327", $subject->format('%H:%I:%S.%V'));
     }
 
     public function testFromFormat()

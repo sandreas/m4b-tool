@@ -6,9 +6,8 @@
  * Time: 21:33
  */
 
-namespace library\M4bTool\Parser;
+namespace M4bTool\Parser;
 
-use M4bTool\Parser\MusicBrainzChapterParser;
 use PHPUnit\Framework\TestCase;
 
 class MusicBrainzChapterParserTest extends TestCase
