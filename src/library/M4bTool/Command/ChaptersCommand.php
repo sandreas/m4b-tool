@@ -91,6 +91,7 @@ class ChaptersCommand extends Command
         $this->addOption("potential-window-size", null, InputOption::VALUE_OPTIONAL, "dump silence markers for potential chapters", 1);
         $this->addOption("first-chapter-offset", null, InputOption::VALUE_OPTIONAL, "milliseconds to add after silence on chapter start", 0);
         $this->addOption("last-chapter-offset", null, InputOption::VALUE_OPTIONAL, "milliseconds to add after silence on chapter start", 0);
+        $this->addOption("debug", null, InputOption::VALUE_NONE, "dump debugging info about found chapters");
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -237,7 +238,7 @@ class ChaptersCommand extends Command
         $silenceParser = new SilenceParser();
         $silences = $silenceParser->parse($this->silenceDetectionOutput);
 
-        $chapterMarker = new ChapterMarker();
+        $chapterMarker = new ChapterMarker($this->input->getOption("debug"));
         $this->chapters = $chapterMarker->guessChapters($mbChapters, $silences, $silenceParser->getDuration());
     }
 

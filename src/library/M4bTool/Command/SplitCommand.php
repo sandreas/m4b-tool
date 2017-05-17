@@ -94,8 +94,6 @@ class SplitCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        var_dump($this->container);
-        exit;
 
         $this->input = $input;
         $this->output = $output;
@@ -226,8 +224,7 @@ class SplitCommand extends Command
 
 
             if ($lastUnit) {
-                $offset = 750;
-                $this->chapters[$index - 1]["duration"] = new TimeUnit($unit->milliseconds() - $lastUnit->milliseconds() - $offset, TimeUnit::MILLISECOND);
+                $this->chapters[$index - 1]["duration"] = new TimeUnit($unit->milliseconds() - $lastUnit->milliseconds(), TimeUnit::MILLISECOND);
             }
 
             $lastUnit = $unit;
