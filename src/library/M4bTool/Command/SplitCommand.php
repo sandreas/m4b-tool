@@ -5,10 +5,8 @@ namespace M4bTool\Command;
 
 
 use M4bTool\Time\TimeUnit;
-use Mockery\Exception;
 use SplFileInfo;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -54,6 +52,7 @@ class SplitCommand extends Command
 
         // configure an argument
         $this->addArgument('input-file', InputArgument::REQUIRED, 'Input file to split');
+        $this->addOption("audio-format", null, InputOption::VALUE_OPTIONAL, "output format, that ffmpeg will use to create files", "m4b");
         $this->addOption("use-existing-chapters-file", null, InputOption::VALUE_NONE, "adjust chapter position by nearest found silence");
         $this->addOption("name", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook name, otherwise the existing metadata will be used", "");
         $this->addOption("artist", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook artist, otherwise the existing metadata will be used", "");
@@ -61,6 +60,10 @@ class SplitCommand extends Command
         $this->addOption("writer", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook writer, otherwise the existing metadata will be used", "");
         $this->addOption("albumartist", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook albumartist, otherwise the existing metadata will be used", "");
         $this->addOption("year", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook year, otherwise the existing metadata will be used", "");
+        $this->addOption("audio-channels", null, InputOption::VALUE_OPTIONAL, "audio channels, e.g. 1, 2", ""); // -ac 1
+        $this->addOption("audio-bitrate", null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...", ""); // -ab 128k
+        $this->addOption("audio-samplerate", null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...", ""); // -ar 44100
+
         //$this->addOption("type", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook type, otherwise the existing metadata will be used", "");
         // $this->addOption("track", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook type, otherwise the existing metadata will be used", "");
 
@@ -195,13 +198,15 @@ class SplitCommand extends Command
 
 
         $lines = file($chaptersFileLink);
-        if (!is_dir($this->outputDirectory)) {
-            if (!mkdir($this->outputDirectory)) {
-                $this->output->write("Could not create output directory: " . $this->outputDirectory);
-            }
+        if (!is_dir($this->outputDirectory) && !mkdir($this->outputDirectory)) {
+            $this->output->write("Could not create output directory: " . $this->outputDirectory);
+            return;
         }
 
         $this->chapters = [];
+        /**
+         * @var TimeUnit $lastUnit
+         */
         $lastUnit = null;
         foreach ($lines as $index => $line) {
             $chapterStartMarker = substr($line, 0, 12);
@@ -235,14 +240,14 @@ class SplitCommand extends Command
 
     private function extractChapters()
     {
-        foreach ($this->chapters as $chapterIndex => $chapter) {
-            echo PHP_EOL."name:     " . $chapter["title"] . PHP_EOL;
+        foreach ($this->chapters as $chapter) {
+            echo PHP_EOL . "name:     " . $chapter["title"] . PHP_EOL;
             echo "start:    " . $chapter["start"]->format("%H:%I:%S.%V") . PHP_EOL;
             if ($chapter["duration"]) {
                 echo "duration: " . $chapter["duration"]->format("%H:%I:%S.%V") . PHP_EOL . PHP_EOL;
             }
-            $outputFile = $this->extractChapter($chapter, $this->outputDirectory);
-            if($outputFile) {
+            $outputFile = $this->extractChapter($chapter);
+            if ($outputFile) {
                 $this->tagChapter($chapter, $outputFile);
 
             }
@@ -251,22 +256,57 @@ class SplitCommand extends Command
 
     private function extractChapter($chapter)
     {
+        $extension = $this->input->getOption('audio-format');
+        $bitrate = $this->input->getOption('audio-bitrate');
+        $sampleRate = $this->input->getOption('audio-samplerate');
+        $channels = $this->input->getOption('audio-channels');
+
+
+        $extensionFormatMapping = [
+            "m4b" => "mp4"
+        ];
+        $format = $extension;
+        if (isset($extensionFormatMapping[$extension])) {
+            $format = $extensionFormatMapping[$extension];
+        }
+
+
         $command = [
             "ffmpeg",
             "-i", $this->filesToProcess,
-            "-acodec", "copy",
             "-vn",
-            "-f", "mp4",
+            "-f", $format,
             "-ss", $chapter["start"]->format("%H:%I:%S.%V"),
             "-map", "a"
         ];
+
+        if ($bitrate) {
+            $command[] = "-ab";
+            $command[] = $bitrate;
+        }
+
+        if ($sampleRate) {
+            $command[] = "-ar";
+            $command[] = $sampleRate;
+        }
+
+        if ($channels) {
+            $command[] = "-ac";
+            $command[] = $channels;
+        }
+
+        if ($format == "mp3") {
+            $command[] = '-metadata';
+            $command[] = 'title=' . $chapter["title"];
+        }
+
 
         if ($chapter["duration"]) {
             $command[] = "-t";
             $command[] = $chapter["duration"]->format("%H:%I:%S.%V");
         }
-        $outputFile = $this->outputDirectory . "/" . sprintf("%03d", $chapter["index"]+1) . "-" . $chapter["title"] . ".m4b";
-        if(file_exists($outputFile)) {
+        $outputFile = $this->outputDirectory . "/" . sprintf("%03d", $chapter["index"] + 1) . "-" . $this->replaceFilename($chapter["title"]) . "." . $extension;
+        if (file_exists($outputFile)) {
             return null;
         }
         $command[] = $outputFile;
@@ -274,12 +314,35 @@ class SplitCommand extends Command
         return $outputFile;
     }
 
-    private function runProcess($command, $message="")
+    private function replaceFilename($fileName)
+    {
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $invalidFilenameChars = [
+                ' < ',
+                '>',
+                ':',
+                '"',
+                '/',
+                '\\',
+                '|',
+                '?',
+                '*',
+            ];
+            $replacedFileName = str_replace($invalidFilenameChars, '-', $fileName);
+            return mb_convert_encoding($replacedFileName, 'Windows-1252', 'UTF-8');
+        }
+        $invalidFilenameChars = [" / ", "\0"];
+        return str_replace($invalidFilenameChars, '-', $fileName);
+
+
+    }
+
+    private function runProcess($command, $message = "")
     {
         $builder = new ProcessBuilder($command);
         $process = $builder->getProcess();
         $process->start();
-        if($message) {
+        if ($message) {
             $this->output->writeln($message);
         }
 
@@ -298,9 +361,9 @@ class SplitCommand extends Command
     private function tagChapter($chapter, $outputFile)
     {
         $this->runProcess(["mp4tags",
-            "-track", $chapter["index"]+1,
-            "-tracks", count($this->chapters),
-            "-s", $chapter["title"],
+            " - track", $chapter["index"] + 1,
+            " - tracks", count($this->chapters),
+            " - s", $chapter["title"],
             $outputFile
         ]);
 
