@@ -1,2 +1,2 @@
 #!/bin/sh
-php tools/box.phar build && chmod +x dist/*.phar
+php -d phar.readonly=off tools/box.phar build && chmod +x dist/*.phar

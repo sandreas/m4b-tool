@@ -1,2 +1,2 @@
 @echo off
-php tools\box.phar build
+php -d phar.readonly=off tools\box.phar build
