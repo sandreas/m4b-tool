@@ -63,6 +63,7 @@ class ChaptersCommand extends Command
     protected $silenceMaxOffsetBefore;
     protected $silenceMaxOffsetAfter;
     protected $silenceDetectionOutput;
+    protected $silences;
 
 
     protected function configure()
@@ -230,10 +231,29 @@ class ChaptersCommand extends Command
         $mbChapters = $mbParser->parse($this->mbxml);
 
         $silenceParser = new SilenceParser();
-        $silences = $silenceParser->parse($this->silenceDetectionOutput);
+        $this->silences = $silenceParser->parse($this->silenceDetectionOutput);
 
         $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
-        $this->chapters = $chapterMarker->guessChapters($mbChapters, $silences, $silenceParser->getDuration());
+        $this->chapters = $chapterMarker->guessChapters($mbChapters, $this->silences, $silenceParser->getDuration());
+
+        /*
+        if($this->input->getOption("debug")) {
+            $silenceIndex = 1;
+            foreach($this->silences as $silenceStart => $silence) {
+                foreach($this->chapters as $chapterStart => $chapter) {
+                    if($chapterStart >= $silenceStart && $chapterStart < $silence->getEnd()->milliseconds()) {
+                        continue 2;
+                    }
+                }
+
+                $halfLen = $silence->getLength()->milliseconds() / 2;
+                $key = $silence->getStart()->milliseconds() + $halfLen;
+                $this->chapters[$key] = new Chapter(new TimeUnit($key, TimeUnit::MILLISECOND), new TimeUnit($halfLen, TimeUnit::MILLISECOND), "silence ".$silenceIndex);
+                $silenceIndex++;
+            }
+            ksort($this->chapters);
+        }
+        */
     }
 
     private function chaptersAsLines()

@@ -9,4 +9,5 @@ use Symfony\Component\Console\Application;
 $application = new Application('m4b-tool', '@package_version@');
 $application->add(new Command\ChaptersCommand());
 $application->add(new Command\SplitCommand());
+$application->add(new Command\MergeCommand());
 $application->run();
