@@ -249,7 +249,6 @@ class SplitCommand extends Command
             $outputFile = $this->extractChapter($chapter);
             if ($outputFile) {
                 $this->tagChapter($chapter, $outputFile);
-
             }
         }
     }
@@ -307,7 +306,7 @@ class SplitCommand extends Command
         }
         $outputFile = $this->outputDirectory . "/" . sprintf("%03d", $chapter["index"] + 1) . "-" . $this->replaceFilename($chapter["title"]) . "." . $extension;
         if (file_exists($outputFile)) {
-            return null;
+            return $outputFile;
         }
         $command[] = $outputFile;
         $this->runProcess($command, "splitting file " . $this->filesToProcess . " with ffmpeg into " . $this->outputDirectory);
@@ -361,9 +360,9 @@ class SplitCommand extends Command
     private function tagChapter($chapter, $outputFile)
     {
         $this->runProcess(["mp4tags",
-            " - track", $chapter["index"] + 1,
-            " - tracks", count($this->chapters),
-            " - s", $chapter["title"],
+            "-track", $chapter["index"] + 1,
+            "-tracks", count($this->chapters),
+            "-s", $chapter["title"],
             $outputFile
         ]);
 
