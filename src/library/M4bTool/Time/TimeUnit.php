@@ -46,12 +46,12 @@ class TimeUnit
      */
     protected $vsprintfString = '';
 
-    public function __construct($value, $unit)
+    public function __construct($value=0, $unit=self::MILLISECOND)
     {
         $this->milliseconds = $value * $unit;
     }
 
-    public function add($value, $unit)
+    public function add($value, $unit=self::MILLISECOND)
     {
         $this->milliseconds += $value * $unit;
     }

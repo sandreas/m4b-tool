@@ -4,182 +4,120 @@
 namespace M4bTool\Command;
 
 
+use M4bTool\Audio\Chapter;
+use M4bTool\Audio\Silence;
 use M4bTool\Marker\ChapterMarker;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use M4bTool\Parser\SilenceParser;
 use M4bTool\Time\TimeUnit;
-use Mockery\Exception;
 use SplFileInfo;
-use Symfony\Component\Cache\Adapter\AbstractAdapter;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\ProcessBuilder;
 
-class ChaptersCommand extends Command
+class ChaptersCommand extends AbstractCommand
 {
 
     const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
     const OPTION_SILENCE_MIN_LENGTH = "silence-min-length";
     const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
     const OPTION_MERGE_SIMILAR = "merge-similar";
-    const OPTION_DELETE_CACHE = "delete-cache";
     const OPTION_OUTPUT_FILE = "output-file";
-    const OPTION_FORCE = "force";
-    const OPTION_SPECIAL_OFFSET = "special-offset";
-    const OPTION_SPECIAL_OFFSET_CHAPTERS = "special-offset-chapters";
-    const OPTION_DEBUG = "debug";
+    const OPTION_FIND_MISPLACED_CHAPTERS = "find-misplaced-chapters";
+
+    const OPTION_CHAPTER_PATTERN = "chapter-pattern";
+    const OPTION_CHAPTER_REPLACEMENT = "chapter-replacement";
+    const OPTION_CHAPTER_REMOVE_CHARS = "chapter-remove-chars";
+    const OPTION_FIRST_CHAPTER_OFFSET = "first-chapter-offset";
+    const OPTION_LAST_CHAPTER_OFFSET = "last-chapter-offset";
+
 
     /**
-     * @var AbstractAdapter
+     * @var MusicBrainzChapterParser
      */
-    protected $cache;
+    protected $mbChapterParser;
 
     /**
-     * @var InputInterface
+     * @var SilenceParser
      */
-    protected $input;
+    protected $silenceParser;
 
-    /**
-     * @var OutputInterface
-     */
-    protected $output;
-
-    protected $chapters = [];
-
-
-    protected $mbId;
-    protected $mbxml;
-    protected $xml;
-    protected $recordings;
     /**
      * @var SplFileInfo
      */
     protected $filesToProcess;
-    protected $silenceLastChapterOffset;
-    protected $silenceMaxOffsetBefore;
-    protected $silenceMaxOffsetAfter;
     protected $silenceDetectionOutput;
-    protected $silences;
+    /**
+     * @var Silence[]
+     */
+    protected $silences = [];
+    protected $chapters = [];
 
 
     protected function configure()
     {
-        $this->setName('chapters');
+        parent::configure();
         $this->setDescription('Adds chapters to m4b file');         // the short description shown while running "php bin/console list"
         $this->setHelp('Can add Chapters to m4b files via different types of inputs'); // the full command description shown when running the command with the "--help" option
 
-        // configure an argument
-        $this->addArgument('input-file', InputArgument::REQUIRED, 'The file or folder to create chapters from');
-
-        // configure options
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
         $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "a", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", 1750);
         $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "b", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
-        $this->addOption(static::OPTION_MERGE_SIMILAR, null, InputOption::VALUE_NONE, "merge similar chapter names");
-        $this->addOption(static::OPTION_DELETE_CACHE, "d", InputOption::VALUE_NONE, "clear all cached values");
-        $this->addOption(static::OPTION_OUTPUT_FILE, "-o", InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
-        $this->addOption(static::OPTION_FORCE, "-f", InputOption::VALUE_NONE, "force overwrite of existing files");
-        $this->addOption(static::OPTION_SPECIAL_OFFSET, null, InputOption::VALUE_OPTIONAL, "some chapters are falsely detected with a recurrent offset, specify the offset in ms with this option", -4000);
-        $this->addOption(static::OPTION_SPECIAL_OFFSET_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "chapter numbers that have a special offset (see " . static::OPTION_SPECIAL_OFFSET . ") as comma separated values, e.g. 8,15,18", "");
+        $this->addOption(static::OPTION_MERGE_SIMILAR, "s", InputOption::VALUE_NONE, "merge similar chapter names");
+        $this->addOption(static::OPTION_OUTPUT_FILE, "o", InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
+
+        $this->addOption(static::OPTION_FIND_MISPLACED_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "mark silence around chapter numbers that where not detected correctly, e.g. 8,15,18", "");
 
 
         $this->addOption("no-chapter-numbering", null, InputOption::VALUE_NONE, "do not append chapter number after name, e.g. My Chapter (1)");
         // ^[^:]+[1-9][0-9]*:[\s](.*),.*[1-9][0-9]*[\s]*$
-        $this->addOption("chapter-pattern", null, InputOption::VALUE_OPTIONAL, "regular expression for matching chapter name", "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i");
-        $this->addOption("chapter-replacement", null, InputOption::VALUE_OPTIONAL, "regular expression replacement for matching chapter name", "$1");
-        $this->addOption("chapter-remove-chars", null, InputOption::VALUE_OPTIONAL, "remove these chars from chapter name", "„“”");
-        $this->addOption("first-chapter-offset", null, InputOption::VALUE_OPTIONAL, "milliseconds to add after silence on chapter start", 0);
-        $this->addOption("last-chapter-offset", null, InputOption::VALUE_OPTIONAL, "milliseconds to add after silence on chapter start", 0);
-        $this->addOption(static::OPTION_DEBUG, null, InputOption::VALUE_NONE, "show debugging info about chapters and silences");
+        $this->addOption(static::OPTION_CHAPTER_PATTERN, null, InputOption::VALUE_OPTIONAL, "regular expression for matching chapter name", "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i");
+        $this->addOption(static::OPTION_CHAPTER_REPLACEMENT, null, InputOption::VALUE_OPTIONAL, "regular expression replacement for matching chapter name", "$1");
+        $this->addOption(static::OPTION_CHAPTER_REMOVE_CHARS, null, InputOption::VALUE_OPTIONAL, "remove these chars from chapter name", "„“”");
+        $this->addOption(static::OPTION_FIRST_CHAPTER_OFFSET, null, InputOption::VALUE_OPTIONAL, "milliseconds to add after silence on chapter start", 0);
+        $this->addOption(static::OPTION_LAST_CHAPTER_OFFSET, null, InputOption::VALUE_OPTIONAL, "milliseconds to add after silence on chapter start", 0);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
 
-        $this->initCommand($input, $output);
+        $this->initExecution($input, $output);
 
-        $this->mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
-        $this->filesToProcess = new SplFileInfo($input->getArgument('input-file'));
+        $this->initParsers();
+        $this->loadFileToProcess();
+
+        $this->detectSilencesForChapterGuessing($this->filesToProcess);
+        $this->buildChapters();
+        $this->normalizeChapters();
+
+
+        $this->exportChapters();
+    }
+
+    private function initParsers()
+    {
+        $mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
+        if ($mbId) {
+            $this->mbChapterParser = new MusicBrainzChapterParser($mbId);
+            $this->mbChapterParser->setCache($this->cache);
+        }
+
+        $this->silenceParser = new SilenceParser();
+    }
+
+    private function loadFileToProcess()
+    {
+        $this->filesToProcess = new SplFileInfo($this->input->getArgument(static::ARGUMENT_INPUT));
         if (!$this->filesToProcess->isFile()) {
             $this->output->writeln("Input file is not a valid file, currently directories are not supported");
             return;
         }
-
-        $this->deleteCacheIfRequested();
-        $this->loadXmlFromMusicBrainz();
-        $this->detectSilencesForChapterGuessing($this->filesToProcess);
-        $this->parseRecordings();
-        $this->buildChapters();
-        $this->exportChapters();
     }
 
-    protected function initCommand(InputInterface $input, OutputInterface $output)
-    {
-        $this->input = $input;
-        $this->output = $output;
-        $this->cache = new FilesystemAdapter();
-    }
-
-    protected function deleteCacheIfRequested()
-    {
-        if ($this->input->getOption(static::OPTION_DELETE_CACHE)) {
-            $this->cache->clear();
-        }
-    }
-
-    private function loadXmlFromMusicBrainz()
-    {
-        if (!$this->mbId) {
-            return;
-        }
-
-        $cacheItem = $this->cache->getItem("chapter.mbxml." . $this->mbId);
-        if ($cacheItem->isHit()) {
-            $this->mbxml = $cacheItem->get();
-            return;
-        }
-
-        for ($i = 0; $i < 5; $i++) {
-            $urlToGet = "http://musicbrainz.org/ws/2/release/" . $this->mbId . "?inc=recordings";
-            $options = array(
-                'http' => array(
-                    'method' => "GET",
-                    'header' => "Accept-language: en\r\n" .
-                        "Cookie: foo=bar\r\n" .  // check function.stream-context-create on php.net
-                        "User-Agent: Mozilla/5.0 (iPad; U; CPU OS 3_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B334b Safari/531.21.102011-10-16 20:23:10\r\n" // i.e. An iPad
-                )
-            );
-
-            $context = stream_context_create($options);
-            $this->mbxml = @file_get_contents($urlToGet, false, $context);
-            if ($this->mbxml) {
-                break;
-            } else {
-                usleep(100000);
-            }
-        }
-
-        if (!$this->mbxml) {
-            throw new Exception("Could not load record for musicbrainz-id: " . $this->input->getOption(static::OPTION_MUSICBRAINZ_ID));
-        }
-
-        $this->mbxml = preg_replace('/xmlns[^=]*="[^"]*"/i', '', $this->mbxml);
-
-
-        $cacheItem->set($this->mbxml);
-        $this->cache->save($cacheItem);
-    }
 
     protected function detectSilencesForChapterGuessing(\SplFileInfo $file)
     {
-        if (!$this->mbId) {
-            return;
-        }
-
         $fileHash = hash_file('sha256', $file);
 
         $cacheItem = $this->cache->getItem("chapter.silences." . $fileHash);
@@ -218,23 +156,16 @@ class ChaptersCommand extends Command
         $this->cache->save($cacheItem);
     }
 
-
-    private function parseRecordings()
-    {
-        $this->xml = simplexml_load_string($this->mbxml);
-        $this->recordings = $this->xml->xpath('//recording');
-    }
-
     private function buildChapters()
     {
-        $mbParser = new MusicBrainzChapterParser();
-        $mbChapters = $mbParser->parse($this->mbxml);
+        $mbXml = $this->mbChapterParser->loadRecordings();
+        $mbChapters = $this->mbChapterParser->parseRecordings($mbXml);
 
-        $silenceParser = new SilenceParser();
-        $this->silences = $silenceParser->parse($this->silenceDetectionOutput);
+
+        $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
 
         $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
-        $this->chapters = $chapterMarker->guessChapters($mbChapters, $this->silences, $silenceParser->getDuration());
+        $this->chapters = $chapterMarker->guessChapters($mbChapters, $this->silences, $this->silenceParser->getDuration());
 
         /*
         if($this->input->getOption("debug")) {
@@ -256,7 +187,7 @@ class ChaptersCommand extends Command
         */
     }
 
-    private function chaptersAsLines()
+    private function normalizeChapters()
     {
         $chaptersAsLines = [];
         $index = 0;
@@ -265,13 +196,10 @@ class ChaptersCommand extends Command
         $firstChapterOffset = (int)$this->input->getOption('first-chapter-offset');
         $lastChapterOffset = (int)$this->input->getOption('last-chapter-offset');
 
-        $specialOffset = (int)$this->input->getOption(static::OPTION_SPECIAL_OFFSET);
-        $specialOffsetChapters = $this->parseSpecialOffsetChaptersOption();
-
 
         if ($firstChapterOffset) {
             $firstOffset = new TimeUnit(0, TimeUnit::MILLISECOND);
-            $chaptersAsLines[] = $firstOffset->format("%H:%I:%S.%V") . " Offset First Chapter";
+            $chaptersAsLines[] = new Chapter($firstOffset, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset First Chapter");
         }
         foreach ($this->chapters as $chapter) {
             $index++;
@@ -298,23 +226,85 @@ class ChaptersCommand extends Command
                 $start->add($firstChapterOffset, TimeUnit::MILLISECOND);
             }
 
-            if (in_array($index, $specialOffsetChapters)) {
-                $start->add($specialOffset, TimeUnit::MILLISECOND);
-            }
-            $chaptersAsLines[] = $start->format("%H:%I:%S.%V") . " " . $replacedChapterName . $suffix;
+            $newChapter = clone $chapter;
+            $newChapter->setStart($start);
+            $newChapter->setName($replacedChapterName . $suffix);
+            $chaptersAsLines[$newChapter->getStart()->milliseconds()] = $newChapter;
             $lastChapterName = $replacedChapterName;
         }
 
         if ($lastChapterOffset && isset($chapter)) {
             $offsetChapterStart = new TimeUnit($chapter->getEnd()->milliseconds() - $lastChapterOffset, TimeUnit::MILLISECOND);
-            $chaptersAsLines[] = $offsetChapterStart->format("%H:%I:%S.%V") . " Offset Last Chapter";
+            $chaptersAsLines[$offsetChapterStart->milliseconds()] = new Chapter($offsetChapterStart, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset Last Chapter");
+        }
+
+        $this->chapters = $chaptersAsLines;
+
+
+        $specialOffsetChapterNumbers = $this->parseSpecialOffsetChaptersOption();
+
+        if (count($specialOffsetChapterNumbers)) {
+            /**
+             * @var Chapter[] $numberedChapters
+             */
+            $numberedChapters = array_values($this->chapters);
+            foreach ($numberedChapters as $index => $chapter) {
+                if (in_array($index, $specialOffsetChapterNumbers)) {
+                    $start = isset($numberedChapters[$index - 1]) ? $numberedChapters[$index - 1]->getEnd()->milliseconds() : 0;
+                    $end = isset($numberedChapters[$index + 1]) ? $numberedChapters[$index + 1]->getStart()->milliseconds() : $this->silenceParser->getDuration()->milliseconds();
+
+
+                    $specialOffsetStart = clone $chapter->getStart();
+                    $specialOffsetStart->add(-4000);
+                    $specialOffsetChapter = new Chapter($specialOffsetStart, clone $chapter->getLength(), "=> special offset: " . $chapter->getName());
+                    $this->chapters[$specialOffsetChapter->getStart()->milliseconds()] = $specialOffsetChapter;
+
+                    $silenceIndex = 1;
+                    foreach ($this->silences as $silence) {
+                        if ($silence->isChapterStart()) {
+                            continue;
+                        }
+                        if ($silence->getStart()->milliseconds() < $start || $silence->getStart()->milliseconds() > $end) {
+                            continue;
+                        }
+
+
+                        $silenceChapterPrefix = $silence->getStart()->milliseconds() < $chapter->getStart()->milliseconds() ? "=> silence " . $silenceIndex . " before: " : "=> silence " . $silenceIndex . " after: ";
+
+
+                        /**
+                         * @var TimeUnit $potentialChapterStart
+                         */
+                        $potentialChapterStart = clone $silence->getStart();
+                        $halfLen = (int)round($silence->getLength() / 2);
+                        $potentialChapterStart->add($halfLen);
+                        $potentialChapter = new Chapter($potentialChapterStart, clone $silence->getLength(), $silenceChapterPrefix . $chapter->getName());
+
+                        $chapterKey = (int)round($potentialChapter->getStart()->milliseconds(), 0);
+                        $this->chapters[$chapterKey] = $potentialChapter;
+                        $silenceIndex++;
+                    }
+                }
+                // $chaptersAsLines[] = $chapter->getStart()->format("%H:%I:%S.%V") . " " . $chapter->getName();
+            }
+            ksort($this->chapters);
+        }
+
+
+    }
+
+    private function chaptersAsLines()
+    {
+        $chaptersAsLines = [];
+        foreach ($this->chapters as $chapter) {
+            $chaptersAsLines[] = $chapter->getStart()->format("%H:%I:%S.%V") . " " . $chapter->getName();
         }
         return $chaptersAsLines;
     }
 
     private function parseSpecialOffsetChaptersOption()
     {
-        $tmp = explode(',', $this->input->getOption(static::OPTION_SPECIAL_OFFSET_CHAPTERS));
+        $tmp = explode(',', $this->input->getOption(static::OPTION_FIND_MISPLACED_CHAPTERS));
         $specialOffsetChapters = [];
         foreach ($tmp as $key => $value) {
             $chapterNumber = trim($value);

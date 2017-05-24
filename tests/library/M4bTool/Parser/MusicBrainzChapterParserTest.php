@@ -118,7 +118,7 @@ class MusicBrainzChapterParserTest extends TestCase
     </release>
 </metadata>';
 
-        $chapters = $this->subject->parse($chapterString);
+        $chapters = $this->subject->parseRecordings($chapterString);
         $this->assertCount(5, $chapters);
         $this->assertEquals(0, key($chapters));
         $this->assertEquals(411280, current($chapters)->getLength()->milliseconds());

@@ -19,7 +19,7 @@ class ChapterMarker
     public function guessChapters($mbChapters, $silences, TimeUnit $fullLength)
     {
         $guessedChapters = [];
-        $chapterOffset = new TimeUnit(0, TimeUnit::MILLISECOND);
+        $chapterOffset = new TimeUnit();
         /**
          * @var Chapter $chapter
          */
@@ -28,7 +28,7 @@ class ChapterMarker
             $this->debug("chapter: " . $chapter->getStart()->format("%H:%I:%S.%V"));
 
             if ($chapterStart == 0) {
-                $guessedChapters[$chapterStart] = new Chapter(new TimeUnit($chapterStart, TimeUnit::MILLISECOND), new TimeUnit(0, TimeUnit::MILLISECOND), $chapter->getName());
+                $guessedChapters[$chapterStart] = new Chapter(new TimeUnit($chapterStart), new TimeUnit(), $chapter->getName());
                 $this->debug(", no silence" . PHP_EOL);
                 continue;
             }
@@ -54,7 +54,7 @@ class ChapterMarker
 
             $nextOffsetMilliseconds = $chapterStart - $bestMatchSilenceKey;
             if (abs($nextOffsetMilliseconds - $chapterOffset->milliseconds()) < 25000) {
-                $chapterOffset = new TimeUnit($chapterStart - $bestMatchSilenceKey, TimeUnit::MILLISECOND);
+                $chapterOffset = new TimeUnit($chapterStart - $bestMatchSilenceKey);
                 $chapterSilenceMatchFound = true;
             } else {
                 // no matching silence for chapter
@@ -89,14 +89,15 @@ class ChapterMarker
 
 
             if ($chapterSilenceMatchFound && isset($silences[$bestMatchSilenceKey])) {
+                $silences[$bestMatchSilenceKey]->setChapterStart(true);
                 $chapterMark = $silences[$bestMatchSilenceKey]->getStart();
-                $chapterMark->add($silences[$bestMatchSilenceKey]->getLength()->milliseconds() / 2, TimeUnit::MILLISECOND);
+                $chapterMark->add($silences[$bestMatchSilenceKey]->getLength()->milliseconds() / 2);
             } else {
                 $chapterMark = $chapter->getStart();
-                $chapterMark->add($chapterOffset->milliseconds(), TimeUnit::MILLISECOND);
+                $chapterMark->add($chapterOffset->milliseconds());
             }
 
-            $guessedChapters[$chapterMark->milliseconds()] = new Chapter($chapterMark, new TimeUnit(0, TimeUnit::MILLISECOND), $chapter->getName());
+            $guessedChapters[$chapterMark->milliseconds()] = new Chapter($chapterMark, new TimeUnit(), $chapter->getName());
 
             $this->debug($chapter->getName() . " - chapter-offset: " . $chapterOffset->format("%H:%I:%S.%V") . PHP_EOL);
             $this->debug("chapter-mark: " . $chapterMark->format("%H:%I:%S.%V") . PHP_EOL);
@@ -109,13 +110,13 @@ class ChapterMarker
         $lastStart = null;
         foreach ($guessedChapters as $start => $chapter) {
             if ($lastStart !== null && isset($guessedChapters[$lastStart])) {
-                $guessedChapters[$lastStart]->setLength(new TimeUnit($start - $lastStart, TimeUnit::MILLISECOND));
+                $guessedChapters[$lastStart]->setLength(new TimeUnit($start - $lastStart));
             }
             $lastStart = $start;
         }
 
         $lastGuessedChapter = end($guessedChapters);
-        $lastGuessedChapter->setLength(new TimeUnit($fullLength->milliseconds() - $lastGuessedChapter->getStart()->milliseconds(), TimeUnit::MILLISECOND));
+        $lastGuessedChapter->setLength(new TimeUnit($fullLength->milliseconds() - $lastGuessedChapter->getStart()->milliseconds()));
 
         return $guessedChapters;
     }

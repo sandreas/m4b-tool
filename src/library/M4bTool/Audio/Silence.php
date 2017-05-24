@@ -11,6 +11,14 @@ namespace M4bTool\Audio;
 
 class Silence extends AbstractPart
 {
+    private $isChapterStart = false;
 
+    public function setChapterStart($chapterStart) {
+        $this->isChapterStart = $chapterStart;
+    }
+
+    public function isChapterStart() {
+        return $this->isChapterStart;
+    }
 
 }
