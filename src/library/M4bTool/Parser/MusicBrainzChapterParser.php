@@ -60,7 +60,7 @@ class MusicBrainzChapterParser
 
             $context = stream_context_create($options);
 
-            $mbxml = call_user_func($callback, [$urlToGet, false, $context]);
+            $mbxml = @call_user_func_array($callback, [$urlToGet, false, $context]);
             if ($mbxml) {
                 break;
             }

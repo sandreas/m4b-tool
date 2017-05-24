@@ -25,6 +25,7 @@ class ChaptersCommand extends AbstractCommand
     const OPTION_MERGE_SIMILAR = "merge-similar";
     const OPTION_OUTPUT_FILE = "output-file";
     const OPTION_FIND_MISPLACED_CHAPTERS = "find-misplaced-chapters";
+    const OPTION_FIND_MISPLACED_OFFSET = "find-misplaced-offset";
 
     const OPTION_CHAPTER_PATTERN = "chapter-pattern";
     const OPTION_CHAPTER_REPLACEMENT = "chapter-replacement";
@@ -68,6 +69,7 @@ class ChaptersCommand extends AbstractCommand
         $this->addOption(static::OPTION_OUTPUT_FILE, "o", InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
 
         $this->addOption(static::OPTION_FIND_MISPLACED_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "mark silence around chapter numbers that where not detected correctly, e.g. 8,15,18", "");
+        $this->addOption(static::OPTION_FIND_MISPLACED_OFFSET, null, InputOption::VALUE_OPTIONAL, "mark silence around chapter numbers with this offset seconds maximum", 180);
 
 
         $this->addOption("no-chapter-numbering", null, InputOption::VALUE_NONE, "do not append chapter number after name, e.g. My Chapter (1)");
@@ -253,11 +255,16 @@ class ChaptersCommand extends AbstractCommand
                     $start = isset($numberedChapters[$index - 1]) ? $numberedChapters[$index - 1]->getEnd()->milliseconds() : 0;
                     $end = isset($numberedChapters[$index + 1]) ? $numberedChapters[$index + 1]->getStart()->milliseconds() : $this->silenceParser->getDuration()->milliseconds();
 
+                    $maxOffsetMilliseconds = (int)$this->input->getOption(static::OPTION_FIND_MISPLACED_OFFSET) * 1000;
+                    if($maxOffsetMilliseconds > 0) {
+                        $start = max($start, $chapter->getStart()->milliseconds() - $maxOffsetMilliseconds);
+                        $end = min($end, $chapter->getEnd()->milliseconds() + $maxOffsetMilliseconds);
+                    }
 
-                    $specialOffsetStart = clone $chapter->getStart();
-                    $specialOffsetStart->add(-4000);
-                    $specialOffsetChapter = new Chapter($specialOffsetStart, clone $chapter->getLength(), "=> special offset: " . $chapter->getName());
-                    $this->chapters[$specialOffsetChapter->getStart()->milliseconds()] = $specialOffsetChapter;
+//                    $specialOffsetStart = clone $chapter->getStart();
+//                    $specialOffsetStart->add(-4000);
+//                    $specialOffsetChapter = new Chapter($specialOffsetStart, clone $chapter->getLength(), "=> special off. -4s: " . $chapter->getName() ." - pos: ".$specialOffsetStart->format("%H:%I:%S.%V"));
+//                    $this->chapters[$specialOffsetChapter->getStart()->milliseconds()] = $specialOffsetChapter;
 
                     $silenceIndex = 1;
                     foreach ($this->silences as $silence) {
@@ -276,9 +283,9 @@ class ChaptersCommand extends AbstractCommand
                          * @var TimeUnit $potentialChapterStart
                          */
                         $potentialChapterStart = clone $silence->getStart();
-                        $halfLen = (int)round($silence->getLength() / 2);
+                        $halfLen = (int)round($silence->getLength()->milliseconds() / 2);
                         $potentialChapterStart->add($halfLen);
-                        $potentialChapter = new Chapter($potentialChapterStart, clone $silence->getLength(), $silenceChapterPrefix . $chapter->getName());
+                        $potentialChapter = new Chapter($potentialChapterStart, clone $silence->getLength(), $silenceChapterPrefix . $chapter->getName()." - pos: ".$silence->getStart()->format("%H:%I:%S.%V").", len: ".$silence->getLength()->format("%H:%I:%S.%V"));
 
                         $chapterKey = (int)round($potentialChapter->getStart()->milliseconds(), 0);
                         $this->chapters[$chapterKey] = $potentialChapter;
