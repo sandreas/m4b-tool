@@ -10,6 +10,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\ProcessBuilder;
 
 class AbstractCommand extends Command
 {
@@ -60,6 +61,32 @@ class AbstractCommand extends Command
 
         if ($this->input->getOption(static::OPTION_NO_CACHE)) {
             $this->cache->clear();
+        }
+    }
+
+    protected function shell(array $command, $introductionMessage=null)
+    {
+        $builder = new ProcessBuilder($command);
+        $process = $builder->getProcess();
+        $process->start();
+        if ($introductionMessage) {
+            $this->output->writeln($introductionMessage);
+        }
+
+        while ($process->isRunning()) {
+            $this->updateProgress();
+        }
+        $this->output->writeln('');
+        return $process;
+    }
+
+    protected function updateProgress() {
+        static $i = 0;
+        if (++$i % 60 == 0) {
+            $this->output->writeln('+');
+        } else {
+            $this->output->write('+');
+            usleep(1000000);
         }
     }
 }

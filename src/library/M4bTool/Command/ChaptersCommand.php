@@ -14,7 +14,6 @@ use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Process\ProcessBuilder;
 
 class ChaptersCommand extends AbstractCommand
 {
@@ -34,6 +33,8 @@ class ChaptersCommand extends AbstractCommand
     const OPTION_FIRST_CHAPTER_OFFSET = "first-chapter-offset";
     const OPTION_LAST_CHAPTER_OFFSET = "last-chapter-offset";
 
+    const OPTION_NO_CHAPTER_NUMBERING = "no-chapter-numbering";
+    const OPTION_NO_CHAPTER_IMPORT = "no-chapter-import";
 
     /**
      * @var MusicBrainzChapterParser
@@ -55,6 +56,7 @@ class ChaptersCommand extends AbstractCommand
      */
     protected $silences = [];
     protected $chapters = [];
+    protected $outputFile;
 
 
     protected function configure()
@@ -74,8 +76,9 @@ class ChaptersCommand extends AbstractCommand
         $this->addOption(static::OPTION_FIND_MISPLACED_TOLERANCE, null, InputOption::VALUE_OPTIONAL, "mark another chapter with this offset before each silence to compensate ffmpeg mismatches", -4000);
 
 
-        $this->addOption("no-chapter-numbering", null, InputOption::VALUE_NONE, "do not append chapter number after name, e.g. My Chapter (1)");
-        // ^[^:]+[1-9][0-9]*:[\s](.*),.*[1-9][0-9]*[\s]*$
+        $this->addOption(static::OPTION_NO_CHAPTER_NUMBERING, null, InputOption::VALUE_NONE, "do not append chapter number after name, e.g. My Chapter (1)");
+        $this->addOption(static::OPTION_NO_CHAPTER_IMPORT, null, InputOption::VALUE_NONE, "do not import chapters into m4b-file, just create chapters.txt");
+
         $this->addOption(static::OPTION_CHAPTER_PATTERN, null, InputOption::VALUE_OPTIONAL, "regular expression for matching chapter name", "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i");
         $this->addOption(static::OPTION_CHAPTER_REPLACEMENT, null, InputOption::VALUE_OPTIONAL, "regular expression replacement for matching chapter name", "$1");
         $this->addOption(static::OPTION_CHAPTER_REMOVE_CHARS, null, InputOption::VALUE_OPTIONAL, "remove these chars from chapter name", "„“”");
@@ -97,7 +100,9 @@ class ChaptersCommand extends AbstractCommand
         $this->normalizeChapters();
 
 
-        $this->exportChapters();
+        $this->exportChaptersToTxt();
+
+        $this->importChaptersToM4b();
     }
 
     private function initParsers()
@@ -130,29 +135,16 @@ class ChaptersCommand extends AbstractCommand
             $this->silenceDetectionOutput = $cacheItem->get();
             return;
         }
-        $builder = new ProcessBuilder([
+
+
+        $process = $this->shell([
             "ffmpeg",
             "-i", $file,
             "-af", "silencedetect=noise=-30dB:d=" . ((float)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH) / 1000),
             "-f", "null",
             "-",
 
-        ]);
-        $process = $builder->getProcess();
-        $process->start();
-        $this->output->writeln("detecting silence of " . $file . " with ffmpeg");
-
-        $i = 0;
-        while ($process->isRunning()) {
-            if (++$i % 20 == 0) {
-                $this->output->writeln('+');
-            } else {
-                $this->output->write('+');
-                usleep(1000000);
-            }
-        }
-        $this->output->writeln('');
-
+        ], "detecting silence of " . $file . " with ffmpeg");
         $this->silenceDetectionOutput = $process->getOutput();
         $this->silenceDetectionOutput .= $process->getErrorOutput();
 
@@ -165,31 +157,9 @@ class ChaptersCommand extends AbstractCommand
     {
         $mbXml = $this->mbChapterParser->loadRecordings();
         $mbChapters = $this->mbChapterParser->parseRecordings($mbXml);
-
-
         $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
-
         $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
         $this->chapters = $chapterMarker->guessChapters($mbChapters, $this->silences, $this->silenceParser->getDuration());
-
-        /*
-        if($this->input->getOption("debug")) {
-            $silenceIndex = 1;
-            foreach($this->silences as $silenceStart => $silence) {
-                foreach($this->chapters as $chapterStart => $chapter) {
-                    if($chapterStart >= $silenceStart && $chapterStart < $silence->getEnd()->milliseconds()) {
-                        continue 2;
-                    }
-                }
-
-                $halfLen = $silence->getLength()->milliseconds() / 2;
-                $key = $silence->getStart()->milliseconds() + $halfLen;
-                $this->chapters[$key] = new Chapter(new TimeUnit($key, TimeUnit::MILLISECOND), new TimeUnit($halfLen, TimeUnit::MILLISECOND), "silence ".$silenceIndex);
-                $silenceIndex++;
-            }
-            ksort($this->chapters);
-        }
-        */
     }
 
     private function normalizeChapters()
@@ -220,7 +190,7 @@ class ChaptersCommand extends AbstractCommand
                 if ($chapterIndex > 1) {
                     continue;
                 }
-            } else if (!$this->input->getOption('no-chapter-numbering')) {
+            } else if (!$this->input->getOption(static::OPTION_NO_CHAPTER_NUMBERING)) {
                 $suffix = " (" . $chapterIndex . ")";
             }
             /**
@@ -352,31 +322,47 @@ class ChaptersCommand extends AbstractCommand
         return implode("", $replacedChars);
     }
 
-    protected function exportChapters()
+    protected function exportChaptersToTxt()
     {
         $chapterLines = $this->chaptersAsLines();
         $chapterLinesAsString = implode(PHP_EOL, $chapterLines);
         $this->output->writeln($chapterLinesAsString);
-        $outputFile = $this->input->getOption('output-file');
+        $this->loadOutputFile();
 
-        if ($outputFile === "") {
-            $outputFile = $this->filesToProcess->getPath() . DIRECTORY_SEPARATOR . $this->filesToProcess->getBasename("." . $this->filesToProcess->getExtension()) . ".chapters.txt";
-            if (file_exists($outputFile) && !$this->input->getOption(static::OPTION_FORCE)) {
-                $this->output->writeln("output file already exists, add --force option to overwrite");
-                $outputFile = "";
-            }
-        }
-
-        if ($outputFile) {
-            $outputDir = dirname($outputFile);
+        if ($this->outputFile) {
+            $outputDir = dirname($this->outputFile);
             if (!is_dir($outputDir) && !mkdir($outputDir, 0777, true)) {
                 $this->output->writeln("Could not create output directory: " . $outputDir);
-            } elseif (!file_put_contents($outputFile, $chapterLinesAsString)) {
-                $this->output->writeln("Could not write output file: " . $outputFile);
+            } elseif (!file_put_contents($this->outputFile, $chapterLinesAsString)) {
+                $this->output->writeln("Could not write output file: " . $this->outputFile);
             } else {
-                $this->output->writeln("Chapters successfully exported to file: " . $outputFile);
+                $this->output->writeln("Chapters successfully exported to file: " . $this->outputFile);
             }
         }
     }
 
+    private function loadOutputFile()
+    {
+        $this->outputFile = $this->input->getOption(static::OPTION_OUTPUT_FILE);
+        if ($this->outputFile === "") {
+            $this->outputFile = $this->filesToProcess->getPath() . DIRECTORY_SEPARATOR . $this->filesToProcess->getBasename("." . $this->filesToProcess->getExtension()) . ".chapters.txt";
+            if (file_exists($this->outputFile) && !$this->input->getOption(static::OPTION_FORCE)) {
+                $this->output->writeln("output file already exists, add --force option to overwrite");
+                $this->outputFile = "";
+            }
+        }
+    }
+
+    protected function importChaptersToM4b()
+    {
+        $fileToImport = preg_replace("/(.*)(.chapters.txt)$/i", "$1.m4b", $this->outputFile);
+
+        if(file_exists($fileToImport) && !$this->input->getOption(static::OPTION_NO_CHAPTER_IMPORT)) {
+            $process = $this->shell([
+                "mp4chaps", "-i", $fileToImport
+            ], "importing chapters to ".$fileToImport." via mp4chaps");
+            $this->output->writeln( $process->getOutput().$process->getErrorOutput());
+        }
+
+    }
 }
