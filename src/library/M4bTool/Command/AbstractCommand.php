@@ -63,7 +63,7 @@ class AbstractCommand extends Command
     {
         $className = get_class($this);
         $commandName = $this->dasherize(substr($className, strrpos($className, '\\') + 1));
-        $this->setName($commandName);
+        $this->setName(str_replace("-command", "", $commandName));
         $this->addArgument(static::ARGUMENT_INPUT, InputArgument::REQUIRED, 'Input file or folder');
         $this->addOption(static::OPTION_DEBUG, "d", InputOption::VALUE_NONE, "show debugging info about chapters and silences");
         $this->addOption(static::OPTION_FORCE, "f", InputOption::VALUE_NONE, "force overwrite of existing files");

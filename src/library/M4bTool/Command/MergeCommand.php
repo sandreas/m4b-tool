@@ -4,54 +4,40 @@
 namespace M4bTool\Command;
 
 
+use Exception;
 use SplFileInfo;
-use Symfony\Component\Cache\Adapter\AbstractAdapter;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Process\ProcessBuilder;
 
-class MergeCommand extends Command
+class MergeCommand extends AbstractConversionCommand
 {
-    /**
-     * @var InputInterface
-     */
-    protected $input;
 
-    /**
-     * @var OutputInterface
-     */
-    protected $output;
-
-    /**
-     * @var SplFileInfo
-     */
-    protected $filesToProcess;
-
-
-    /**
-     * @var AbstractAdapter
-     */
-    protected $cache;
     protected $chapters;
     protected $outputDirectory;
 
     protected $meta = [];
+    /**
+     * @var SplFileInfo[]
+     */
+    protected $files = [];
+    protected $sameFormatFiles = [];
+    protected $outputFile;
+    protected $sameFormatFileDirectory;
 
     protected function configure()
     {
-        $this->setName('merge');
-        // the short description shown while running "php bin/console list"
+        parent::configure();
+
         $this->setDescription('Merges a set of files to one single file');
-        // the full command description shown when running the command with
-        // the "--help" option
         $this->setHelp('Merges a set of files to one single file');
 
         // configure an argument
-        $this->addArgument('input-files', InputArgument::IS_ARRAY, 'Input files or folders');
+        $this->addArgument('more-input-files', InputArgument::IS_ARRAY, 'Other Input files or folders');
+
         $this->addOption("output-file", null, InputOption::VALUE_REQUIRED, "output file");
+        $this->addOption("different-format", null, InputOption::VALUE_NONE, "input files have different formats, so they have to be converted to target format first");
         $this->addOption("include-extensions", null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", "m4b,mp3,aac,mp4,flac");
         $this->addOption("audio-format", null, InputOption::VALUE_OPTIONAL, "output format, that ffmpeg will use to create files", "m4b");
         $this->addOption("name", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook name, otherwise the existing metadata will be used", "");
@@ -60,53 +46,17 @@ class MergeCommand extends Command
         $this->addOption("writer", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook writer, otherwise the existing metadata will be used", "");
         $this->addOption("albumartist", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook albumartist, otherwise the existing metadata will be used", "");
         $this->addOption("year", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook year, otherwise the existing metadata will be used", "");
-        $this->addOption("audio-channels", null, InputOption::VALUE_OPTIONAL, "audio channels, e.g. 1, 2", ""); // -ac 1
-        $this->addOption("audio-bitrate", null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...", ""); // -ab 128k
-        $this->addOption("audio-samplerate", null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...", ""); // -ar 44100
-
-
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $this->initExecution($input, $output);
 
-        $this->input = $input;
-        $this->output = $output;
+        $this->loadInputFiles();
 
-        $includeExtensions = array_filter(explode(',', $this->input->getOption("include-extensions")));
+        $this->convertFilesToSameFormat();
 
-        $files = [];
-        $inputFiles = $this->input->getArgument("input-files");
-        foreach($inputFiles as $fileLink) {
-            $f = new SplFileInfo($fileLink);
-            if(!$f->isReadable()) {
-                $this->output->writeln("skipping ".$f." (does not exist)");
-                continue;
-            }
-
-            if($f->isDir()) {
-                $dir = new \RecursiveDirectoryIterator($f, \FilesystemIterator::SKIP_DOTS);
-                $it = new \RecursiveIteratorIterator($dir, \RecursiveIteratorIterator::CHILD_FIRST);
-                $filtered = new \CallbackFilterIterator($it, function($current /*, $key, $iterator*/) use($includeExtensions) {
-                    return in_array($current->getExtension(), $includeExtensions);
-                });
-                foreach($filtered as $itFile) {
-                    if($itFile->isDir()) {
-                        continue;
-                    }
-                    if(!$itFile->isReadable() || $itFile->isLink()) {
-                        continue;
-                    }
-                    $files[] = $itFile->getRealPath();
-                }
-            } else {
-                $files[] = $f->getRealPath();
-            }
-        }
-
-
-
-        $this->mergeFiles($files);
+        $this->mergeFiles();
 
 
 
@@ -146,117 +96,123 @@ class MergeCommand extends Command
 //        $this->parseChapters();
 //        $this->extractChapters();
     }
+    
+    private function loadInputFiles() {
+        $includeExtensions = array_filter(explode(',', $this->input->getOption("include-extensions")));
 
-    private function mergeFiles($files)
+        $this->files = [];
+        $this->handleInputFile($this->argInputFile, $includeExtensions);
+        $inputFiles = $this->input->getArgument("more-input-files");
+        foreach($inputFiles as $fileLink) {
+            $this->handleInputFile($fileLink, $includeExtensions);
+        }
+    }
+
+
+    protected function handleInputFile($f, $includeExtensions)
     {
-        $outputFile = $this->input->getOption("output-file");
-        $extension = substr($outputFile, strrpos($outputFile, ".")+1);
-        $bitrate = $this->input->getOption('audio-bitrate');
-        $sampleRate = $this->input->getOption('audio-samplerate');
-        $channels = $this->input->getOption('audio-channels');
-
-
-        $extensionFormatMapping = [
-            "m4b" => "mp4"
-        ];
-        $format = $extension;
-        if (isset($extensionFormatMapping[$extension])) {
-            $format = $extensionFormatMapping[$extension];
+        if(!($f instanceof SplFileInfo)) {
+            $f = new SplFileInfo($f);
+            if(!$f->isReadable()) {
+                $this->output->writeln("skipping ".$f." (does not exist)");
+                return;
+            }
         }
 
+        if($f->isDir()) {
+            $dir = new \RecursiveDirectoryIterator($f, \FilesystemIterator::SKIP_DOTS);
+            $it = new \RecursiveIteratorIterator($dir, \RecursiveIteratorIterator::CHILD_FIRST);
+            $filtered = new \CallbackFilterIterator($it, function(SplFileInfo $current /*, $key, $iterator*/) use($includeExtensions) {
+                return in_array($current->getExtension(), $includeExtensions);
+            });
+            foreach($filtered as $itFile) {
+                if($itFile->isDir()) {
+                    continue;
+                }
+                if(!$itFile->isReadable() || $itFile->isLink()) {
+                    continue;
+                }
+                $this->files[] = new SplFileInfo($itFile->getRealPath());
+            }
+        } else {
+            $this->files[] = new SplFileInfo($f->getRealPath());
+        }
+    }
+
+    private function convertFilesToSameFormat() {
+        $this->outputFile = new SplFileInfo($this->input->getOption("output-file"));
+
+        if(!$this->input->getOption("different-format")) {
+            $this->sameFormatFiles = $this->files;
+            $this->sameFormatFileDirectory = $this->outputFile->getPath();
+            return;
+        }
+        $this->sameFormatFileDirectory = new SplFileInfo($this->outputFile->getPath().DIRECTORY_SEPARATOR.".m4b-tool-merge-".md5(json_encode($this->files)));
+        if(!is_dir($this->sameFormatFileDirectory) && !mkdir($this->sameFormatFileDirectory, 0777, true)) {
+            throw new Exception("Could not create temporary working directory ".$this->sameFormatFileDirectory);
+        }
+
+        foreach($this->files as $file) {
+            $outputFile = new SplFileInfo($this->sameFormatFileDirectory.DIRECTORY_SEPARATOR.$file->getBasename($file->getExtension()).$this->optAudioExtension);
+            $this->convertFileToTargetFormat($file, $outputFile);
+        }
+    }
+
+    private function convertFileToTargetFormat(SplFileInfo $inputFile, SplFileInfo $outputFile) {
+        $this->sameFormatFiles[] = $outputFile;
+        if($outputFile->isFile() && !$this->optForce) {
+            return;
+        }
 
         $command = [
             "ffmpeg",
             "-vn",
-            "-f", $format,
-            // "-f", "ismv"
+            "-i", $inputFile
         ];
 
-        if ($bitrate) {
-            $command[] = "-ab";
-            $command[] = $bitrate;
-        }
+        $this->appendParameterToCommand($command, "-y", $this->optForce);
+        $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
+        $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
+        $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
 
-        if ($sampleRate) {
-            $command[] = "-ar";
-            $command[] = $sampleRate;
-        }
+        $command[] = "-f";
+        $command[] = $this->optAudioFormat;
 
-        if ($channels) {
-            $command[] = "-ac";
-            $command[] = $channels;
-        }
-        $files = [
-            $files[0],$files[1]
-        ];
-
-        if(count($files)) {
-            $command[] = "-i";
-            $command[] = "concat:".implode("|", $files)."";
-        }
-
-//
-//        $tempfile = tempnam(sys_get_temp_dir(),"ffmpeg-input-listing");
-//        file_put_contents($tempfile, implode(PHP_EOL, $files));
-//        $command[] = "-safe";
-//        $command[] = "0";
-//        $command[] = "-i";
-//        $command[] = $tempfile;
-
-
-        $outputFile = $this->replaceFilename($this->input->getOption("output-file"));
         $command[] = $outputFile;
-        echo implode(" ", $command);
-        $process = $this->runProcess($command, "merging files with ffmpeg into " . $outputFile);
 
-        echo $process->getOutput().PHP_EOL;
-        echo $process->getErrorOutput();
-        // unlink($tempfile);
-//        echo $tempfile;
+
+        $this->shell($command, "converting ".$inputFile." to target format");
+//        $this->output->writeln($process->getOutput());
+//        $this->output->writeln($process->getErrorOutput());
     }
 
-    private function replaceFilename($fileName)
+    private function mergeFiles()
     {
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $invalidFilenameChars = [
-                '< ',
-                '>',
-                ':',
-                '"',
-                '/',
-                '\\',
-                '|',
-                '?',
-                '*',
-            ];
-            $replacedFileName = str_replace($invalidFilenameChars, '-', $fileName);
-            return mb_convert_encoding($replacedFileName, 'Windows-1252', 'UTF-8');
+        $mergeListFile = $this->sameFormatFileDirectory.DIRECTORY_SEPARATOR.".mergelist.txt";
+        file_put_contents($mergeListFile, "");
+
+        foreach($this->sameFormatFiles as $file) {
+            file_put_contents($mergeListFile, "file '".str_replace("'", "\\'", $file->getRealPath())."'".PHP_EOL, FILE_APPEND);
         }
-        $invalidFilenameChars = [" / ", "\0"];
-        return str_replace($invalidFilenameChars, '-', $fileName);
 
+        // ffmpeg -f concat -safe 0 -i mylist.txt -c copy output
 
+        $command = [
+            "ffmpeg",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", $mergeListFile,
+            "-c", "copy",
+            "-f", "mp4",
+            $this->outputFile
+        ];
+
+        $this->appendParameterToCommand($command, "-y", $this->optForce);
+
+        $this->shell($command, "merging files with ffmpeg into " . $this->outputFile);
     }
 
-    private function runProcess($command, $message = "")
-    {
-        $builder = new ProcessBuilder($command);
-        $process = $builder->getProcess();
-        $process->start();
-        if ($message) {
-            $this->output->writeln($message);
-        }
 
-        $i = 0;
-        while ($process->isRunning()) {
-            if (++$i % 20 == 0) {
-                $this->output->writeln('+');
-            } else {
-                $this->output->write('+');
-                usleep(1000000);
-            }
-        }
-        return $process;
-    }
+
 
 }
