@@ -3,6 +3,8 @@
 
 namespace M4bTool\Command;
 
+use Exception;
+use SplFileInfo;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Command\Command;
@@ -37,6 +39,26 @@ class AbstractCommand extends Command
     protected $output;
 
 
+    /**
+     * @var SplFileInfo
+     */
+    protected $argInputFile;
+
+    /**
+     * @var bool
+     */
+    protected $optForce = false;
+
+    /**
+     * @var bool
+     */
+    protected $optNoCache = false;
+
+    /**
+     * @var bool
+     */
+    protected $optDebug = false;
+
     protected function configure()
     {
         $className = get_class($this);
@@ -59,9 +81,19 @@ class AbstractCommand extends Command
         $this->output = $output;
         $this->cache = new FilesystemAdapter();
 
+        $this->loadArguments();
+
         if ($this->input->getOption(static::OPTION_NO_CACHE)) {
             $this->cache->clear();
         }
+    }
+
+    protected function loadArguments()
+    {
+        $this->argInputFile = new SplFileInfo($this->input->getArgument(static::ARGUMENT_INPUT));
+        $this->optForce = $this->input->getOption(static::OPTION_FORCE);
+        $this->optNoCache = $this->input->getOption(static::OPTION_NO_CACHE);
+        $this->optDebug = $this->input->getOption(static::OPTION_NO_CACHE);
     }
 
     protected function shell(array $command, $introductionMessage=null)
@@ -89,4 +121,57 @@ class AbstractCommand extends Command
             usleep(1000000);
         }
     }
+
+    protected function ensureInputFileIsFile()
+    {
+        if (!$this->argInputFile->isFile()) {
+            throw new Exception("Input is not a file");
+        }
+    }
+
+    protected function audioFileToChaptersFile(SplFileInfo $audioFile) {
+        $dirName = dirname($audioFile);
+        $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
+        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".chapters.txt");
+    }
+
+    protected function chaptersFileToAudioFile(SplFileInfo $chaptersFile, $audioExtension = "m4b") {
+        $dirName = dirname($chaptersFile);
+        $fileName = $chaptersFile->getBasename(".chapters." . $chaptersFile->getExtension());
+        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".".$audioExtension);
+    }
+
+    protected function stripInvalidFilenameChars($fileName)
+    {
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $invalidFilenameChars = [
+                ' < ',
+                '>',
+                ':',
+                '"',
+                '/',
+                '\\',
+                '|',
+                '?',
+                '*',
+            ];
+            $replacedFileName = str_replace($invalidFilenameChars, '-', $fileName);
+            return mb_convert_encoding($replacedFileName, 'Windows-1252', 'UTF-8');
+        }
+        $invalidFilenameChars = [" / ", "\0"];
+        return str_replace($invalidFilenameChars, '-', $fileName);
+    }
+
+    protected function appendParameterToCommand(&$command, $parameterName, $parameterValue=null) {
+        if(is_bool($parameterValue)) {
+            $command[] = $parameterName;
+            return;
+        }
+
+        if($parameterValue) {
+            $command[] = $parameterName;
+            $command[] = $parameterValue;
+        }
+    }
+
 }
