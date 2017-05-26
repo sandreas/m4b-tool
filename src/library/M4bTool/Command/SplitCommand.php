@@ -179,14 +179,17 @@ class SplitCommand extends AbstractConversionCommand
 
 
 
-    private function tagChapter(Chapter $chapter, $outputFile, $index)
+    private function tagChapter(Chapter $chapter, SplFileInfo $outputFile, $index)
     {
-        $this->shell(["mp4tags",
-            "-track", $index + 1,
-            "-tracks", count($this->chapters),
-            "-s", $chapter->getName(),
-            $outputFile
-        ], "tagging chapter ".$chapter->getName()." for file ".$outputFile);
+        if($this->optAudioFormat === "mp4") {
+            $this->shell(["mp4tags",
+                "-track", $index + 1,
+                "-tracks", count($this->chapters),
+                "-s", $chapter->getName(),
+                $outputFile
+            ], "tagging chapter ".$chapter->getName()." for file ".$outputFile);
+        }
+
 
     }
 
