@@ -54,9 +54,11 @@ class MergeCommand extends AbstractConversionCommand
 
         $this->loadInputFiles();
 
-        $this->convertFilesToSameFormat();
+        $this->convertFiles();
 
-        $this->mergeFiles();
+//        $this->convertFilesToSameFormat();
+//
+//        $this->mergeFiles();
 
 
 
@@ -139,80 +141,151 @@ class MergeCommand extends AbstractConversionCommand
         }
     }
 
-    private function convertFilesToSameFormat() {
+    private function convertFiles()
+    {
         $this->outputFile = new SplFileInfo($this->input->getOption("output-file"));
 
-        if(!$this->input->getOption("different-format")) {
-            $this->sameFormatFiles = $this->files;
-            $this->sameFormatFileDirectory = $this->outputFile->getPath();
-            return;
-        }
-        $this->sameFormatFileDirectory = new SplFileInfo($this->outputFile->getPath().DIRECTORY_SEPARATOR.".m4b-tool-merge-".md5(json_encode($this->files)));
-        if(!is_dir($this->sameFormatFileDirectory) && !mkdir($this->sameFormatFileDirectory, 0777, true)) {
-            throw new Exception("Could not create temporary working directory ".$this->sameFormatFileDirectory);
-        }
-
-        foreach($this->files as $file) {
-            $outputFile = new SplFileInfo($this->sameFormatFileDirectory.DIRECTORY_SEPARATOR.$file->getBasename($file->getExtension()).$this->optAudioExtension);
-            $this->convertFileToTargetFormat($file, $outputFile);
-        }
-    }
-
-    private function convertFileToTargetFormat(SplFileInfo $inputFile, SplFileInfo $outputFile) {
-        $this->sameFormatFiles[] = $outputFile;
-        if($outputFile->isFile() && !$this->optForce) {
-            return;
-        }
+        // ffmpeg -i input1.mp4 -i input2.webm -filter_complex "[0:v:0] [0:a:0] [1:v:0] [1:a:0] concat=n=2:v=1:a=1 [v] [a]" -map "[v]" -map "[a]" <encoding options> output.mkv
 
         $command = [
             "ffmpeg",
             "-vn",
-            "-i", $inputFile
         ];
+
+        $filterComplex = "";
+        $index = 0;
+        foreach($this->files as $index => $file) {
+            $command[] = "-i";
+            $command[] = $file;
+
+            $filterComplex.= "[".$index.":0] ";
+        }
+        $filterComplex.= "concat=n=".($index+1).":v=0:a=1 [a]";
+
+        $this->appendParameterToCommand($command, "-filter_complex", $filterComplex);
+        $command[] = "-map";
+        $command[] = "[a]";
+
 
         $this->appendParameterToCommand($command, "-y", $this->optForce);
         $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
         $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
         $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
+        $this->appendParameterToCommand($command, "-acodec", $this->optAudioCodec);
+        $this->appendParameterToCommand($command, "-f", $this->optAudioFormat);
+        $command[] = $this->outputFile;
 
-        $command[] = "-f";
-        $command[] = $this->optAudioFormat;
+        // this works
+        // ffmpeg -f concat -i list.txt -c copy full.mp3
+        // ffmpeg -i 01.mp3 -i 02.mp3 -i 03.mp3 -filter_complex "[0:0] [1:0] [2:0] concat=n=3:v=0:a=1 "[a]"" -map "[a]" -acodec libmp3lame -ab 320k x.mp3
+        // ffmpeg -i 01.mp3 -i 02.mp3 -i 03.mp3 -filter_complex "[0:0] [1:0] [2:0] concat=n=3:v=0:a=1 [a]" -map [a] -y -ab 64k -f mp4 x.m4b
 
-        $command[] = $outputFile;
 
 
-        $this->shell($command, "converting ".$inputFile." to target format");
-//        $this->output->writeln($process->getOutput());
-//        $this->output->writeln($process->getErrorOutput());
+        // ffmpeg -i 01.mp3 -i 02.mp3 -i 03.mp3 -filter_complex "[0:0] [1:0] [2:0] concat=n=3:v=0:a=1 [a]" -map "[a]" -acodec libmp3lame -ab 320k x.mp3
+
+
+        // testing
+        // ffmpeg -i "pathforinput1" -i "pathforinput2" -i "pathforinputn" -filter_complex "[0:0] [1:0] concat=n=3:v=0:a=1 "[a]"" -map "[a]" -acodec libmp3lame -ab 320k "output file.mp3"
+
+
+
+        // ffmpeg -i 01.mp3 -i 02.mp3 -i 03.mp3 -map 0:0 -map 1:0 -map 2:0 -vn -y -f concat harry_test.m4b
+
+
+/*
+ffmpeg -i "/Users/andreas/Programming/box/m4b-tool/data/harry_test/Disc 01/01 - Jingle und Ansage.mp3" \
+   -i "/Users/andreas/Programming/box/m4b-tool/data/harry_test/Disc 01/02 - Eulenpost (1).mp3" \
+   -i "/Users/andreas/Programming/box/m4b-tool/data/harry_test/Disc 01/03 - Eulenpost (2).mp3" \
+    -c:v copy -c:a aac -strict experimental data/harry_test.mp4
+    -y -f mp4 "data/harry_test.m4b"
+   -filter_complex "[0:a:0] [1:a:0] [2:a:0] concat=n=3:v=0:a=1 [v] [a]" -map "[a]" -y -f mp4 "data/harry_test.m4b"
+*/
+//        echo implode(" ", $command);
+//        exit;
+        $process = $this->shell($command);
+        echo $process->getOutput();
+        echo $process->getErrorOutput();
+
+
     }
 
-    private function mergeFiles()
-    {
-        $mergeListFile = $this->sameFormatFileDirectory.DIRECTORY_SEPARATOR.".mergelist.txt";
-        file_put_contents($mergeListFile, "");
 
-        foreach($this->sameFormatFiles as $file) {
-            file_put_contents($mergeListFile, "file '".str_replace("'", "\\'", $file->getRealPath())."'".PHP_EOL, FILE_APPEND);
+    /*
+        private function convertFilesToSameFormat() {
+            $this->outputFile = new SplFileInfo($this->input->getOption("output-file"));
+
+            if(!$this->input->getOption("different-format")) {
+                $this->sameFormatFiles = $this->files;
+                $this->sameFormatFileDirectory = $this->outputFile->getPath();
+                return;
+            }
+            $this->sameFormatFileDirectory = new SplFileInfo($this->outputFile->getPath().DIRECTORY_SEPARATOR.".m4b-tool-merge-".md5(json_encode($this->files)));
+            if(!is_dir($this->sameFormatFileDirectory) && !mkdir($this->sameFormatFileDirectory, 0777, true)) {
+                throw new Exception("Could not create temporary working directory ".$this->sameFormatFileDirectory);
+            }
+
+            foreach($this->files as $file) {
+                $outputFile = new SplFileInfo($this->sameFormatFileDirectory.DIRECTORY_SEPARATOR.$file->getBasename($file->getExtension()).$this->optAudioExtension);
+                $this->convertFileToTargetFormat($file, $outputFile);
+            }
         }
 
-        // ffmpeg -f concat -safe 0 -i mylist.txt -c copy output
+        private function convertFileToTargetFormat(SplFileInfo $inputFile, SplFileInfo $outputFile) {
+            $this->sameFormatFiles[] = $outputFile;
+            if($outputFile->isFile() && !$this->optForce) {
+                return;
+            }
 
-        $command = [
-            "ffmpeg",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", $mergeListFile,
-            "-c", "copy",
-            "-f", "mp4",
-            $this->outputFile
-        ];
+            $command = [
+                "ffmpeg",
+                "-vn",
+                "-i", $inputFile
+            ];
 
-        $this->appendParameterToCommand($command, "-y", $this->optForce);
+            $this->appendParameterToCommand($command, "-y", $this->optForce);
+            $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
+            $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
+            $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
 
-        $this->shell($command, "merging files with ffmpeg into " . $this->outputFile);
-    }
+            $command[] = "-f";
+            $command[] = $this->optAudioFormat;
+
+            $command[] = $outputFile;
 
 
+            $this->shell($command, "converting ".$inputFile." to target format");
+    //        $this->output->writeln($process->getOutput());
+    //        $this->output->writeln($process->getErrorOutput());
+        }
+
+        private function mergeFiles()
+        {
+            $mergeListFile = $this->sameFormatFileDirectory.DIRECTORY_SEPARATOR.".mergelist.txt";
+            file_put_contents($mergeListFile, "");
+
+            foreach($this->sameFormatFiles as $file) {
+                file_put_contents($mergeListFile, "file '".str_replace("'", "\\'", $file->getRealPath())."'".PHP_EOL, FILE_APPEND);
+            }
+
+            // ffmpeg -f concat -safe 0 -i mylist.txt -c copy output
+
+            $command = [
+                "ffmpeg",
+                "-f", "concat",
+                "-safe", "0",
+                "-i", $mergeListFile,
+                "-c", "copy",
+                "-f", "mp4",
+                $this->outputFile
+            ];
+
+            $this->appendParameterToCommand($command, "-y", $this->optForce);
+
+            $this->shell($command, "merging files with ffmpeg into " . $this->outputFile);
+        }
+
+    */
 
 
 }

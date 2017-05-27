@@ -26,6 +26,12 @@ ffmpeg -i sample.avi -ss 00:03:05 -t 00:00:45.0 -q:a 0 -map a sample.mp3
 ```
 
 
+### Merge files
+
+```
+ffmpeg -i 01.mp3 -i 02.mp3 -i 03.mp3 -filter_complex "[0:0] [1:0] [2:0] concat=n=3:v=0:a=1 [a]" -map [a] -ab 64k -f mp4 x.m4b
+```
+
 ### extract metadata
 ```
 ffmpeg -i data/src.m4b -f ffmetadata metadata.txt
