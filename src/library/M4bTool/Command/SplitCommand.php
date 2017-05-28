@@ -14,6 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class SplitCommand extends AbstractConversionCommand
 {
+    const OPTION_USE_EXISTING_CHAPTERS_FILE = "use-existing-chapters-file";
 
     /**
      * @var SplFileInfo
@@ -32,37 +33,16 @@ class SplitCommand extends AbstractConversionCommand
     protected function configure()
     {
         parent::configure();
-        // the short description shown while running "php bin/console list"
+
         $this->setDescription('Splits an m4b file into parts');
-        // the full command description shown when running the command with
-        // the "--help" option
-        $this->setHelp('Split an m4b into multiple m4b or mp3 files by chapter or fixed length');
+        $this->setHelp('Split an m4b into multiple m4b or mp3 files by chapter');
 
-        // configure an argument
         $this->addOption("use-existing-chapters-file", null, InputOption::VALUE_NONE, "adjust chapter position by nearest found silence");
-
-        $this->addOption("name", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook name, otherwise the existing metadata will be used", "");
-        $this->addOption("artist", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook artist, otherwise the existing metadata will be used", "");
-        $this->addOption("genre", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook genre, otherwise the existing metadata will be used", "");
-        $this->addOption("writer", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook writer, otherwise the existing metadata will be used", "");
-        $this->addOption("albumartist", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook albumartist, otherwise the existing metadata will be used", "");
-        $this->addOption("year", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook year, otherwise the existing metadata will be used", "");
-
-        // potential options
-        // output-directory
-
-        /*
-        -album "Harry Potter und die Heiligtümer des Todes"
-        -type audiobook
-        -track 1
-        -tracks 1
-        */
 
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-
         $this->initExecution($input, $output);
         $this->ensureInputFileIsFile();
 
@@ -77,7 +57,7 @@ class SplitCommand extends AbstractConversionCommand
     {
         $this->chaptersFile = $this->audioFileToChaptersFile($this->argInputFile);
 
-        if (!$this->input->getOption("use-existing-chapters-file")) {
+        if (!$this->input->getOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE)) {
             $this->shell([
                 "mp4chaps",
                 "-x", $this->argInputFile
@@ -86,8 +66,8 @@ class SplitCommand extends AbstractConversionCommand
 
         }
 
-        if(!$this->chaptersFile->isFile()) {
-            throw new Exception("split command assumes that file ".$this->chaptersFile." exists and is readable");
+        if (!$this->chaptersFile->isFile()) {
+            throw new Exception("split command assumes that file " . $this->chaptersFile . " exists and is readable");
         }
         return;
     }
@@ -126,23 +106,54 @@ class SplitCommand extends AbstractConversionCommand
 
     private function splitChapters()
     {
-        $this->outputDirectory = $this->chaptersFile->getPath() . DIRECTORY_SEPARATOR . $this->argInputFile->getBasename(".".$this->argInputFile->getExtension()) . "_splitted";
+        $this->outputDirectory = $this->chaptersFile->getPath() . DIRECTORY_SEPARATOR . $this->argInputFile->getBasename("." . $this->argInputFile->getExtension()) . "_splitted";
         if (!is_dir($this->outputDirectory) && !mkdir($this->outputDirectory)) {
             throw new Exception("Could not create output directory: " . $this->outputDirectory);
         }
 
+        $this->extractCover();
+
         foreach ($this->chapters as $index => $chapter) {
             $outputFile = $this->extractChapter($chapter, $index);
             if ($outputFile) {
-                $this->tagChapter($chapter, $outputFile, $index);
+                $this->tagChapterFile($chapter, $outputFile, $index);
             }
+        }
+    }
+
+    public function extractCover()
+    {
+        if ($this->input->getOption("skip-cover") || $this->input->getOption("cover") !== null) {
+            return;
+        }
+
+        $coverFile = new SplFileInfo($this->outputDirectory . DIRECTORY_SEPARATOR . "cover.jpg");
+        if (file_exists($coverFile) && !$this->optForce) {
+            $this->output->writeln("skip cover extraction, file " . $coverFile . " already exists - use --force to overwrite");
+            return;
+        }
+
+        // mp4art --extract data/src.m4b --art-index 0
+        $this->shell(["mp4art",
+            "--art-index", "0",
+            "--extract", $this->argInputFile
+        ]);
+
+        $extractedCoverFile = $this->audioFileToExtractedCoverFile($this->argInputFile);
+        if (!$extractedCoverFile->isFile()) {
+            $this->output->writeln("extracting cover to " . $extractedCoverFile . " failed");
+            return;
+        }
+
+        if (!rename($extractedCoverFile, $coverFile)) {
+            $this->output->writeln("renaming cover " . $extractedCoverFile . " => " . $coverFile . " failed");
         }
     }
 
     private function extractChapter(Chapter $chapter, $index)
     {
-        $outputFile = $this->outputDirectory . "/" . sprintf("%03d", $index + 1) . "-" . $this->stripInvalidFilenameChars($chapter->getName()) . "." . $this->optAudioExtension;
-        if (file_exists($outputFile)) {
+        $outputFile = new SplFileInfo($this->outputDirectory . "/" . sprintf("%03d", $index + 1) . "-" . $this->stripInvalidFilenameChars($chapter->getName()) . "." . $this->optAudioExtension);
+        if ($outputFile->isFile()) {
             return $outputFile;
         }
 
@@ -152,8 +163,15 @@ class SplitCommand extends AbstractConversionCommand
             "-vn",
             "-f", $this->optAudioFormat,
             "-ss", $chapter->getStart()->format("%H:%I:%S.%V"),
-            "-map", "a"
         ];
+
+        if ($chapter->getLength()->milliseconds() > 0) {
+            $command[] = "-t";
+            $command[] = $chapter->getLength()->format("%H:%I:%S.%V");
+        }
+
+        $command[] = "-map";
+        $command[] = "a";
 
         $this->appendParameterToCommand($command, "-y", $this->optForce);
         $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
@@ -161,13 +179,12 @@ class SplitCommand extends AbstractConversionCommand
         $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
 
         if ($this->optAudioFormat == "mp3") {
-            $command[] = '-metadata';
-            $command[] = 'title=' . $chapter->getName();
-        }
+            $tag = $this->inputOptionsToTag();
+            $tag->title = $chapter->getName();
+            $tag->track = $index + 1;
+            $tag->tracks = count($this->chapters);
 
-        if ($chapter->getLength()->milliseconds() > 0) {
-            $command[] = "-t";
-            $command[] = $chapter->getLength()->format("%H:%I:%S.%V");
+            $this->appendFfmpegTagParametersToCommand($command, $tag);
         }
 
 
@@ -177,20 +194,16 @@ class SplitCommand extends AbstractConversionCommand
     }
 
 
-
-
-    private function tagChapter(Chapter $chapter, SplFileInfo $outputFile, $index)
+    private function tagChapterFile(Chapter $chapter, SplFileInfo $outputFile, $index)
     {
-        if($this->optAudioFormat === "mp4") {
-            $this->shell(["mp4tags",
-                "-track", $index + 1,
-                "-tracks", count($this->chapters),
-                "-s", $chapter->getName(),
-                $outputFile
-            ], "tagging chapter ".$chapter->getName()." for file ".$outputFile);
-        }
+        $tag = $this->inputOptionsToTag();
+        $tag->track = $index + 1;
+        $tag->tracks = count($this->chapters);
+        $tag->title = $chapter->getName();
+        $tag->cover = $this->input->getOption('cover') === null ? $this->outputDirectory . DIRECTORY_SEPARATOR . "cover.jpg" : $this->input->getOption('cover');
 
 
+        $this->tagFile($outputFile, $tag);
     }
 
 

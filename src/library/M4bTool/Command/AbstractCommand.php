@@ -4,6 +4,7 @@
 namespace M4bTool\Command;
 
 use Exception;
+use M4bTool\Parser\FfmetaDataParser;
 use SplFileInfo;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -96,7 +97,7 @@ class AbstractCommand extends Command
         $this->optDebug = $this->input->getOption(static::OPTION_NO_CACHE);
     }
 
-    protected function shell(array $command, $introductionMessage=null)
+    protected function shell(array $command, $introductionMessage = null)
     {
         $builder = new ProcessBuilder($command);
         $process = $builder->getProcess();
@@ -105,14 +106,22 @@ class AbstractCommand extends Command
             $this->output->writeln($introductionMessage);
         }
 
+        usleep(250000);
+        $shouldShowEmptyLine = false;
         while ($process->isRunning()) {
+            $shouldShowEmptyLine=true;
             $this->updateProgress();
+
         }
-        $this->output->writeln('');
+        if($shouldShowEmptyLine) {
+            $this->output->writeln('');
+        }
+
         return $process;
     }
 
-    protected function updateProgress() {
+    protected function updateProgress()
+    {
         static $i = 0;
         if (++$i % 60 == 0) {
             $this->output->writeln('+');
@@ -129,16 +138,29 @@ class AbstractCommand extends Command
         }
     }
 
-    protected function audioFileToChaptersFile(SplFileInfo $audioFile) {
+    protected function audioFileToChaptersFile(SplFileInfo $audioFile)
+    {
         $dirName = dirname($audioFile);
         $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".chapters.txt");
     }
 
-    protected function chaptersFileToAudioFile(SplFileInfo $chaptersFile, $audioExtension = "m4b") {
+    protected function chaptersFileToAudioFile(SplFileInfo $chaptersFile, $audioExtension = "m4b")
+    {
         $dirName = dirname($chaptersFile);
         $fileName = $chaptersFile->getBasename(".chapters." . $chaptersFile->getExtension());
-        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".".$audioExtension);
+        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . "." . $audioExtension);
+    }
+
+    protected function audioFileToExtractedCoverFile(SplFileInfo $audioFile, $index=0) {
+        $dirName = dirname($audioFile);
+        $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
+        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".art[".$index."].jpg");
+    }
+
+    protected function audioFileToCoverFile(SplFileInfo $audioFile, $index=0) {
+        $dirName = dirname($audioFile);
+        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . "cover.jpg");
     }
 
     protected function stripInvalidFilenameChars($fileName)
@@ -162,16 +184,41 @@ class AbstractCommand extends Command
         return str_replace($invalidFilenameChars, '-', $fileName);
     }
 
-    protected function appendParameterToCommand(&$command, $parameterName, $parameterValue=null) {
-        if(is_bool($parameterValue)) {
+    protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)
+    {
+        if (is_bool($parameterValue)) {
             $command[] = $parameterName;
             return;
         }
 
-        if($parameterValue) {
+        if ($parameterValue) {
             $command[] = $parameterName;
             $command[] = $parameterValue;
         }
     }
+
+    protected function readFileMetaData(SplFileInfo $file)
+    {
+        if (!$file->isFile()) {
+            throw new Exception("cannot read metadata, file " . $file . " does not exist");
+        }
+
+        $command = [
+            "ffmpeg",
+            "-i", $file,
+            "-f", "ffmetadata",
+            "-"
+        ];
+        $process = $this->shell($command, "reading metadata for file ".$file);
+        $metaDataOutput = $process->getOutput().PHP_EOL.$process->getErrorOutput();
+        // $this->output->writeln($metaDataOutput);
+
+        $metaData = new FfmetaDataParser();
+
+        $metaData->parse($metaDataOutput);
+        return $metaData;
+    }
+
+
 
 }

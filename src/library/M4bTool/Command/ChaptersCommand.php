@@ -128,9 +128,9 @@ class ChaptersCommand extends AbstractCommand
 
     protected function detectSilencesForChapterGuessing(\SplFileInfo $file)
     {
-        $fileHash = hash_file('sha256', $file);
+        $fileNameHash = hash('sha256', $file->getRealPath());
 
-        $cacheItem = $this->cache->getItem("chapter.silences." . $fileHash);
+        $cacheItem = $this->cache->getItem("chapter.silences." . $fileNameHash);
         if ($cacheItem->isHit()) {
             $this->silenceDetectionOutput = $cacheItem->get();
             return;

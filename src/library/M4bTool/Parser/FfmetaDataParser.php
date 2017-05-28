@@ -14,13 +14,13 @@ class FfmetaDataParser
     protected $lines = [];
     protected $metaDataProperties = [];
     protected $chapters = [];
+    protected $duration;
 
     public function parse($metaData)
     {
         $this->reset();
         $this->splitLines($metaData);
         $this->parseMetaData();
-        $this->parseChapters();
 
     }
 
@@ -38,39 +38,14 @@ class FfmetaDataParser
     private function parseMetaData()
     {
 
-        foreach ($this->lines as $line) {
+        foreach ($this->lines as $index => $line) {
             $trimmedLine = trim($line);
+
+
             if ($trimmedLine === ";FFMETADATA1") {
                 continue;
             }
 
-            $pos = strpos($trimmedLine, "=");
-            $propertyName = substr($trimmedLine, 0, $pos);
-            $propertyValue = substr($trimmedLine, $pos + 1);
-
-            $this->metaDataProperties[$propertyName] = $propertyValue;
-            if ($trimmedLine === "[CHAPTER]") {
-                break;
-            }
-        }
-    }
-
-    public function getProperty($propertyName)
-    {
-        if (!isset($this->metaDataProperties[$propertyName])) {
-            return null;
-        }
-        return $this->metaDataProperties[$propertyName];
-    }
-
-    public function getChapters() {
-        return $this->chapters;
-    }
-
-    private function parseChapters()
-    {
-        foreach($this->lines as $index => $line) {
-            $trimmedLine = trim($line);
             if(strtolower($trimmedLine) === "[chapter]") {
                 $chapterData = [];
 
@@ -86,9 +61,44 @@ class FfmetaDataParser
                 }
 
                 $this->chapters[] = $this->makeChapter($chapterData, $chapterParseStartIndex);
+                continue;
             }
-        }
+            if(preg_match("/Duration:[\s]*([0-9]+:[0-9]+:[0-9]+\.[0-9]+)/", $trimmedLine, $matches) && isset($matches[1])) {
+                $this->duration = new TimeUnit();
+                $this->duration->fromFormat($matches[1], "%H:%I:%S.%V");
+                continue;
+            }
 
+            $pos = strpos($trimmedLine, "=");
+            if($pos === false) {
+                continue;
+            }
+
+            $propertyName = strtolower(substr($trimmedLine, 0, $pos));
+            $propertyValue = substr($trimmedLine, $pos + 1);
+
+            $this->metaDataProperties[$propertyName] = $propertyValue;
+
+        }
+    }
+
+    public function getProperty($propertyName)
+    {
+        if (!isset($this->metaDataProperties[$propertyName])) {
+            return null;
+        }
+        return $this->metaDataProperties[$propertyName];
+    }
+
+    public function getChapters() {
+        return $this->chapters;
+    }
+
+    /**
+     * @return TimeUnit
+     */
+    public function getDuration() {
+        return $this->duration;
     }
 
     private function makeChapter($chapterData, $chapterParseStartIndex) {
