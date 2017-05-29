@@ -69,6 +69,9 @@ PHP: http://windows.php.net/download/
 
 And place them in your %Path%
 
+
+# m4b-tool commands
+
 ## merge
 
 With m4b-tool you can merge a set of audio files to one single m4b audiobook file. 
