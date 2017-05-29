@@ -63,7 +63,7 @@ sudo apt install php-cli
 Download releases from:
 ffmpeg: https://ffmpeg.org
  
-mp4tools: http://forum.doom9.org/showthread.php?t=171038
+mp4tools: https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip
 
 PHP: http://windows.php.net/download/
 
