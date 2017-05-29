@@ -86,8 +86,8 @@ the tag-title of every file for generating chapters.
 
 If there is a file `data/my-audio-book/cover.jpg`, it will be used as cover for the resulting m4b file.
 
-
-For more options, see `php dist/m4b-tool.phar merge --help`:
+### Reference
+For all options, see `php dist/m4b-tool.phar merge --help`:
 
 ```
 Usage:
@@ -140,7 +140,8 @@ php m4b-tool.phar split --audio-format mp3 --audio-bitrate 96k --audio-channels 
 
 This splits the file `data/my-audio-book.m4b into` am mp3 file for each chapter, writing the files into `data/my-audio-book_splitted/`.
 
-For more options, see `php dist/m4b-tool.phar merge --help`:
+### Reference
+For all options, see `php dist/m4b-tool.phar merge --help`:
 
 ```
 Usage:
@@ -196,11 +197,11 @@ misplaced chapter positions manually.
 ### A typical workflow
 
 #### Getting the musicbrainz id
-You have to find the exact musicbrainz id. Some tips:
+You have to find the exact musicbrainz id:
 
-- Use the authors name or the readers name to search for the book
-- Once you found the book of interest, you click on the list entry
-- To get the musicbrainz id, oben the ***details*** page and find the MBID (e.g. `8669da33-bf9c-47fe-adc9-23798a37b096`)
+- An easy way to find the book is to use the authors name or the readers name to search for it
+- Once you found the book of interest, click on the list entry to show further information
+- To get the musicbrainz id, open the ***details*** page and find the MBID (e.g. `8669da33-bf9c-47fe-adc9-23798a37b096`)
 
 Example: https://musicbrainz.org/work/8669da33-bf9c-47fe-adc9-23798a37b096 
 ```
@@ -223,14 +224,17 @@ Explanation:
 
 #### Finding misplaced main chapters
 
-Now listen to the audiobook an go through the chapters. Lets assume, all chapters were detected correctly, except two chapters in the middle of the audiobook, chapter numbers 6 and 9.
+Now listen to the audiobook an go through the chapters. Lets assume, all but 2 chapters were detected correctly. 
+The two misplaced chapters are chapter number 6 and 9.
+
+To find the real position of chapters 6 and 9 invoke:
 
 ```
 php m4b-tool.phar chapter --find-misplaced-chapters 5,8  --merge-similar --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"
 ```
 
 Explanation:
-`--find-misplaced-chapters`: Number of chapters that are not detected correctly.
+`--find-misplaced-chapters`: Comma separated list of chapter numbers, that were not detected correctly.
 
 Now m4b-tool will generate a ***potential chapter*** for every silence around the used chapter mark to find the right chapter position.
 
@@ -238,25 +242,32 @@ Listen to the audiobook again and find the right chapter position. Note them dow
 
 #### Manually adjust misplaced chapters
 
-Run the full chapter detection with the --no-chapter-import option, which prevents writing the chapters to the file directly.
+Next run the full chapter detection with the --no-chapter-import option, which prevents writing the chapters directly to the file.
 ```
 php m4b-tool.phar chapter --no-chapter-import --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"
 ```
 
-Steps to Adjust:
+To Adjust misplaced chapters, do the following:
 
-- Adjust the misplaced chapters manuall in the file `../data/harry-potter-1.chapters.txt`
-- Import the chapters with `mp4chaps -i ../data/harry-potter-1.m4b`
+- Change the start position of all misplaced chapters manually in the file `../data/harry-potter-1.chapters.txt`
+- Import the corrected chapters with `mp4chaps -i ../data/harry-potter-1.m4b`
 
-Now the chapters should be at the correct position.
+Listen to `harry-potter-1.m4b` again, now the chapters should be at the correct position.
 
 
 #### Troubleshooting
 
-- If the chapters are not detected anyway, perhaps the silence is to short for detection. To adjust the minimum silence length, use `--silence-min-length 1000` for setting the minimum silence length to 1 second.
+If none of the chapters are detected correctly, this can have different reasons:
+
+- The silence parts of this audiobook are too short for detection. To adjust the minimum silence length, use `--silence-min-length 1000` setting the silence length to 1 second. 
+  - Caution: To low values can lead to misplaced chapters and increased detection time.
+- You provided the wrong MBID
+- There is too much background noise in this specific audiobook, so that silences cannot be detected
 
 
-For more options, see `php dist/m4b-tool.phar chapters --help`:
+
+#### Reference
+For all options, see `php dist/m4b-tool.phar chapters --help`:
 
 ```
 Usage:
