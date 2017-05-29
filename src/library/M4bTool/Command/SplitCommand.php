@@ -152,6 +152,88 @@ class SplitCommand extends AbstractConversionCommand
 
     private function extractChapter(Chapter $chapter, $index)
     {
+
+        // mp3 has to be splitted via tempfile
+        if ($this->optAudioFormat !== "mp4") {
+            return $this->extractChapterNonMp4($chapter, $index);
+        }
+        return $this->extractChapterMp4($chapter, $index);
+    }
+
+    private function extractChapterNonMp4(Chapter $chapter, $index)
+    {
+        $outputFile = new SplFileInfo($this->outputDirectory . "/" . sprintf("%03d", $index + 1) . "-" . $this->stripInvalidFilenameChars($chapter->getName()) . "." . $this->optAudioExtension);
+        if ($outputFile->isFile()) {
+            return $outputFile;
+        }
+
+        $tmpOutputFile = new SplFileInfo($this->outputDirectory . "/" . sprintf("%03d", $index + 1) . "_tmp." . $this->argInputFile->getExtension());
+
+        if (!$tmpOutputFile->isFile() || $this->optForce) {
+            $command = [
+                "ffmpeg",
+                "-i", $this->argInputFile,
+                "-vn",
+                "-ss", $chapter->getStart()->format("%H:%I:%S.%V"),
+            ];
+
+            if ($chapter->getLength()->milliseconds() > 0) {
+                $command[] = "-t";
+                $command[] = $chapter->getLength()->format("%H:%I:%S.%V");
+            }
+
+            $command[] = "-map";
+            $command[] = "a";
+            $command[] = "-acodec";
+            $command[] = "copy";
+            $command[] = "-f";
+            $command[] = "mp4";
+
+
+            $this->appendParameterToCommand($command, "-y", $this->optForce);
+
+            $command[] = $tmpOutputFile; // $outputFile;
+            $this->shell($command, "splitting file " . $this->argInputFile . " with ffmpeg into " . $this->outputDirectory);
+        }
+
+        $command = [
+            "ffmpeg",
+            "-i", $tmpOutputFile,
+            "-vn",
+            "-map", "a",
+        ];
+
+        $tag = $this->inputOptionsToTag();
+        $tag->title = $chapter->getName();
+        $tag->track = $index + 1;
+        $tag->tracks = count($this->chapters);
+        $this->appendFfmpegTagParametersToCommand($command, $tag);
+        if (!$this->optAudioBitRate) {
+            $this->optAudioBitRate = "96k";
+        }
+
+        if (!$this->optAudioChannels) {
+            $this->optAudioChannels = 1;
+        }
+
+
+        $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
+        $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
+        $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
+
+
+        $command[] = $outputFile;
+        $this->shell($command);
+
+        if ($outputFile->isFile()) {
+            unlink($tmpOutputFile);
+        }
+
+        return $outputFile;
+    }
+
+    private function extractChapterMp4(Chapter $chapter, $index)
+    {
         $outputFile = new SplFileInfo($this->outputDirectory . "/" . sprintf("%03d", $index + 1) . "-" . $this->stripInvalidFilenameChars($chapter->getName()) . "." . $this->optAudioExtension);
         if ($outputFile->isFile()) {
             return $outputFile;

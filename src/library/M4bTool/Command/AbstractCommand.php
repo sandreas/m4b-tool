@@ -97,40 +97,6 @@ class AbstractCommand extends Command
         $this->optDebug = $this->input->getOption(static::OPTION_NO_CACHE);
     }
 
-    protected function shell(array $command, $introductionMessage = null)
-    {
-        $builder = new ProcessBuilder($command);
-        $process = $builder->getProcess();
-        $process->start();
-        if ($introductionMessage) {
-            $this->output->writeln($introductionMessage);
-        }
-
-        usleep(250000);
-        $shouldShowEmptyLine = false;
-        while ($process->isRunning()) {
-            $shouldShowEmptyLine=true;
-            $this->updateProgress();
-
-        }
-        if($shouldShowEmptyLine) {
-            $this->output->writeln('');
-        }
-
-        return $process;
-    }
-
-    protected function updateProgress()
-    {
-        static $i = 0;
-        if (++$i % 60 == 0) {
-            $this->output->writeln('+');
-        } else {
-            $this->output->write('+');
-            usleep(1000000);
-        }
-    }
-
     protected function ensureInputFileIsFile()
     {
         if (!$this->argInputFile->isFile()) {
@@ -152,13 +118,15 @@ class AbstractCommand extends Command
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . "." . $audioExtension);
     }
 
-    protected function audioFileToExtractedCoverFile(SplFileInfo $audioFile, $index=0) {
+    protected function audioFileToExtractedCoverFile(SplFileInfo $audioFile, $index = 0)
+    {
         $dirName = dirname($audioFile);
         $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
-        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".art[".$index."].jpg");
+        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".art[" . $index . "].jpg");
     }
 
-    protected function audioFileToCoverFile(SplFileInfo $audioFile, $index=0) {
+    protected function audioFileToCoverFile(SplFileInfo $audioFile, $index = 0)
+    {
         $dirName = dirname($audioFile);
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . "cover.jpg");
     }
@@ -209,8 +177,8 @@ class AbstractCommand extends Command
             "-f", "ffmetadata",
             "-"
         ];
-        $process = $this->shell($command, "reading metadata for file ".$file);
-        $metaDataOutput = $process->getOutput().PHP_EOL.$process->getErrorOutput();
+        $process = $this->shell($command, "reading metadata for file " . $file);
+        $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
         // $this->output->writeln($metaDataOutput);
 
         $metaData = new FfmetaDataParser();
@@ -219,6 +187,51 @@ class AbstractCommand extends Command
         return $metaData;
     }
 
+    protected function shell(array $command, $introductionMessage = null)
+    {
+        $builder = new ProcessBuilder($command);
+        $process = $builder->getProcess();
+        $process->start();
+        if ($introductionMessage) {
+            $this->output->writeln($introductionMessage);
+        }
+
+        usleep(250000);
+        $shouldShowEmptyLine = false;
+        while ($process->isRunning()) {
+            $shouldShowEmptyLine = true;
+            $this->updateProgress();
+
+        }
+        if ($shouldShowEmptyLine) {
+            $this->output->writeln('');
+        }
+
+        return $process;
+    }
+
+    protected function updateProgress()
+    {
+        static $i = 0;
+        if (++$i % 60 == 0) {
+            $this->output->writeln('+');
+        } else {
+            $this->output->write('+');
+            usleep(1000000);
+        }
+    }
+
+    protected function debugShell(array $command)
+    {
+
+        $cmd = array_map(function ($part) {
+            if (preg_match('/\s/', $part)) {
+                return '"' . $part . '"';
+            }
+            return $part;
+        }, $command);
+        return implode(" ", $cmd).PHP_EOL;
+    }
 
 
 }
