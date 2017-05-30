@@ -94,7 +94,7 @@ class AbstractCommand extends Command
         $this->argInputFile = new SplFileInfo($this->input->getArgument(static::ARGUMENT_INPUT));
         $this->optForce = $this->input->getOption(static::OPTION_FORCE);
         $this->optNoCache = $this->input->getOption(static::OPTION_NO_CACHE);
-        $this->optDebug = $this->input->getOption(static::OPTION_NO_CACHE);
+        $this->optDebug = $this->input->getOption(static::OPTION_DEBUG);
     }
 
     protected function ensureInputFileIsFile()
@@ -171,6 +171,19 @@ class AbstractCommand extends Command
             throw new Exception("cannot read metadata, file " . $file . " does not exist");
         }
 
+        $metaData = new FfmetaDataParser();
+        $metaData->parse($this->readFileMetaDataOutput($file));
+        return $metaData;
+    }
+
+    private function readFileMetaDataOutput(SplFileInfo $file)
+    {
+        $cacheItem = $this->cache->getItem("metadata." . hash('sha256',$file->getRealPath()));
+        $cacheItem->expiresAt(new \DateTime("+12 hours"));
+        if ($cacheItem->isHit()) {
+            return $cacheItem->get();
+        }
+
         $command = [
             "ffmpeg",
             "-i", $file,
@@ -179,16 +192,18 @@ class AbstractCommand extends Command
         ];
         $process = $this->shell($command, "reading metadata for file " . $file);
         $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
-        // $this->output->writeln($metaDataOutput);
 
-        $metaData = new FfmetaDataParser();
+        $cacheItem->set($metaDataOutput);
+        $this->cache->save($cacheItem);
+        return $metaDataOutput;
 
-        $metaData->parse($metaDataOutput);
-        return $metaData;
     }
 
     protected function shell(array $command, $introductionMessage = null)
     {
+        if($this->optDebug) {
+            $this->output->writeln($this->debugShell($command));
+        }
         $builder = new ProcessBuilder($command);
         $process = $builder->getProcess();
         $process->start();
@@ -205,6 +220,11 @@ class AbstractCommand extends Command
         }
         if ($shouldShowEmptyLine) {
             $this->output->writeln('');
+        }
+
+        if($this->optDebug && $process->getExitCode() != 0) {
+            file_put_contents("m4b-tool-stdout.log", $process->getOutput());
+            file_put_contents("m4b-tool-err.log", $process->getErrorOutput());
         }
 
         return $process;
@@ -230,7 +250,7 @@ class AbstractCommand extends Command
             }
             return $part;
         }, $command);
-        return implode(" ", $cmd).PHP_EOL;
+        return implode(" ", $cmd);
     }
 
 
