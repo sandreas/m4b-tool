@@ -138,7 +138,7 @@ m4b-tool can be used to split a single m4b into a file per chapter.
 php m4b-tool.phar split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"
 ```
 
-This splits the file `data/my-audio-book.m4b into` am mp3 file for each chapter, writing the files into `data/my-audio-book_splitted/`.
+This splits the file `data/my-audio-book.m4b into` an mp3 file for each chapter, writing the files into `data/my-audio-book_splitted/`.
 
 ### Reference
 For all options, see `php dist/m4b-tool.phar merge --help`:
