@@ -75,6 +75,7 @@ class MergeCommand extends AbstractConversionCommand
 
     private function loadInputFiles()
     {
+        $this->debug("== load input files ==");
         $includeExtensions = array_filter(explode(',', $this->input->getOption("include-extensions")));
 
         $this->outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
@@ -120,7 +121,7 @@ class MergeCommand extends AbstractConversionCommand
 
     private function buildChapters()
     {
-
+        $this->debug("== build chapters ==");
         if ($this->argInputFile->isDir()) {
             $autoCoverFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "cover.jpg");
             if ($autoCoverFile->isFile()) {
@@ -138,7 +139,6 @@ class MergeCommand extends AbstractConversionCommand
             $this->setOptionIfUndefined("year", $metaData->getProperty("date"));
             $this->setOptionIfUndefined("genre", $metaData->getProperty("genre"));
             $this->setOptionIfUndefined("writer", $metaData->getProperty("writer"));
-            $this->setOptionIfUndefined("writer", $metaData->getProperty("album_artist"));
 
 
             if ($metaData->getDuration()) {
@@ -164,96 +164,16 @@ class MergeCommand extends AbstractConversionCommand
         }
     }
 
-//    private function convertFiles()
-//    {
-//        $filesChunks = array_chunk($this->files, 15);
-//        $chunkFiles = [];
-//        foreach ($filesChunks as $chunkIndex => $files) {
-//            $chunkFiles[] = $this->convertFilesChunk($files, $chunkIndex);
-//        }
-//
-//        // ffmpeg -i input1.mp4 -i input2.webm -filter_complex "[0:v:0] [0:a:0] [1:v:0] [1:a:0] concat=n=2:v=1:a=1 [v] [a]" -map "[v]" -map "[a]" <encoding options> output.mkv
-//
-//        $command = [
-//            "ffmpeg",
-//            "-vn",
-//        ];
-//
-//        $filterComplex = "";
-//        $index = 0;
-//        foreach ($chunkFiles as $index => $file) {
-//            $command[] = "-i";
-//            $command[] = $file;
-//            $filterComplex .= "[" . $index . ":0] ";
-//        }
-//        $filterComplex .= "concat=n=" . ($index + 1) . ":v=0:a=1 [a]";
-//
-//        $this->appendParameterToCommand($command, "-filter_complex", $filterComplex);
-//        $command[] = "-map";
-//        $command[] = "[a]";
-//
-//
-////        $this->appendParameterToCommand($command, "-y", $this->optForce);
-////        $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
-////        $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
-////        $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
-//        $this->appendParameterToCommand($command, "-acodec", "copy");
-////        $this->appendParameterToCommand($command, "-f", $this->optAudioFormat);
-//        $command[] = $this->outputFile;
-//
-//        $dbg = $this->debugShell($command);
-//        echo strlen($dbg);
-//        exit;
-//
-//        $this->shell($command, "merging " . count($this->files) . " files into target " . $this->outputFile . ", this can take a while");
-//    }
-//
-//    private function convertFilesChunk($files, $chunkIndex)
-//    {
-//
-
-//        $path = $this->outputFile->getPath() ? $this->outputFile->getPath() . DIRECTORY_SEPARATOR : "";
-//        $chunkFile = new SplFileInfo($path . "chunk" . $chunkIndex . "." . $this->outputFile->getExtension());
-//        $filterComplex = "";
-//        $index = 0;
-//        $command = [
-//            "ffmpeg", "-vn"
-//        ];
-//
-//        foreach ($files as $index => $file) {
-//            $command[] = "-i";
-//            $command[] = $file;
-//            $filterComplex .= "[" . $index . ":0] ";
-//        }
-//        $filterComplex .= "concat=n=" . ($index + 1) . ":v=0:a=1 [a]";
-//
-//        $this->appendParameterToCommand($command, "-filter_complex", $filterComplex);
-//        $command[] = "-map";
-//        $command[] = "[a]";
-//
-//
-//        $this->appendParameterToCommand($command, "-y", $this->optForce);
-//        $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
-//        $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
-//        $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
-//        // $this->appendParameterToCommand($command, "-acodec", $this->optAudioCodec);
-//        $this->appendParameterToCommand($command, "-f", $this->optAudioFormat);
-//        $command[] = $chunkFile;
-//        $this->shell($command, "merging " . count($files) . " files into target chunk " . $chunkFile . ", this can take a while");
-//
-//        return $chunkFile;
-//    }
-
 
     private function convertFiles()
     {
 
         $padLen = strlen(count($this->filesToConvert));
         $dir = $this->outputFile->getPath() ? $this->outputFile->getPath() . DIRECTORY_SEPARATOR : "";
-        $dir .= $this->outputFile->getBasename(".".$this->outputFile->getExtension())."-tmpfiles".DIRECTORY_SEPARATOR;
+        $dir .= $this->outputFile->getBasename("." . $this->outputFile->getExtension()) . "-tmpfiles" . DIRECTORY_SEPARATOR;
 
-        if(!is_dir($dir) && !mkdir($dir, 0700, true)) {
-            throw new Exception("Could not create temp directory ".$dir);
+        if (!is_dir($dir) && !mkdir($dir, 0700, true)) {
+            throw new Exception("Could not create temp directory " . $dir);
         }
         foreach ($this->filesToConvert as $index => $file) {
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
@@ -261,18 +181,28 @@ class MergeCommand extends AbstractConversionCommand
 
             $this->filesToMerge[] = $outputFile;
 
-            if ($outputFile->isFile()) {
+            if ($outputFile->isFile() && $outputFile->getSize() > 0) {
                 $this->output->writeln("output file " . $outputFile . " already exists, skipping");
                 continue;
             }
 
-
             $command = [
-                "ffmpeg",
                 "-vn",
                 "-i", $file,
-                "-strict", "experimental",         // todo: improve quality of aac - see http://trac.ffmpeg.org/wiki/Encode/AAC
+
             ];
+
+            if($this->optAudioCodec == "aac") {
+                $command[] =  "-strict";
+                $command[] = "experimental";
+            }
+
+            if ($this->isWindows()) {
+                $command[] = "-vf";
+                $command[] = "scale=800:800";
+            }
+
+
             $this->appendParameterToCommand($command, "-y", $this->optForce);
             $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
             $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
@@ -281,9 +211,14 @@ class MergeCommand extends AbstractConversionCommand
             $this->appendParameterToCommand($command, "-f", $this->optAudioFormat);
             $command[] = $outputFile;
 
-            $this->shell($command, "converting " . $file . " to " . $outputFile . "");
+            $this->ffmpeg($command, "converting " . $file . " to " . $outputFile . "");
 
             if (!$outputFile->isFile()) {
+                throw new Exception("could not convert " . $file . " to " . $outputFile);
+            }
+
+            if ($outputFile->getSize() == 0) {
+                unlink($outputFile);
                 throw new Exception("could not convert " . $file . " to " . $outputFile);
             }
 
@@ -293,17 +228,20 @@ class MergeCommand extends AbstractConversionCommand
     private function mergeFiles()
     {
 
+        // howto quote: http://ffmpeg.org/ffmpeg-utils.html#Quoting-and-escaping
         $listFile = $this->outputFile . ".listing.txt";
         file_put_contents($listFile, '');
+
+
         /**
          * @var SplFileInfo $file
          */
         foreach ($this->filesToMerge as $file) {
-            file_put_contents($listFile, "file '" . $file->getRealPath() . "'".PHP_EOL, FILE_APPEND);
+            $quotedFilename = "'" . implode("'\''", explode("'", $file->getRealPath())) . "'";
+            file_put_contents($listFile, "file " . $quotedFilename . PHP_EOL, FILE_APPEND);
         }
 
         $command = [
-            "ffmpeg",
             "-f", "concat",
             "-safe", "0",
             "-i", $listFile,
@@ -312,14 +250,14 @@ class MergeCommand extends AbstractConversionCommand
             $this->outputFile
         ];
 
-        $this->shell($command, "merging " . $this->outputFile . ", this can take a while");
+        $this->ffmpeg($command, "merging " . $this->outputFile . ", this can take a while");
 
         if (!$this->outputFile->isFile()) {
             throw new Exception("could not merge to " . $this->outputFile);
         }
         unlink($listFile);
 
-        foreach($this->filesToMerge as $file) {
+        foreach ($this->filesToMerge as $file) {
             unlink($file);
         }
 
@@ -342,7 +280,7 @@ class MergeCommand extends AbstractConversionCommand
         }
 
         file_put_contents($chaptersFile, implode(PHP_EOL, $this->chaptersAsLines()));
-        $this->shell(["mp4chaps", "-i", $this->outputFile], "importing chapters for " . $this->outputFile);
+        $this->mp4chaps(["-i", $this->outputFile], "importing chapters for " . $this->outputFile);
     }
 
     private function chaptersAsLines()

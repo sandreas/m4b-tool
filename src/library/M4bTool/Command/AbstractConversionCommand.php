@@ -49,6 +49,7 @@ class AbstractConversionCommand extends AbstractCommand
     {
         parent::loadArguments();
 
+
         $audioFormatCodecMapping = [
             "mp4" => "aac",
             "mp3" => "libmp3lame"
@@ -60,10 +61,13 @@ class AbstractConversionCommand extends AbstractCommand
             $this->optAudioFormat = "mp4";
         }
 
-        if(isset($audioFormatCodecMapping[$this->optAudioFormat])) {
-            $this->optAudioCodec = $audioFormatCodecMapping[$this->optAudioFormat];
+        if (isset($audioFormatCodecMapping[$this->optAudioFormat])) {
+            if ($this->optAudioFormat === "mp4") {
+                $this->optAudioCodec = $this->loadHighestAvailableQualityAacCodec();
+            } else {
+                $this->optAudioCodec = $audioFormatCodecMapping[$this->optAudioFormat];
+            }
         }
-
 
         $this->optAudioChannels = (int)$this->input->getOption(static::OPTION_AUDIO_CHANNELS);
         $this->optAudioBitRate = $this->input->getOption(static::OPTION_AUDIO_BIT_RATE);
@@ -71,11 +75,65 @@ class AbstractConversionCommand extends AbstractCommand
 
     }
 
+    protected function loadHighestAvailableQualityAacCodec()
+    {
+        // libfdk_aac (best quality)
+        // libfaac (high quality)
+        // aac -strict experimental (decent quality, but use higher bitrates)
+        // libvo_aacenc (bad quality)
 
-    protected function tagFile(SplFileInfo $file, Tag $tag) {
+        $aacQualityOrder = [
+            "libfdk_aac",
+            "libfaac",
+            "aac"
+        ];
+
+        $process = $this->ffmpeg(["-hide_banner", "-codecs"]);
+        /*
+Codecs:
+ D..... = Decoding supported
+ .E.... = Encoding supported
+ ..V... = Video codec
+ ..A... = Audio codec
+ ..S... = Subtitle codec
+ ...I.. = Intra frame-only codec
+ ....L. = Lossy compression
+ .....S = Lossless compression
+ -------
+ D.VI.. 012v                 Uncompressed 4:2:2 10-bit
+ D.V.L. 4xm                  4X Movie
+ D.VI.S 8bps                 QuickTime 8BPS video
+ .EVIL. a64_multi            Multicolor charset for Commodore 64 (encoders: a64multi )
+ .EVIL. a64_multi5           Multicolor charset for Commodore 64, extended with 5th color (colram) (encoders: a64multi5 )
+ D.V..S aasc                 Autodesk RLE
+ D.VIL. aic                  Apple Intermediate Codec
+ DEVI.S alias_pix            Alias/Wavefront PIX image
+ DEVIL. amv                  AMV Video
+         */
+//        $aacQualityOrder
+        $codecOutput = $process->getOutput() . $process->getErrorOutput();
+
+        $index = 1;
+        $returnValue = "libvo_aacenc";
+        foreach ($aacQualityOrder as $index => $encoderName) {
+            if (preg_match("/\b" . preg_quote($encoderName) . "\b/i", $codecOutput)) {
+                $returnValue = $encoderName;
+            }
+        }
+
+        if ($index > 0) {
+            $this->output->writeln("Your ffmpeg version cannot produce top quality aac using encoder " . $returnValue . " instead of " . $aacQualityOrder[0] . "");
+        }
+
+        return $returnValue;
+    }
 
 
-        if($this->optAudioFormat === "mp4") {
+    protected function tagFile(SplFileInfo $file, Tag $tag)
+    {
+
+
+        if ($this->optAudioFormat === "mp4") {
             $command = ["mp4tags"];
             $this->appendParameterToCommand($command, "-track", $tag->track);
             $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
@@ -85,19 +143,19 @@ class AbstractConversionCommand extends AbstractCommand
             $this->appendParameterToCommand($command, "-writer", $tag->writer);
             $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
             $this->appendParameterToCommand($command, "-year", $tag->year);
-            if(count($command) > 1) {
+            if (count($command) > 1) {
                 $command[] = $file;
-                $this->shell($command, "tagging file ".$file);
+                $this->shell($command, "tagging file " . $file);
             }
 
-            if($tag->cover && !$this->input->getOption("skip-cover")) {
-                if(!file_exists($tag->cover)) {
-                    $this->output->writeln("cover file ". $tag->cover." does not exist");
+            if ($tag->cover && !$this->input->getOption("skip-cover")) {
+                if (!file_exists($tag->cover)) {
+                    $this->output->writeln("cover file " . $tag->cover . " does not exist");
                     return;
                 }
                 $command = ["mp4art", "--add", $tag->cover, $file];
                 $this->appendParameterToCommand($command, "-f", $this->optForce);
-                $process = $this->shell($command, "adding cover ".$tag->cover." to ".$file);
+                $process = $this->shell($command, "adding cover " . $tag->cover . " to " . $file);
                 // $this->output->write($process->getOutput().$process->getErrorOutput());
             }
 
@@ -105,7 +163,8 @@ class AbstractConversionCommand extends AbstractCommand
         }
     }
 
-    public function inputOptionsToTag() {
+    public function inputOptionsToTag()
+    {
         $tag = new Tag;
         $tag->title = $this->input->getOption("name");
         $tag->artist = $this->input->getOption("artist");
@@ -120,47 +179,47 @@ class AbstractConversionCommand extends AbstractCommand
 
     protected function appendFfmpegTagParametersToCommand(&$command, Tag $tag)
     {
-        if($tag->title) {
+        if ($tag->title) {
             $command[] = '-metadata';
             $command[] = 'title=' . $tag->title;
         }
 
-        if($tag->artist) {
+        if ($tag->artist) {
             $command[] = '-metadata';
             $command[] = 'artist=' . $tag->artist;
         }
 
 
-        if($tag->album) {
+        if ($tag->album) {
             $command[] = '-metadata';
             $command[] = 'album=' . $tag->album;
         }
 
 
-        if($tag->genre) {
+        if ($tag->genre) {
             $command[] = '-metadata';
             $command[] = 'genre=' . $tag->genre;
         }
 
 
-        if($tag->writer) {
+        if ($tag->writer) {
             $command[] = '-metadata';
             $command[] = 'composer=' . $tag->writer;
         }
 
 
-        if($tag->track && $tag->tracks) {
+        if ($tag->track && $tag->tracks) {
             $command[] = '-metadata';
-            $command[] = 'track=' . $tag->track."/".$tag->tracks;
+            $command[] = 'track=' . $tag->track . "/" . $tag->tracks;
         }
 
-        if($tag->albumArtist) {
+        if ($tag->albumArtist) {
             $command[] = '-metadata';
             $command[] = 'album_artist=' . $tag->albumArtist;
         }
 
 
-        if($tag->year) {
+        if ($tag->year) {
             $command[] = '-metadata';
             $command[] = 'date=' . $tag->year;
         }

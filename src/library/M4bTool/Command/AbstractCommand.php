@@ -21,6 +21,7 @@ class AbstractCommand extends Command
     const ARGUMENT_INPUT = "input";
 
     const OPTION_DEBUG = "debug";
+    const OPTION_DEBUG_FILENAME = "debug-filename";
     const OPTION_FORCE = "force";
     const OPTION_NO_CACHE = "no-cache";
 
@@ -60,13 +61,19 @@ class AbstractCommand extends Command
      */
     protected $optDebug = false;
 
+    /**
+     * @var SplFileInfo
+     */
+    protected $optDebugFile;
+
     protected function configure()
     {
         $className = get_class($this);
         $commandName = $this->dasherize(substr($className, strrpos($className, '\\') + 1));
         $this->setName(str_replace("-command", "", $commandName));
         $this->addArgument(static::ARGUMENT_INPUT, InputArgument::REQUIRED, 'Input file or folder');
-        $this->addOption(static::OPTION_DEBUG, "d", InputOption::VALUE_NONE, "show debugging info about chapters and silences");
+        $this->addOption(static::OPTION_DEBUG, "d", InputOption::VALUE_NONE, "file to dump debugging info");
+        $this->addOption(static::OPTION_DEBUG_FILENAME, null, InputOption::VALUE_OPTIONAL, "file to dump debugging info", "m4b-tool_debug.log");
         $this->addOption(static::OPTION_FORCE, "f", InputOption::VALUE_NONE, "force overwrite of existing files");
         $this->addOption(static::OPTION_NO_CACHE, null, InputOption::VALUE_NONE, "do not use cached values and clear cache completely");
     }
@@ -95,7 +102,25 @@ class AbstractCommand extends Command
         $this->optForce = $this->input->getOption(static::OPTION_FORCE);
         $this->optNoCache = $this->input->getOption(static::OPTION_NO_CACHE);
         $this->optDebug = $this->input->getOption(static::OPTION_DEBUG);
+        $this->optDebugFile = new SplFileInfo($this->input->getOption(static::OPTION_DEBUG_FILENAME));
     }
+
+    protected function debug($message)
+    {
+        if (!$this->optDebug) {
+            return;
+        }
+
+        if (!touch($this->optDebugFile) || !$this->optDebugFile->isWritable()) {
+            throw new Exception("Debug file ".$this->optDebugFile." is not writable");
+        }
+
+        if (!is_scalar($message)) {
+            $message = var_export($message, true);
+        }
+        file_put_contents($this->optDebugFile, $message . PHP_EOL, FILE_APPEND);
+    }
+
 
     protected function ensureInputFileIsFile()
     {
@@ -131,9 +156,13 @@ class AbstractCommand extends Command
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . "cover.jpg");
     }
 
+    protected function isWindows() {
+        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+    }
+
     protected function stripInvalidFilenameChars($fileName)
     {
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        if ($this->isWindows()) {
             $invalidFilenameChars = [
                 ' < ',
                 '>',
@@ -165,6 +194,11 @@ class AbstractCommand extends Command
         }
     }
 
+    protected function splitLines($chapterString)
+    {
+        return preg_split("/\r\n|\n|\r/", $chapterString);
+    }
+
     protected function readFileMetaData(SplFileInfo $file)
     {
         if (!$file->isFile()) {
@@ -178,20 +212,21 @@ class AbstractCommand extends Command
 
     private function readFileMetaDataOutput(SplFileInfo $file)
     {
-        $cacheItem = $this->cache->getItem("metadata." . hash('sha256',$file->getRealPath()));
+        $cacheItem = $this->cache->getItem("metadata." . hash('sha256', $file->getRealPath()));
         $cacheItem->expiresAt(new \DateTime("+12 hours"));
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
 
         $command = [
-            "ffmpeg",
             "-i", $file,
             "-f", "ffmetadata",
             "-"
         ];
-        $process = $this->shell($command, "reading metadata for file " . $file);
+        $process = $this->ffmpeg($command, "reading metadata for file " . $file);
         $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
+
+        $this->debug($metaDataOutput);
 
         $cacheItem->set($metaDataOutput);
         $this->cache->save($cacheItem);
@@ -199,11 +234,22 @@ class AbstractCommand extends Command
 
     }
 
+    protected function ffmpeg($command, $introductionMessage=null) {
+        array_unshift($command, "ffmpeg");
+        return $this->shell($command, $introductionMessage);
+    }
+    protected function mp4chaps($command, $introductionMessage=null) {
+        array_unshift($command, "mp4chaps");
+        return $this->shell($command, $introductionMessage);
+    }
+
+    protected function mp4art($command, $introductionMessage=null) {
+        array_unshift($command, "mp4art");
+        return $this->shell($command, $introductionMessage);
+    }
     protected function shell(array $command, $introductionMessage = null)
     {
-        if($this->optDebug) {
-            $this->output->writeln($this->debugShell($command));
-        }
+        $this->debug($this->formatShellCommand($command));
         $builder = new ProcessBuilder($command);
         $process = $builder->getProcess();
         $process->start();
@@ -222,9 +268,8 @@ class AbstractCommand extends Command
             $this->output->writeln('');
         }
 
-        if($this->optDebug && $process->getExitCode() != 0) {
-            file_put_contents("m4b-tool-stdout.log", $process->getOutput());
-            file_put_contents("m4b-tool-err.log", $process->getErrorOutput());
+        if ($process->getExitCode() != 0) {
+            $this->debug($process->getOutput() . $process->getErrorOutput());
         }
 
         return $process;
@@ -241,7 +286,7 @@ class AbstractCommand extends Command
         }
     }
 
-    protected function debugShell(array $command)
+    protected function formatShellCommand(array $command)
     {
 
         $cmd = array_map(function ($part) {

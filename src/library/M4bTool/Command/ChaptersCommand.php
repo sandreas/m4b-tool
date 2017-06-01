@@ -90,7 +90,6 @@ class ChaptersCommand extends AbstractCommand
     {
 
 
-
         $this->initExecution($input, $output);
         $this->initParsers();
         $this->loadFileToProcess();
@@ -137,14 +136,13 @@ class ChaptersCommand extends AbstractCommand
         }
 
 
-        $process = $this->shell([
-            "ffmpeg",
+        $process = $this->ffmpeg([
             "-i", $file,
             "-af", "silencedetect=noise=-30dB:d=" . ((float)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH) / 1000),
             "-f", "null",
             "-",
 
-        ], "detecting silence of " . $file . " with ffmpeg");
+        ], "detecting silence of " . $file);
         $this->silenceDetectionOutput = $process->getOutput();
         $this->silenceDetectionOutput .= $process->getErrorOutput();
 
@@ -233,7 +231,7 @@ class ChaptersCommand extends AbstractCommand
                     $end = isset($numberedChapters[$index + 1]) ? $numberedChapters[$index + 1]->getStart()->milliseconds() : $this->silenceParser->getDuration()->milliseconds();
 
                     $maxOffsetMilliseconds = (int)$this->input->getOption(static::OPTION_FIND_MISPLACED_OFFSET) * 1000;
-                    if($maxOffsetMilliseconds > 0) {
+                    if ($maxOffsetMilliseconds > 0) {
                         $start = max($start, $chapter->getStart()->milliseconds() - $maxOffsetMilliseconds);
                         $end = min($end, $chapter->getStart()->milliseconds() + $maxOffsetMilliseconds);
                     }
@@ -241,7 +239,7 @@ class ChaptersCommand extends AbstractCommand
 
                     $specialOffsetStart = clone $chapter->getStart();
                     $specialOffsetStart->add($misplacedTolerance);
-                    $specialOffsetChapter = new Chapter($specialOffsetStart, clone $chapter->getLength(), "=> special off. -4s: " . $chapter->getName() ." - pos: ".$specialOffsetStart->format("%H:%I:%S.%V"));
+                    $specialOffsetChapter = new Chapter($specialOffsetStart, clone $chapter->getLength(), "=> special off. -4s: " . $chapter->getName() . " - pos: " . $specialOffsetStart->format("%H:%I:%S.%V"));
                     $this->chapters[$specialOffsetChapter->getStart()->milliseconds()] = $specialOffsetChapter;
 
                     $silenceIndex = 1;
@@ -264,14 +262,14 @@ class ChaptersCommand extends AbstractCommand
                         $potentialChapterStart = clone $silenceClone->getStart();
                         $halfLen = (int)round($silenceClone->getLength()->milliseconds() / 2);
                         $potentialChapterStart->add($halfLen);
-                        $potentialChapter = new Chapter($potentialChapterStart, clone $silenceClone->getLength(), $silenceChapterPrefix . $chapter->getName()." - pos: ".$silenceClone->getStart()->format("%H:%I:%S.%V").", len: ".$silenceClone->getLength()->format("%H:%I:%S.%V"));
+                        $potentialChapter = new Chapter($potentialChapterStart, clone $silenceClone->getLength(), $silenceChapterPrefix . $chapter->getName() . " - pos: " . $silenceClone->getStart()->format("%H:%I:%S.%V") . ", len: " . $silenceClone->getLength()->format("%H:%I:%S.%V"));
                         $chapterKey = (int)round($potentialChapter->getStart()->milliseconds(), 0);
                         $this->chapters[$chapterKey] = $potentialChapter;
 
 
                         $specialSilenceOffsetChapterStart = clone $silence->getStart();
                         $specialSilenceOffsetChapterStart->add($misplacedTolerance);
-                        $specialSilenceOffsetChapter = new Chapter($specialSilenceOffsetChapterStart, clone $silence->getLength(), $potentialChapter->getName().' - tolerance');
+                        $specialSilenceOffsetChapter = new Chapter($specialSilenceOffsetChapterStart, clone $silence->getLength(), $potentialChapter->getName() . ' - tolerance');
                         $offsetChapterKey = (int)round($specialSilenceOffsetChapter->getStart()->milliseconds(), 0);
                         $this->chapters[$offsetChapterKey] = $specialSilenceOffsetChapter;
 
@@ -279,7 +277,7 @@ class ChaptersCommand extends AbstractCommand
                     }
                 }
 
-                $chapter->setName($chapter->getName().' - index: '.$index);
+                $chapter->setName($chapter->getName() . ' - index: ' . $index);
                 // $chaptersAsLines[] = $chapter->getStart()->format("%H:%I:%S.%V") . " " . $chapter->getName();
             }
             ksort($this->chapters);
@@ -357,11 +355,11 @@ class ChaptersCommand extends AbstractCommand
     {
         $fileToImport = preg_replace("/(.*)(.chapters.txt)$/i", "$1.m4b", $this->outputFile);
 
-        if(file_exists($fileToImport) && !$this->input->getOption(static::OPTION_NO_CHAPTER_IMPORT)) {
-            $process = $this->shell([
-                "mp4chaps", "-i", $fileToImport
-            ], "importing chapters to ".$fileToImport." via mp4chaps");
-            $this->output->writeln( $process->getOutput().$process->getErrorOutput());
+        if (file_exists($fileToImport) && !$this->input->getOption(static::OPTION_NO_CHAPTER_IMPORT)) {
+            $process = $this->mp4chaps([
+                "-i", $fileToImport
+            ], "importing chapters to " . $fileToImport);
+            $this->output->writeln($process->getOutput() . $process->getErrorOutput());
         }
 
     }

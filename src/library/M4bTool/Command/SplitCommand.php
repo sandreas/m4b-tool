@@ -58,11 +58,10 @@ class SplitCommand extends AbstractConversionCommand
         $this->chaptersFile = $this->audioFileToChaptersFile($this->argInputFile);
 
         if (!$this->input->getOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE)) {
-            $this->shell([
-                "mp4chaps",
+            $this->mp4chaps([
                 "-x", $this->argInputFile
 
-            ], "export chapter list of " . $this->argInputFile . " with mp4chaps");
+            ], "export chapter list of " . $this->argInputFile);
 
         }
 
@@ -134,7 +133,7 @@ class SplitCommand extends AbstractConversionCommand
         }
 
         // mp4art --extract data/src.m4b --art-index 0
-        $this->shell(["mp4art",
+        $this->mp4art([
             "--art-index", "0",
             "--extract", $this->argInputFile
         ]);
@@ -171,7 +170,6 @@ class SplitCommand extends AbstractConversionCommand
 
         if (!$tmpOutputFile->isFile() || $this->optForce) {
             $command = [
-                "ffmpeg",
                 "-i", $this->argInputFile,
                 "-vn",
                 "-ss", $chapter->getStart()->format("%H:%I:%S.%V"),
@@ -193,11 +191,10 @@ class SplitCommand extends AbstractConversionCommand
             $this->appendParameterToCommand($command, "-y", $this->optForce);
 
             $command[] = $tmpOutputFile; // $outputFile;
-            $this->shell($command, "splitting file " . $this->argInputFile . " with ffmpeg into " . $this->outputDirectory);
+            $this->ffmpeg($command, "splitting file " . $this->argInputFile . " with ffmpeg into " . $this->outputDirectory);
         }
 
         $command = [
-            "ffmpeg",
             "-i", $tmpOutputFile,
             "-vn",
             "-map", "a",
@@ -223,7 +220,7 @@ class SplitCommand extends AbstractConversionCommand
 
 
         $command[] = $outputFile;
-        $this->shell($command);
+        $this->ffmpeg($command);
 
         if ($outputFile->isFile()) {
             unlink($tmpOutputFile);
@@ -240,7 +237,6 @@ class SplitCommand extends AbstractConversionCommand
         }
 
         $command = [
-            "ffmpeg",
             "-i", $this->argInputFile,
             "-vn",
             "-f", $this->optAudioFormat,
@@ -271,7 +267,7 @@ class SplitCommand extends AbstractConversionCommand
 
 
         $command[] = $outputFile;
-        $this->shell($command, "splitting file " . $this->argInputFile . " with ffmpeg into " . $this->outputDirectory);
+        $this->ffmpeg($command, "splitting file " . $this->argInputFile . " with ffmpeg into " . $this->outputDirectory);
         return $outputFile;
     }
 
