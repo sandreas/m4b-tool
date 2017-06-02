@@ -18,7 +18,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class ChaptersCommand extends AbstractCommand
 {
 
-    const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
+
     const OPTION_SILENCE_MIN_LENGTH = "silence-min-length";
     const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
     const OPTION_MERGE_SIMILAR = "merge-similar";

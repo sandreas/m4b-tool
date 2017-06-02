@@ -6,6 +6,9 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Chapter;
+use M4bTool\Audio\Silence;
+use M4bTool\Marker\ChapterMarker;
+use M4bTool\Parser\MusicBrainzChapterParser;
 use M4bTool\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputArgument;
@@ -52,7 +55,7 @@ class MergeCommand extends AbstractConversionCommand
         $this->addArgument(static::ARGUMENT_MORE_INPUT_FILES, InputArgument::IS_ARRAY, 'Other Input files or folders');
         $this->addOption(static::OPTION_OUTPUT_FILE, null, InputOption::VALUE_REQUIRED, "output file");
         $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", "m4b,mp3,aac,mp4,flac");
-
+        $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -63,7 +66,7 @@ class MergeCommand extends AbstractConversionCommand
         $this->loadInputFiles();
 
         $this->buildChapters();
-
+        $this->replaceChaptersWithMusicBrainz();
         $this->convertFiles();
 
         $this->mergeFiles();
@@ -72,6 +75,8 @@ class MergeCommand extends AbstractConversionCommand
 
         $this->tagMergedFile();
     }
+
+
 
     private function loadInputFiles()
     {
@@ -155,6 +160,32 @@ class MergeCommand extends AbstractConversionCommand
             }
 
         }
+    }
+
+
+    private function replaceChaptersWithMusicBrainz() {
+        $mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
+        if (!$mbId) {
+            return;
+        }
+
+        $fullLength = new TimeUnit();
+        $silences = [];
+        foreach($this->chapters as $chapter) {
+            $silences[] = new Silence($chapter->getStart(), new TimeUnit(0)); // very short silence simulation
+            $fullLength->add($chapter->getLength()->milliseconds());
+        }
+
+        $mbChapterParser = new MusicBrainzChapterParser($mbId);
+        $mbChapterParser->setCache($this->cache);
+
+        $mbXml = $mbChapterParser->loadRecordings();
+        $mbChapters = $mbChapterParser->parseRecordings($mbXml);
+
+        $chapterMarker = new ChapterMarker($this->optDebug);
+        $chapterMarker->setMaxDiffMilliseconds(25000);
+        $this->chapters = $chapterMarker->guessChapters($mbChapters, $silences, $fullLength);
+
     }
 
     private function setOptionIfUndefined($optionName, $optionValue)
@@ -255,11 +286,15 @@ class MergeCommand extends AbstractConversionCommand
         if (!$this->outputFile->isFile()) {
             throw new Exception("could not merge to " . $this->outputFile);
         }
-        unlink($listFile);
 
-        foreach ($this->filesToMerge as $file) {
-            unlink($file);
+        if(!$this->optDebug) {
+            unlink($listFile);
+            foreach ($this->filesToMerge as $file) {
+                unlink($file);
+            }
+            rmdir(dirname($file));
         }
+
 
     }
 

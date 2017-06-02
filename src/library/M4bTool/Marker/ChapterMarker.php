@@ -11,9 +11,14 @@ use M4bTool\Time\TimeUnit;
 class ChapterMarker
 {
     protected $debug = false;
+    protected $maxDiffMilliseconds = 25000;
 
     public function __construct($debug=false) {
         $this->debug = $debug;
+    }
+
+    public function setMaxDiffMilliseconds($maxDiffMilliseconds) {
+        $this->maxDiffMilliseconds = $maxDiffMilliseconds;
     }
 
     public function guessChapters($mbChapters, $silences, TimeUnit $fullLength)
@@ -23,10 +28,11 @@ class ChapterMarker
         /**
          * @var Chapter $chapter
          */
-        foreach ($mbChapters as $chapterStart => $chapter) {
+        foreach ($mbChapters as $chapter) {
 
             $this->debug("chapter: " . $chapter->getStart()->format("%H:%I:%S.%V"));
 
+            $chapterStart = $chapter->getStart()->milliseconds();
             if ($chapterStart == 0) {
                 $guessedChapters[$chapterStart] = new Chapter(new TimeUnit($chapterStart), new TimeUnit(), $chapter->getName());
                 $this->debug(", no silence" . PHP_EOL);
@@ -41,8 +47,8 @@ class ChapterMarker
             /**
              * @var Silence[] $silences
              */
-            foreach ($silences as $silenceStart => $silence) {
-
+            foreach ($silences as $silence) {
+                $silenceStart = $silence->getStart()->milliseconds();
                 $diff = abs($chapterStart - $chapterOffset->milliseconds() - $silenceStart);
                 if ($bestMatchSilenceKey == null || $bestMatchSilenceDiff == null || min($diff, $bestMatchSilenceDiff) == $diff) {
                     $bestMatchSilenceKey = $silenceStart;
@@ -53,7 +59,7 @@ class ChapterMarker
             }
 
             $nextOffsetMilliseconds = $chapterStart - $bestMatchSilenceKey;
-            if (abs($nextOffsetMilliseconds - $chapterOffset->milliseconds()) < 25000) {
+            if (abs($nextOffsetMilliseconds - $chapterOffset->milliseconds()) < $this->maxDiffMilliseconds) {
                 $chapterOffset = new TimeUnit($chapterStart - $bestMatchSilenceKey);
                 $chapterSilenceMatchFound = true;
             } else {
@@ -74,8 +80,8 @@ class ChapterMarker
             $potentialSilences = array_slice($silences, $start, $length, true);
 
             $index = 0;
-            foreach ($potentialSilences as $silenceStart => $silence) {
-
+            foreach ($potentialSilences as $silence) {
+                $silenceStart = $silence->getStart()->milliseconds();
                 $marker = "-";
                 if ($silenceStart == $bestMatchSilenceKey) {
                     $marker = "+";
@@ -108,7 +114,8 @@ class ChapterMarker
         }
 
         $lastStart = null;
-        foreach ($guessedChapters as $start => $chapter) {
+        foreach ($guessedChapters as $chapter) {
+            $start = $chapter->getStart()->milliseconds();
             if ($lastStart !== null && isset($guessedChapters[$lastStart])) {
                 $guessedChapters[$lastStart]->setLength(new TimeUnit($start - $lastStart));
             }

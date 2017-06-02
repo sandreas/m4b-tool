@@ -25,6 +25,8 @@ class AbstractCommand extends Command
     const OPTION_FORCE = "force";
     const OPTION_NO_CACHE = "no-cache";
 
+    const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
+
     /**
      * @var AbstractAdapter
      */
