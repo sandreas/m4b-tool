@@ -118,6 +118,7 @@ Codecs:
         foreach ($aacQualityOrder as $index => $encoderName) {
             if (preg_match("/\b" . preg_quote($encoderName) . "\b/i", $codecOutput)) {
                 $returnValue = $encoderName;
+                break;
             }
         }
 
