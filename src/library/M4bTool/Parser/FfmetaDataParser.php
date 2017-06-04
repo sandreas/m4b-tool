@@ -51,7 +51,7 @@ class FfmetaDataParser
 
                 $chapterParseStartIndex = $index;
                 $index++;
-                while(isset($this->lines[$index]) && $this->lines[$index][0]!="[") {
+                while(isset($this->lines[$index]) && strlen($this->lines[$index]) > 0 && $this->lines[$index][0]!="[") {
                     $chapterLine = trim($this->lines[$index]);
                     $pos = strpos($chapterLine, "=");
                     $propertyName = substr($chapterLine, 0, $pos);

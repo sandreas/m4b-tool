@@ -94,3 +94,21 @@ ffmpeg -i title01.mp4 -i title01.txt -c copy -map_chapters 1 title01c.mp4
 ffmpeg -i title01.mp4 -i title01.txt -c copy -map_metadata 1 -movflags disable_chpl title01m1.mp4
 ffmpeg -i title01.mp4 -i title01.txt -c copy -map_chapters 1 -movflags disable_chpl title01c1.mp4
 ```
+
+
+
+### Possible fixes for merge issue
+#### auto_convert 1 with mp3 sources
+https://trac.ffmpeg.org/ticket/4498
+
+ffmpeg -auto_convert 1 -f concat -i mylist.txt -c copy out.mp4
+
+
+#### pad audio
+ -af apad -shortest -avoid_negative_ts make_zero -fflags +genpts
+ https://stackoverflow.com/questions/35416110/ffmpeg-concat-video-and-audio-out-of-sync
+
+#### using filter instead of demuxer
+ffmpeg -i -i -i ...
+
+https://video.stackexchange.com/questions/19237/ffmpeg-concat-introduces-a-v-sync-problem

@@ -25,6 +25,8 @@ class ChapterMarker
     {
         $guessedChapters = [];
         $chapterOffset = new TimeUnit();
+
+        $silences = $this->normalizeSilenceArray($silences);
         /**
          * @var Chapter $chapter
          */
@@ -58,6 +60,9 @@ class ChapterMarker
                 $index++;
             }
 
+            if(stripos($chapter->getName(), "sommer") !== false) {
+                echo "";
+            }
             $nextOffsetMilliseconds = $chapterStart - $bestMatchSilenceKey;
             if (abs($nextOffsetMilliseconds - $chapterOffset->milliseconds()) < $this->maxDiffMilliseconds) {
                 $chapterOffset = new TimeUnit($chapterStart - $bestMatchSilenceKey);
@@ -132,5 +137,18 @@ class ChapterMarker
         if($this->debug) {
             echo $message;
         }
+    }
+
+    /**
+     * @param array Silence[]
+     * @return array Silence[]
+     */
+    private function normalizeSilenceArray(array $silences)
+    {
+        $normSilences = [];
+        foreach($silences as $silence) {
+            $normSilences[$silence->getStart()->milliseconds()] = $silence;
+        }
+        return $normSilences;
     }
 }

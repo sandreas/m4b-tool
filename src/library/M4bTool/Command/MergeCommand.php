@@ -22,6 +22,7 @@ class MergeCommand extends AbstractConversionCommand
     const ARGUMENT_MORE_INPUT_FILES = "more-input-files";
     const OPTION_OUTPUT_FILE = "output-file";
     const OPTION_INCLUDE_EXTENSIONS = "include-extensions";
+    const OPTION_MARK_TRACKS = "mark-tracks";
 
     protected $outputDirectory;
 
@@ -44,6 +45,9 @@ class MergeCommand extends AbstractConversionCommand
      */
     protected $chapters = [];
 
+    protected $totalDuration;
+    protected $trackMarkerSilences;
+
     protected function configure()
     {
         parent::configure();
@@ -56,6 +60,7 @@ class MergeCommand extends AbstractConversionCommand
         $this->addOption(static::OPTION_OUTPUT_FILE, null, InputOption::VALUE_REQUIRED, "output file");
         $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", "m4b,mp3,aac,mp4,flac");
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
+        $this->addOption(static::OPTION_MARK_TRACKS, null, InputOption::VALUE_NONE, "add chapter marks for each tracks");
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -64,10 +69,14 @@ class MergeCommand extends AbstractConversionCommand
 
 
         $this->loadInputFiles();
+        $this->loadInputMetadataFromFirstFile();
+        $this->convertInputFiles();
 
-        $this->buildChapters();
+
+        $this->buildChaptersFromConvertedFileDurations();
+
         $this->replaceChaptersWithMusicBrainz();
-        $this->convertFiles();
+        $this->addTrackMarkers();
 
         $this->mergeFiles();
 
@@ -75,7 +84,6 @@ class MergeCommand extends AbstractConversionCommand
 
         $this->tagMergedFile();
     }
-
 
 
     private function loadInputFiles()
@@ -124,67 +132,27 @@ class MergeCommand extends AbstractConversionCommand
         }
     }
 
-    private function buildChapters()
+    protected function loadInputMetadataFromFirstFile()
     {
-        $this->debug("== build chapters ==");
+        reset($this->filesToConvert);
+
+        $file = current($this->filesToMerge);
+        if (!$file) {
+            return;
+        }
+        $metaData = $this->readFileMetaData($file);
+        $this->setOptionIfUndefined("name", $metaData->getProperty("album"));
+        $this->setOptionIfUndefined("artist", $metaData->getProperty("artist"));
+        $this->setOptionIfUndefined("albumartist", $metaData->getProperty("album_artist"));
+        $this->setOptionIfUndefined("year", $metaData->getProperty("date"));
+        $this->setOptionIfUndefined("genre", $metaData->getProperty("genre"));
+        $this->setOptionIfUndefined("writer", $metaData->getProperty("writer"));
         if ($this->argInputFile->isDir()) {
             $autoCoverFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "cover.jpg");
             if ($autoCoverFile->isFile()) {
                 $this->setOptionIfUndefined("cover", $autoCoverFile);
             }
         }
-
-        $lastDuration = new TimeUnit();
-        foreach ($this->filesToConvert as $index => $file) {
-            $metaData = $this->readFileMetaData($file);
-
-            $this->setOptionIfUndefined("name", $metaData->getProperty("album"));
-            $this->setOptionIfUndefined("artist", $metaData->getProperty("artist"));
-            $this->setOptionIfUndefined("albumartist", $metaData->getProperty("album_artist"));
-            $this->setOptionIfUndefined("year", $metaData->getProperty("date"));
-            $this->setOptionIfUndefined("genre", $metaData->getProperty("genre"));
-            $this->setOptionIfUndefined("writer", $metaData->getProperty("writer"));
-
-
-            if ($metaData->getDuration()) {
-                $start = clone $lastDuration;
-                $end = clone $lastDuration;
-                $end->add($metaData->getDuration()->milliseconds());
-
-                $title = $metaData->getProperty("title");
-                if (!$title) {
-                    $title = $index + 1;
-                }
-                $this->chapters[] = new Chapter($start, $end, $title);
-                $lastDuration->add($metaData->getDuration()->milliseconds());
-            }
-
-        }
-    }
-
-
-    private function replaceChaptersWithMusicBrainz() {
-        $mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
-        if (!$mbId) {
-            return;
-        }
-
-        $fullLength = new TimeUnit();
-        $silences = [];
-        foreach($this->chapters as $chapter) {
-            $silences[] = new Silence($chapter->getStart(), new TimeUnit(0)); // very short silence simulation
-            $fullLength->add($chapter->getLength()->milliseconds());
-        }
-
-        $mbChapterParser = new MusicBrainzChapterParser($mbId);
-        $mbChapterParser->setCache($this->cache);
-
-        $mbXml = $mbChapterParser->loadRecordings();
-        $mbChapters = $mbChapterParser->parseRecordings($mbXml);
-
-        $chapterMarker = new ChapterMarker($this->optDebug);
-        $chapterMarker->setMaxDiffMilliseconds(25000);
-        $this->chapters = $chapterMarker->guessChapters($mbChapters, $silences, $fullLength);
 
     }
 
@@ -195,8 +163,7 @@ class MergeCommand extends AbstractConversionCommand
         }
     }
 
-
-    private function convertFiles()
+    private function convertInputFiles()
     {
 
         $padLen = strlen(count($this->filesToConvert));
@@ -207,12 +174,18 @@ class MergeCommand extends AbstractConversionCommand
             throw new Exception("Could not create temp directory " . $dir);
         }
         foreach ($this->filesToConvert as $index => $file) {
+
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
-            $outputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename($file->getExtension()) . $this->optAudioExtension);
+            $outputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
+            $finishedOutputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finsihed." . $this->optAudioExtension);
 
-            $this->filesToMerge[] = $outputFile;
+            $this->filesToMerge[] = $finishedOutputFile;
 
-            if ($outputFile->isFile() && $outputFile->getSize() > 0) {
+            if ($outputFile->isFile()) {
+                unlink($outputFile);
+            }
+
+            if ($finishedOutputFile->isFile() && $finishedOutputFile->getSize() > 0) {
                 $this->output->writeln("output file " . $outputFile . " already exists, skipping");
                 continue;
             }
@@ -220,11 +193,11 @@ class MergeCommand extends AbstractConversionCommand
             $command = [
                 "-vn",
                 "-i", $file,
-
+                "-map_metadata", "0",
             ];
 
-            if($this->optAudioCodec == "aac") {
-                $command[] =  "-strict";
+            if ($this->optAudioCodec == "aac") {
+                $command[] = "-strict";
                 $command[] = "experimental";
             }
 
@@ -253,7 +226,60 @@ class MergeCommand extends AbstractConversionCommand
                 throw new Exception("could not convert " . $file . " to " . $outputFile);
             }
 
+            rename($outputFile, $finishedOutputFile);
         }
+    }
+
+    private function buildChaptersFromConvertedFileDurations()
+    {
+        $this->debug("== build chapters ==");
+
+
+        $this->totalDuration = new TimeUnit();
+        foreach ($this->filesToMerge as $index => $file) {
+            $metaData = $this->readFileMetaData($file);
+
+            if (!$metaData->getDuration()) {
+                throw new Exception("could not get duration for file ".$file);
+            }
+
+            $start = clone $this->totalDuration;
+            $end = clone $this->totalDuration;
+            $end->add($metaData->getDuration()->milliseconds());
+
+            $title = $metaData->getProperty("title");
+            if (!$title) {
+                $title = $index + 1;
+            }
+            $this->chapters[$start->milliseconds()] = new Chapter($start, $end, $title);
+            $this->totalDuration->add($metaData->getDuration()->milliseconds());
+        }
+    }
+
+    private function replaceChaptersWithMusicBrainz()
+    {
+        $mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
+        if (!$mbId) {
+            return;
+        }
+
+        $fullLength = new TimeUnit();
+        $this->trackMarkerSilences = [];
+        foreach ($this->chapters as $chapter) {
+            $this->trackMarkerSilences[] = new Silence($chapter->getStart(), new TimeUnit(0)); // very short silence simulation
+            $fullLength->add($chapter->getLength()->milliseconds());
+        }
+
+        $mbChapterParser = new MusicBrainzChapterParser($mbId);
+        $mbChapterParser->setCache($this->cache);
+
+        $mbXml = $mbChapterParser->loadRecordings();
+        $mbChapters = $mbChapterParser->parseRecordings($mbXml);
+
+        $chapterMarker = new ChapterMarker($this->optDebug);
+        $chapterMarker->setMaxDiffMilliseconds(250000);
+        $this->chapters = $chapterMarker->guessChapters($mbChapters, $this->trackMarkerSilences, $fullLength);
+
     }
 
     private function mergeFiles()
@@ -263,13 +289,15 @@ class MergeCommand extends AbstractConversionCommand
         $listFile = $this->outputFile . ".listing.txt";
         file_put_contents($listFile, '');
 
+        $numberedChapters = array_values($this->chapters);
 
         /**
          * @var SplFileInfo $file
          */
-        foreach ($this->filesToMerge as $file) {
+        foreach ($this->filesToMerge as $index => $file) {
             $quotedFilename = "'" . implode("'\''", explode("'", $file->getRealPath())) . "'";
             file_put_contents($listFile, "file " . $quotedFilename . PHP_EOL, FILE_APPEND);
+            // file_put_contents($listFile, "duration " . ($numberedChapters[$index]->getLength()->milliseconds() / 1000) . PHP_EOL, FILE_APPEND);
         }
 
         $command = [
@@ -287,7 +315,7 @@ class MergeCommand extends AbstractConversionCommand
             throw new Exception("could not merge to " . $this->outputFile);
         }
 
-        if(!$this->optDebug) {
+        if (!$this->optDebug) {
             unlink($listFile);
             foreach ($this->filesToMerge as $file) {
                 unlink($file);
@@ -331,5 +359,20 @@ class MergeCommand extends AbstractConversionCommand
     {
         $tag = $this->inputOptionsToTag();
         $this->tagFile($this->outputFile, $tag);
+    }
+
+    private function addTrackMarkers()
+    {
+        if(!$this->input->getOption(static::OPTION_MARK_TRACKS)) {
+            return;
+        }
+
+        foreach($this->trackMarkerSilences as $index => $silence) {
+            $key = $silence->getStart()->milliseconds();
+            if(!isset($this->chapters[$key])) {
+                $this->chapters[$key] = new Chapter(clone $silence->getStart(), clone $silence->getLength(), "Track marker ".($index+1));
+            }
+
+        }
     }
 }
