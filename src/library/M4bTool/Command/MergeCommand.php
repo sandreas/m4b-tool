@@ -46,7 +46,11 @@ class MergeCommand extends AbstractConversionCommand
     protected $chapters = [];
 
     protected $totalDuration;
-    protected $trackMarkerSilences;
+
+    /**
+     * @var Silence[]
+     */
+    protected $trackMarkerSilences = [];
 
     protected function configure()
     {
@@ -69,6 +73,10 @@ class MergeCommand extends AbstractConversionCommand
 
 
         $this->loadInputFiles();
+
+
+
+
         $this->loadInputMetadataFromFirstFile();
         $this->convertInputFiles();
 
@@ -238,21 +246,21 @@ class MergeCommand extends AbstractConversionCommand
         $this->totalDuration = new TimeUnit();
         foreach ($this->filesToMerge as $index => $file) {
             $metaData = $this->readFileMetaData($file);
-
-            if (!$metaData->getDuration()) {
+            $duration = $this->readDuration($file);
+            if (!$duration) {
                 throw new Exception("could not get duration for file ".$file);
             }
 
             $start = clone $this->totalDuration;
             $end = clone $this->totalDuration;
-            $end->add($metaData->getDuration()->milliseconds());
+            $end->add($duration->milliseconds());
 
             $title = $metaData->getProperty("title");
             if (!$title) {
                 $title = $index + 1;
             }
             $this->chapters[$start->milliseconds()] = new Chapter($start, $end, $title);
-            $this->totalDuration->add($metaData->getDuration()->milliseconds());
+            $this->totalDuration->add($duration->milliseconds());
         }
     }
 
@@ -288,8 +296,6 @@ class MergeCommand extends AbstractConversionCommand
         // howto quote: http://ffmpeg.org/ffmpeg-utils.html#Quoting-and-escaping
         $listFile = $this->outputFile . ".listing.txt";
         file_put_contents($listFile, '');
-
-        $numberedChapters = array_values($this->chapters);
 
         /**
          * @var SplFileInfo $file
@@ -367,12 +373,13 @@ class MergeCommand extends AbstractConversionCommand
             return;
         }
 
+
         foreach($this->trackMarkerSilences as $index => $silence) {
             $key = $silence->getStart()->milliseconds();
             if(!isset($this->chapters[$key])) {
                 $this->chapters[$key] = new Chapter(clone $silence->getStart(), clone $silence->getLength(), "Track marker ".($index+1));
             }
-
         }
+        ksort($this->chapters);
     }
 }

@@ -5,6 +5,7 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Parser\FfmetaDataParser;
+use M4bTool\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -152,7 +153,7 @@ class AbstractCommand extends Command
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".art[" . $index . "].jpg");
     }
 
-    protected function audioFileToCoverFile(SplFileInfo $audioFile, $index = 0)
+    protected function audioFileToCoverFile(SplFileInfo $audioFile)
     {
         $dirName = dirname($audioFile);
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . "cover.jpg");
@@ -212,6 +213,30 @@ class AbstractCommand extends Command
         return $metaData;
     }
 
+    protected function readDuration(SplFileInfo $file) {
+        if($file->getExtension() == "mp4" || $file->getExtension() == "m4b") {
+            $proc = $this->shell([
+                "mp4info", $file
+            ], "getting duration for ".$file);
+            $output = $proc->getOutput().$proc->getErrorOutput();
+            preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
+            $seconds = $matches[1];
+            if(!$seconds) {
+                return null;
+            }
+            return new TimeUnit($seconds, TimeUnit::SECOND);
+        }
+
+        $meta = $this->readFileMetaData($file);
+        if(!$meta) {
+            return null;
+        }
+        return $meta->getDuration();
+
+
+
+    }
+
     private function readFileMetaDataOutput(SplFileInfo $file)
     {
         $cacheItem = $this->cache->getItem("metadata." . hash('sha256', $file->getRealPath()));
@@ -249,6 +274,7 @@ class AbstractCommand extends Command
         array_unshift($command, "mp4art");
         return $this->shell($command, $introductionMessage);
     }
+
     protected function shell(array $command, $introductionMessage = null)
     {
         $this->debug($this->formatShellCommand($command));

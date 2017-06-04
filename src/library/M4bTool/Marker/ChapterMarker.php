@@ -60,9 +60,6 @@ class ChapterMarker
                 $index++;
             }
 
-            if(stripos($chapter->getName(), "sommer") !== false) {
-                echo "";
-            }
             $nextOffsetMilliseconds = $chapterStart - $bestMatchSilenceKey;
             if (abs($nextOffsetMilliseconds - $chapterOffset->milliseconds()) < $this->maxDiffMilliseconds) {
                 $chapterOffset = new TimeUnit($chapterStart - $bestMatchSilenceKey);
@@ -82,10 +79,15 @@ class ChapterMarker
                 $start--;
                 $length = 2;
             }
+
+            /**
+             * @var Silence[] $potentialSilences
+             */
             $potentialSilences = array_slice($silences, $start, $length, true);
 
             $index = 0;
             foreach ($potentialSilences as $silence) {
+
                 $silenceStart = $silence->getStart()->milliseconds();
                 $marker = "-";
                 if ($silenceStart == $bestMatchSilenceKey) {
