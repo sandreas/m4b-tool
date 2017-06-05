@@ -108,23 +108,6 @@ class AbstractCommand extends Command
         $this->optDebugFile = new SplFileInfo($this->input->getOption(static::OPTION_DEBUG_FILENAME));
     }
 
-    protected function debug($message)
-    {
-        if (!$this->optDebug) {
-            return;
-        }
-
-        if (!touch($this->optDebugFile) || !$this->optDebugFile->isWritable()) {
-            throw new Exception("Debug file ".$this->optDebugFile." is not writable");
-        }
-
-        if (!is_scalar($message)) {
-            $message = var_export($message, true);
-        }
-        file_put_contents($this->optDebugFile, $message . PHP_EOL, FILE_APPEND);
-    }
-
-
     protected function ensureInputFileIsFile()
     {
         if (!$this->argInputFile->isFile()) {
@@ -159,10 +142,6 @@ class AbstractCommand extends Command
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . "cover.jpg");
     }
 
-    protected function isWindows() {
-        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-    }
-
     protected function stripInvalidFilenameChars($fileName)
     {
         if ($this->isWindows()) {
@@ -184,6 +163,11 @@ class AbstractCommand extends Command
         return str_replace($invalidFilenameChars, '-', $fileName);
     }
 
+    protected function isWindows()
+    {
+        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+    }
+
     protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)
     {
         if (is_bool($parameterValue)) {
@@ -202,77 +186,35 @@ class AbstractCommand extends Command
         return preg_split("/\r\n|\n|\r/", $chapterString);
     }
 
-    protected function readFileMetaData(SplFileInfo $file)
+    protected function readDuration(SplFileInfo $file)
     {
-        if (!$file->isFile()) {
-            throw new Exception("cannot read metadata, file " . $file . " does not exist");
-        }
+        if ($file->getExtension() == "mp4" || $file->getExtension() == "m4b") {
 
-        $metaData = new FfmetaDataParser();
-        $metaData->parse($this->readFileMetaDataOutput($file));
-        return $metaData;
-    }
-
-    protected function readDuration(SplFileInfo $file) {
-        if($file->getExtension() == "mp4" || $file->getExtension() == "m4b") {
+            $cacheItem = $this->cache->getItem("duration." . hash('sha256', $file->getRealPath()));
+            if($cacheItem->isHit()) {
+                return new TimeUnit($cacheItem->get(), TimeUnit::SECOND);
+            }
             $proc = $this->shell([
                 "mp4info", $file
-            ], "getting duration for ".$file);
-            $output = $proc->getOutput().$proc->getErrorOutput();
+            ], "getting duration for " . $file);
+            $output = $proc->getOutput() . $proc->getErrorOutput();
             preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
             $seconds = $matches[1];
-            if(!$seconds) {
+            if (!$seconds) {
                 return null;
             }
+            $cacheItem->set($seconds);
+            $this->cache->save($cacheItem);
             return new TimeUnit($seconds, TimeUnit::SECOND);
         }
 
         $meta = $this->readFileMetaData($file);
-        if(!$meta) {
+        if (!$meta) {
             return null;
         }
         return $meta->getDuration();
 
 
-
-    }
-
-    private function readFileMetaDataOutput(SplFileInfo $file)
-    {
-        $cacheItem = $this->cache->getItem("metadata." . hash('sha256', $file->getRealPath()));
-        $cacheItem->expiresAt(new \DateTime("+12 hours"));
-        if ($cacheItem->isHit()) {
-            return $cacheItem->get();
-        }
-
-        $command = [
-            "-i", $file,
-            "-f", "ffmetadata",
-            "-"
-        ];
-        $process = $this->ffmpeg($command, "reading metadata for file " . $file);
-        $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
-
-        $this->debug($metaDataOutput);
-
-        $cacheItem->set($metaDataOutput);
-        $this->cache->save($cacheItem);
-        return $metaDataOutput;
-
-    }
-
-    protected function ffmpeg($command, $introductionMessage=null) {
-        array_unshift($command, "ffmpeg");
-        return $this->shell($command, $introductionMessage);
-    }
-    protected function mp4chaps($command, $introductionMessage=null) {
-        array_unshift($command, "mp4chaps");
-        return $this->shell($command, $introductionMessage);
-    }
-
-    protected function mp4art($command, $introductionMessage=null) {
-        array_unshift($command, "mp4art");
-        return $this->shell($command, $introductionMessage);
     }
 
     protected function shell(array $command, $introductionMessage = null)
@@ -303,15 +245,20 @@ class AbstractCommand extends Command
         return $process;
     }
 
-    protected function updateProgress()
+    protected function debug($message)
     {
-        static $i = 0;
-        if (++$i % 60 == 0) {
-            $this->output->writeln('+');
-        } else {
-            $this->output->write('+');
-            usleep(1000000);
+        if (!$this->optDebug) {
+            return;
         }
+
+        if (!touch($this->optDebugFile) || !$this->optDebugFile->isWritable()) {
+            throw new Exception("Debug file " . $this->optDebugFile . " is not writable");
+        }
+
+        if (!is_scalar($message)) {
+            $message = var_export($message, true);
+        }
+        file_put_contents($this->optDebugFile, $message . PHP_EOL, FILE_APPEND);
     }
 
     protected function formatShellCommand(array $command)
@@ -324,6 +271,70 @@ class AbstractCommand extends Command
             return $part;
         }, $command);
         return implode(" ", $cmd);
+    }
+
+    protected function updateProgress()
+    {
+        static $i = 0;
+        if (++$i % 60 == 0) {
+            $this->output->writeln('+');
+        } else {
+            $this->output->write('+');
+            usleep(1000000);
+        }
+    }
+
+    protected function readFileMetaData(SplFileInfo $file)
+    {
+        if (!$file->isFile()) {
+            throw new Exception("cannot read metadata, file " . $file . " does not exist");
+        }
+
+        $metaData = new FfmetaDataParser();
+        $metaData->parse($this->readFileMetaDataOutput($file));
+        return $metaData;
+    }
+
+    private function readFileMetaDataOutput(SplFileInfo $file)
+    {
+        $cacheItem = $this->cache->getItem("metadata." . hash('sha256', $file->getRealPath()));
+        $cacheItem->expiresAt(new \DateTime("+12 hours"));
+        if ($cacheItem->isHit()) {
+            return $cacheItem->get();
+        }
+
+        $command = [
+            "-i", $file,
+            "-f", "ffmetadata",
+            "-"
+        ];
+        $process = $this->ffmpeg($command, "reading metadata for file " . $file);
+        $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
+
+        $this->debug($metaDataOutput);
+
+        $cacheItem->set($metaDataOutput);
+        $this->cache->save($cacheItem);
+        return $metaDataOutput;
+
+    }
+
+    protected function ffmpeg($command, $introductionMessage = null)
+    {
+        array_unshift($command, "ffmpeg");
+        return $this->shell($command, $introductionMessage);
+    }
+
+    protected function mp4chaps($command, $introductionMessage = null)
+    {
+        array_unshift($command, "mp4chaps");
+        return $this->shell($command, $introductionMessage);
+    }
+
+    protected function mp4art($command, $introductionMessage = null)
+    {
+        array_unshift($command, "mp4art");
+        return $this->shell($command, $introductionMessage);
     }
 
 

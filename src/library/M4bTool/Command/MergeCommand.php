@@ -251,16 +251,14 @@ class MergeCommand extends AbstractConversionCommand
                 throw new Exception("could not get duration for file ".$file);
             }
 
-            $start = clone $this->totalDuration;
-            $end = clone $this->totalDuration;
-            $end->add($duration->milliseconds());
-
+            $start = $this->totalDuration->milliseconds();
+            $this->totalDuration->add($duration->milliseconds());
+            // $end = $this->totalDuration->milliseconds();
             $title = $metaData->getProperty("title");
             if (!$title) {
                 $title = $index + 1;
             }
-            $this->chapters[$start->milliseconds()] = new Chapter($start, $end, $title);
-            $this->totalDuration->add($duration->milliseconds());
+            $this->chapters[$start] = new Chapter(new TimeUnit($start), new TimeUnit($duration->milliseconds()), $title);
         }
     }
 
@@ -271,22 +269,24 @@ class MergeCommand extends AbstractConversionCommand
             return;
         }
 
-        $fullLength = new TimeUnit();
-        $this->trackMarkerSilences = [];
-        foreach ($this->chapters as $chapter) {
-            $this->trackMarkerSilences[] = new Silence($chapter->getStart(), new TimeUnit(0)); // very short silence simulation
-            $fullLength->add($chapter->getLength()->milliseconds());
-        }
-
         $mbChapterParser = new MusicBrainzChapterParser($mbId);
         $mbChapterParser->setCache($this->cache);
 
         $mbXml = $mbChapterParser->loadRecordings();
         $mbChapters = $mbChapterParser->parseRecordings($mbXml);
 
-        $chapterMarker = new ChapterMarker($this->optDebug);
-        $chapterMarker->setMaxDiffMilliseconds(250000);
-        $this->chapters = $chapterMarker->guessChapters($mbChapters, $this->trackMarkerSilences, $fullLength);
+        $chapterMarker = new ChapterMarker();
+        $this->chapters = $chapterMarker->guessChaptersByTracks($mbChapters, $this->chapters);
+
+        $options = [
+            'first-chapter-offset' => 0,
+            'last-chapter-offset' => 0,
+            'merge-similar' => false,
+            'no-chapter-numbering' => false,
+            'chapter-pattern' => "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i",
+            'chapter-remove-chars' => "„“”",
+        ];
+        $this->chapters = $chapterMarker->normalizeChapters($this->chapters, $options);
 
     }
 

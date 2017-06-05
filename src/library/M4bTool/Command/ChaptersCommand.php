@@ -157,61 +157,74 @@ class ChaptersCommand extends AbstractCommand
         $mbChapters = $this->mbChapterParser->parseRecordings($mbXml);
         $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
         $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
-        $this->chapters = $chapterMarker->guessChapters($mbChapters, $this->silences, $this->silenceParser->getDuration());
+        $this->chapters = $chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $this->silenceParser->getDuration());
     }
 
     private function normalizeChapters()
     {
-        $chaptersAsLines = [];
-        $index = 0;
-        $chapterIndex = 1;
-        $lastChapterName = "";
-        $firstChapterOffset = (int)$this->input->getOption('first-chapter-offset');
-        $lastChapterOffset = (int)$this->input->getOption('last-chapter-offset');
 
+//
+//        $chaptersAsLines = [];
+//        $index = 0;
+//        $chapterIndex = 1;
+//        $lastChapterName = "";
+//        $firstChapterOffset = (int)$this->input->getOption('first-chapter-offset');
+//        $lastChapterOffset = (int)$this->input->getOption('last-chapter-offset');
+//
+//
+//        if ($firstChapterOffset) {
+//            $firstOffset = new TimeUnit(0, TimeUnit::MILLISECOND);
+//            $chaptersAsLines[] = new Chapter($firstOffset, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset First Chapter");
+//        }
+//        foreach ($this->chapters as $chapter) {
+//            $index++;
+//            $replacedChapterName = $this->replaceChapterName($chapter->getName());
+//            $suffix = "";
+//
+//            if ($lastChapterName != $replacedChapterName) {
+//                $chapterIndex = 1;
+//            } else {
+//                $chapterIndex++;
+//            }
+//            if ($this->input->getOption(self::OPTION_MERGE_SIMILAR)) {
+//                if ($chapterIndex > 1) {
+//                    continue;
+//                }
+//            } else if (!$this->input->getOption(static::OPTION_NO_CHAPTER_NUMBERING)) {
+//                $suffix = " (" . $chapterIndex . ")";
+//            }
+//            /**
+//             * @var TimeUnit $start
+//             */
+//            $start = $chapter->getStart();
+//            if ($index === 1 && $firstChapterOffset) {
+//                $start->add($firstChapterOffset, TimeUnit::MILLISECOND);
+//            }
+//
+//            $newChapter = clone $chapter;
+//            $newChapter->setStart($start);
+//            $newChapter->setName($replacedChapterName . $suffix);
+//            $chaptersAsLines[$newChapter->getStart()->milliseconds()] = $newChapter;
+//            $lastChapterName = $replacedChapterName;
+//        }
+//
+//        if ($lastChapterOffset && isset($chapter)) {
+//            $offsetChapterStart = new TimeUnit($chapter->getEnd()->milliseconds() - $lastChapterOffset, TimeUnit::MILLISECOND);
+//            $chaptersAsLines[$offsetChapterStart->milliseconds()] = new Chapter($offsetChapterStart, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset Last Chapter");
+//        }
+//        $firstChapterOffset =;
+//        $lastChapterOffset = ;
 
-        if ($firstChapterOffset) {
-            $firstOffset = new TimeUnit(0, TimeUnit::MILLISECOND);
-            $chaptersAsLines[] = new Chapter($firstOffset, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset First Chapter");
-        }
-        foreach ($this->chapters as $chapter) {
-            $index++;
-            $replacedChapterName = $this->replaceChapterName($chapter->getName());
-            $suffix = "";
-
-            if ($lastChapterName != $replacedChapterName) {
-                $chapterIndex = 1;
-            } else {
-                $chapterIndex++;
-            }
-            if ($this->input->getOption(self::OPTION_MERGE_SIMILAR)) {
-                if ($chapterIndex > 1) {
-                    continue;
-                }
-            } else if (!$this->input->getOption(static::OPTION_NO_CHAPTER_NUMBERING)) {
-                $suffix = " (" . $chapterIndex . ")";
-            }
-            /**
-             * @var TimeUnit $start
-             */
-            $start = $chapter->getStart();
-            if ($index === 1 && $firstChapterOffset) {
-                $start->add($firstChapterOffset, TimeUnit::MILLISECOND);
-            }
-
-            $newChapter = clone $chapter;
-            $newChapter->setStart($start);
-            $newChapter->setName($replacedChapterName . $suffix);
-            $chaptersAsLines[$newChapter->getStart()->milliseconds()] = $newChapter;
-            $lastChapterName = $replacedChapterName;
-        }
-
-        if ($lastChapterOffset && isset($chapter)) {
-            $offsetChapterStart = new TimeUnit($chapter->getEnd()->milliseconds() - $lastChapterOffset, TimeUnit::MILLISECOND);
-            $chaptersAsLines[$offsetChapterStart->milliseconds()] = new Chapter($offsetChapterStart, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset Last Chapter");
-        }
-
-        $this->chapters = $chaptersAsLines;
+        $chapterMarker = new ChapterMarker();
+        $options = [
+            static::OPTION_FIRST_CHAPTER_OFFSET =>  (int)$this->input->getOption(static::OPTION_FIRST_CHAPTER_OFFSET),
+            static::OPTION_LAST_CHAPTER_OFFSET => (int)$this->input->getOption(static::OPTION_LAST_CHAPTER_OFFSET),
+            static::OPTION_MERGE_SIMILAR => $this->input->getOption(static::OPTION_MERGE_SIMILAR),
+            static::OPTION_NO_CHAPTER_NUMBERING => $this->input->getOption(static::OPTION_NO_CHAPTER_NUMBERING),
+            static::OPTION_CHAPTER_PATTERN => $this->input->getOption(static::OPTION_CHAPTER_PATTERN),
+            static::OPTION_CHAPTER_REMOVE_CHARS => $this->input->getOption(static::OPTION_CHAPTER_REMOVE_CHARS),
+        ];
+        $this->chapters = $chapterMarker->normalizeChapters($this->chapters, $options);;
 
 
         $specialOffsetChapterNumbers = $this->parseSpecialOffsetChaptersOption();

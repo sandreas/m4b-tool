@@ -533,7 +533,7 @@ class ChapterMarkerTest extends TestCase
         /**
          * @var Chapter[] $guessedChapters
          */
-        $guessedChapters = $this->subject->guessChapters($this->musicBrainzChapters, $this->detectedSilences, $fullLength);
+        $guessedChapters = $this->subject->guessChaptersBySilences($this->musicBrainzChapters, $this->detectedSilences, $fullLength);
         $this->assertCount(154, $guessedChapters);
         $this->assertEquals("Kapitel 01: „Auf den ersten Blick“, Teil 1", $guessedChapters['0']->getName());
         $this->assertEquals("Kapitel 25: „Epilog - Tanz der Vampire“, Teil 1", $guessedChapters['47054760']->getName());

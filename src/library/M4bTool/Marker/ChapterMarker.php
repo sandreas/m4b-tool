@@ -21,7 +21,7 @@ class ChapterMarker
         $this->maxDiffMilliseconds = $maxDiffMilliseconds;
     }
 
-    public function guessChapters($mbChapters, $silences, TimeUnit $fullLength)
+    public function guessChaptersBySilences($mbChapters, $silences, TimeUnit $fullLength)
     {
         $guessedChapters = [];
         $chapterOffset = new TimeUnit();
@@ -133,6 +133,154 @@ class ChapterMarker
         $lastGuessedChapter->setLength(new TimeUnit($fullLength->milliseconds() - $lastGuessedChapter->getStart()->milliseconds()));
 
         return $guessedChapters;
+    }
+
+
+    /**
+     *
+     * @param Chapter[] $mbChapters
+     * @param Chapter[] $trackChapters
+     * @return Chapter[] $guessedChapters
+     */
+    public function guessChaptersByTracks($mbChapters, $trackChapters) {
+
+
+        $guessedChapters= [];
+        $index = 1;
+        foreach($trackChapters as $key => $trackChapter) {
+            $chapter = clone $trackChapter;
+
+            $this->debug("track ".($index).": ".$chapter->getStart()->format("%H:%I:%S.%V")." - ".$chapter->getEnd()->format("%H:%I:%S.%V")." (".$chapter->getStart()->milliseconds()."-".$chapter->getEnd()->milliseconds().", ".$chapter->getName().")");
+
+            reset($mbChapters);
+            $bestMatchChapter = current($mbChapters);
+
+            $chapterStartMillis = $chapter->getStart()->milliseconds();
+            $chapterEndMillis = $chapter->getEnd()->milliseconds();
+            foreach($mbChapters as $mbChapter) {
+                $mbStart = max($chapterStartMillis, $mbChapter->getStart()->milliseconds());
+                $mbEnd = min($chapterEndMillis, $mbChapter->getEnd()->milliseconds());
+                $mbOverlap = $mbEnd - $mbStart;
+
+                $bestMatchStart = max($chapterStartMillis,  $bestMatchChapter->getStart()->milliseconds());
+                $bestMatchEnd = min($chapterEndMillis, $bestMatchChapter->getEnd()->milliseconds());
+                $bestMatchOverlap = $bestMatchEnd - $bestMatchStart;
+
+                if($mbChapter === $bestMatchChapter || $mbOverlap > $bestMatchOverlap) {
+                    $this->debug("   +".$mbChapter->getStart()->format("%H:%I:%S.%V")." - ".$mbChapter->getEnd()->format("%H:%I:%S.%V")." (".$mbChapter->getStart()->milliseconds()."-".$mbChapter->getEnd()->milliseconds().", ".$mbChapter->getName().")");
+                    $bestMatchChapter = $mbChapter;
+                } else {
+                    $this->debug("   -".$mbChapter->getStart()->format("%H:%I:%S.%V")." - ".$mbChapter->getEnd()->format("%H:%I:%S.%V")." (".$mbChapter->getStart()->milliseconds()."-".$mbChapter->getEnd()->milliseconds().", ".$mbChapter->getName().")");
+                }
+            }
+
+            $chapter->setName($bestMatchChapter->getName());
+
+            $guessedChapters[$key] = $chapter;
+            $index++;
+        }
+        return $guessedChapters;
+
+
+    }
+
+
+    /**
+     * @param Chapter[] $chapters
+     */
+    public function normalizeChapters($chapters, $options)
+    {
+
+        $defaults = [
+            'first-chapter-offset' => 0,
+            'last-chapter-offset' => 0,
+            'merge-similar' => false,
+            'no-chapter-numbering' => false,
+            'chapter-pattern' => "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i",
+            'chapter-remove-chars' => "„“”",
+        ];
+
+        $options = array_merge($defaults, $options);
+
+
+        $chaptersAsLines = [];
+        $index = 0;
+        $chapterIndex = 1;
+        $lastChapterName = "";
+        $firstChapterOffset = (int)$options['first-chapter-offset'];
+        $lastChapterOffset = (int)$options['last-chapter-offset'];
+
+
+        if ($firstChapterOffset) {
+            $firstOffset = new TimeUnit(0, TimeUnit::MILLISECOND);
+            $chaptersAsLines[] = new Chapter($firstOffset, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset First Chapter");
+        }
+        foreach ($chapters as $chapter) {
+            $index++;
+            $replacedChapterName = $this->replaceChapterName($chapter->getName(), $options['chapter-pattern'], $options['chapter-remove-chars']);
+            $suffix = "";
+
+            if ($lastChapterName != $replacedChapterName) {
+                $chapterIndex = 1;
+            } else {
+                $chapterIndex++;
+            }
+            if ($options["merge-similar"]) {
+                if ($chapterIndex > 1) {
+                    continue;
+                }
+            } else if (!$options["no-chapter-numbering"]) {
+                $suffix = " (" . $chapterIndex . ")";
+            }
+            /**
+             * @var TimeUnit $start
+             */
+            $start = $chapter->getStart();
+            if ($index === 1 && $firstChapterOffset) {
+                $start->add($firstChapterOffset, TimeUnit::MILLISECOND);
+            }
+
+            $newChapter = clone $chapter;
+            $newChapter->setStart($start);
+            $newChapter->setName($replacedChapterName . $suffix);
+            $chaptersAsLines[$newChapter->getStart()->milliseconds()] = $newChapter;
+            $lastChapterName = $replacedChapterName;
+        }
+
+        if ($lastChapterOffset && isset($chapter)) {
+            $offsetChapterStart = new TimeUnit($chapter->getEnd()->milliseconds() - $lastChapterOffset, TimeUnit::MILLISECOND);
+            $chaptersAsLines[$offsetChapterStart->milliseconds()] = new Chapter($offsetChapterStart, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset Last Chapter");
+        }
+
+        return $chaptersAsLines;
+
+
+
+    }
+
+
+    private function replaceChapterName($chapter, $chapterPattern, $removeCharsParameter)
+    {
+        $chapterName = preg_replace($chapterPattern, "$1", $chapter);
+
+        // utf-8 aware char replacement
+        $removeChars = preg_split('//u', $removeCharsParameter, null, PREG_SPLIT_NO_EMPTY);
+        $presentChars = preg_split('//u', $chapterName, null, PREG_SPLIT_NO_EMPTY);
+        $replacedChars = array_diff($presentChars, $removeChars);
+        return implode("", $replacedChars);
+    }
+
+    private function parseSpecialOffsetChaptersOption($misplacedChapters)
+    {
+        $tmp = explode(',', $misplacedChapters);
+        $specialOffsetChapters = [];
+        foreach ($tmp as $key => $value) {
+            $chapterNumber = trim($value);
+            if (is_numeric($chapterNumber)) {
+                $specialOffsetChapters[] = (int)$chapterNumber;
+            }
+        }
+        return $specialOffsetChapters;
     }
 
     public function debug($message) {
