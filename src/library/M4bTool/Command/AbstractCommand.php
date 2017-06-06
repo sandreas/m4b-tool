@@ -338,4 +338,10 @@ class AbstractCommand extends Command
     }
 
 
+    protected function mp4tags($command, $introductionMessage = null)
+    {
+        array_unshift($command, "mp4tags");
+        return $this->shell($command, $introductionMessage);
+    }
+
 }

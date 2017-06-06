@@ -144,7 +144,7 @@ class MergeCommand extends AbstractConversionCommand
     {
         reset($this->filesToConvert);
 
-        $file = current($this->filesToMerge);
+        $file = current($this->filesToConvert);
         if (!$file) {
             return;
         }

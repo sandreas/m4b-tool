@@ -135,7 +135,7 @@ Codecs:
 
 
         if ($this->optAudioFormat === "mp4") {
-            $command = ["mp4tags"];
+            $command = [];
             $this->appendParameterToCommand($command, "-track", $tag->track);
             $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
             $this->appendParameterToCommand($command, "-song", $tag->title);
@@ -146,7 +146,7 @@ Codecs:
             $this->appendParameterToCommand($command, "-year", $tag->year);
             if (count($command) > 1) {
                 $command[] = $file;
-                $this->shell($command, "tagging file " . $file);
+                $this->mp4tags($command, "tagging file " . $file);
             }
 
             if ($tag->cover && !$this->input->getOption("skip-cover")) {
@@ -154,10 +154,10 @@ Codecs:
                     $this->output->writeln("cover file " . $tag->cover . " does not exist");
                     return;
                 }
-                $command = ["mp4art", "--add", $tag->cover, $file];
+                $command = [ "--add", $tag->cover, $file];
                 $this->appendParameterToCommand($command, "-f", $this->optForce);
-                $process = $this->shell($command, "adding cover " . $tag->cover . " to " . $file);
-                // $this->output->write($process->getOutput().$process->getErrorOutput());
+                $process = $this->mp4art($command, "adding cover " . $tag->cover . " to " . $file);
+                $this->debug($process->getOutput().$process->getErrorOutput());
             }
 
             return;
