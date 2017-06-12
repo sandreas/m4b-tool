@@ -1,16 +1,16 @@
 # m4b-tool
-m4b-tool is a tool to merge, split and manipulate m4b audiobook files with chapters
+m4b-tool is a is a wrapper for ffmpeg and mp4v2 to merge, split or and manipulate m4b audiobook files with chapters
 
 
 ## Features
 
-- Merge a set of audio files into a single m4b file
+- Merge a set of audio files (e.g. MP3 or AAC) into a single m4b file
 - Split a single m4b-File into several output files by chapters
 - Add chapters to an existing m4b-File via musicbrainz and silence detection
 
 ## Requirements
 
-m4b-tool is written in PHP (yes!) and uses ffmpeg and mp4v2 to perform conversions. Therefore you will need the following tools in your $PATH:
+m4b-tool is written in PHP (Yes, you read it correctly!) and uses ffmpeg and mp4v2 to perform conversions. Therefore you will need the following tools in your $PATH:
 
 - PHP >= 7.0
 - ffmpeg
@@ -86,6 +86,8 @@ the tag-title of every file for generating chapters.
 
 If there is a file `data/my-audio-book/cover.jpg`, it will be used as cover for the resulting m4b file.
 
+***Note*** If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](##chapter) for more info.
+
 ### Reference
 For all options, see `php dist/m4b-tool.phar merge --help`:
 
@@ -98,7 +100,8 @@ Arguments:
   more-input-files                               Other Input files or folders
 
 Options:
-  -d, --debug                                    show debugging info about chapters and silences
+  -d, --debug                                    file to dump debugging info
+      --debug-filename[=DEBUG-FILENAME]          file to dump debugging info [default: "m4b-tool_debug.log"]
   -f, --force                                    force overwrite of existing files
       --no-cache                                 do not use cached values and clear cache completely
       --audio-format[=AUDIO-FORMAT]              output format, that ffmpeg will use to create files [default: "m4b"]
@@ -116,6 +119,8 @@ Options:
       --skip-cover                               skip extracting and embedding covers
       --output-file=OUTPUT-FILE                  output file
       --include-extensions[=INCLUDE-EXTENSIONS]  comma separated list of file extensions to include (others are skipped) [default: "m4b,mp3,aac,mp4,flac"]
+  -m, --musicbrainz-id=MUSICBRAINZ-ID            musicbrainz id so load chapters from
+      --mark-tracks                              add chapter marks for each track
   -h, --help                                     Display this help message
   -q, --quiet                                    Do not output any message
   -V, --version                                  Display this application version
@@ -126,6 +131,7 @@ Options:
 
 Help:
   Merges a set of files to one single file
+
 ```
 
 
@@ -141,7 +147,7 @@ php m4b-tool.phar split --audio-format mp3 --audio-bitrate 96k --audio-channels 
 This splits the file `data/my-audio-book.m4b into` an mp3 file for each chapter, writing the files into `data/my-audio-book_splitted/`.
 
 ### Reference
-For all options, see `php dist/m4b-tool.phar merge --help`:
+For all options, see `php dist/m4b-tool.phar split --help`:
 
 ```
 Usage:
@@ -182,7 +188,7 @@ Help:
 ```
 
 
-## chapter
+##chapter
 
 Many m4b audiobook files do not contain valid chapters for different reasons. 
 If you have a well known audiobook, like ***Harry Potter and the Philosopher’s Stone***, 
