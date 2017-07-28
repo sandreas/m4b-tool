@@ -48,14 +48,14 @@ Install ffmpeg
 sudo apt install ffmpeg
 ```
 
-Install mp4v2
+Install mp4v2-utils
 ```
 sudo apt install mp4v2
 ```
 
 Install PHP > 7.0
 ```
-sudo apt install php-cli
+sudo apt install php-cli php-mbstring
 ```
 
 #### Windows
@@ -188,7 +188,7 @@ Help:
 ```
 
 
-##chapter
+## chapter
 
 Many m4b audiobook files do not contain valid chapters for different reasons. 
 If you have a well known audiobook, like ***Harry Potter and the Philosopher’s Stone***, 
