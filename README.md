@@ -19,6 +19,7 @@ m4b-tool is written in PHP (Yes, you read it correctly!) and uses ffmpeg and mp4
 
 ### Installation
 
+Download the built application from [releases](https://github.com/sandreas/m4b-tool/releases) and install the runtime dependencies (instructions follow).  Or, [build from source](#building-from-source).
 
 #### MacOS
 On MacOS you can use brew to install the most requirements:
@@ -50,24 +51,25 @@ sudo apt install ffmpeg
 
 Install mp4v2-utils
 ```
-sudo apt install mp4v2
+sudo apt install mp4v2-utils
 ```
 
 Install PHP > 7.0
 ```
-sudo apt install php-cli php-mbstring
+sudo apt install php-cli
 ```
 
 #### Windows
 
 Download releases from:
-ffmpeg: https://ffmpeg.org
+
+- ffmpeg: https://ffmpeg.org
  
-mp4tools: https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip
+- mp4tools: https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip
 
-PHP: http://windows.php.net/download/
+- PHP: http://windows.php.net/download/
 
-And place them in your %Path%
+And place them in your %PATH%
 
 
 # m4b-tool commands
@@ -320,6 +322,15 @@ m4b-tool contains a `build` script, which will create an executable m4b-tool.pha
 is required, so after installing composer, run following commands in project root folder:
 
 ## Linux / Unix
+
+### Install Dependencies (Ubuntu)
+
+```shell
+sudo apt install ffmpeg mp4v2-utils php-cli composer phpunit php-mbstring
+```
+
+### Build
+
 ```
 composer update
 ./build
@@ -330,8 +341,4 @@ composer update
 composer update
 build
 ```
-
-
-
-
 
