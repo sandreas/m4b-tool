@@ -21,6 +21,25 @@ m4b-tool is written in PHP (Yes, you read it correctly!) and uses ffmpeg and mp4
 
 Download the built application from [releases](https://github.com/sandreas/m4b-tool/releases) and install the runtime dependencies (instructions follow).  Or, [build from source](#building-from-source).
 
+#### General Notes / Known Issues
+
+If are not familiar with php configuration or did not already configure PHP, you might get an exception like this:
+
+```
+  [Exception]
+  DateTime::__construct(): It is not safe to rely on the system's timezone settings. You are *required* to use the date.time
+  zone setting or the date_default_timezone_set() function. In case you used any of those methods and you are still getting
+  this warning, you most likely misspelled the timezone identifier. We selected the timezone 'UTC' for now, but please set d
+  ate.timezone to select your timezone.
+```
+
+This happens, because PHP needs a preconfigured timezone to work correctly. There are two ways to fix this:
+
+1. Recommended: Set the value for date.timezone in your php.ini once, e.g. `date.timezone=Europe/Berlin`
+2. Set the configuration value for date.timezone inline everytime you use m4b-tool.phar, e.g. `php -d "date.timezone=UTC" m4b-tool.phar merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"`
+
+This will be addressed in a future release.
+
 #### MacOS
 On MacOS you can use brew to install the most requirements:
 
@@ -40,6 +59,7 @@ brew install mp4v2
 Install PHP >= 7.0
 
 Follow the instructions on https://php-osx.liip.ch
+
 
 
 #### Ubuntu
