@@ -220,12 +220,14 @@ class AbstractCommand extends Command
     protected function shell(array $command, $introductionMessage = null)
     {
         $this->debug($this->formatShellCommand($command));
-        $builder = new ProcessBuilder($command);
-        $process = $builder->getProcess();
-        $process->start();
         if ($introductionMessage) {
             $this->output->writeln($introductionMessage);
         }
+
+        $builder = new ProcessBuilder($command);
+        $process = $builder->getProcess();
+        $process->start();
+
 
         usleep(250000);
         $shouldShowEmptyLine = false;
@@ -318,6 +320,7 @@ class AbstractCommand extends Command
         return $metaDataOutput;
 
     }
+
 
     protected function ffmpeg($command, $introductionMessage = null)
     {

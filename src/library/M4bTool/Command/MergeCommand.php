@@ -209,6 +209,12 @@ class MergeCommand extends AbstractConversionCommand
                 $command[] = "experimental";
             }
 
+            if ($this->optAudioCodec == "libfdk_aac" && $this->bitrateStringToInt() <= 64000) {
+                $command[] = "-profile:a";
+                $command[] = "aac_he";
+            }
+
+
             if ($this->isWindows()) {
                 $command[] = "-vf";
                 $command[] = "scale=800:800";

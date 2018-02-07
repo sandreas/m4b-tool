@@ -55,19 +55,24 @@ class AbstractConversionCommand extends AbstractCommand
             "mp3" => "libmp3lame"
         ];
 
+        $this->optAudioCodec = $this->input->getOption(static::OPTION_AUDIO_CODEC);
         $this->optAudioFormat = $this->input->getOption(static::OPTION_AUDIO_FORMAT);
         $this->optAudioExtension = $this->optAudioFormat;
         if ($this->optAudioFormat === "m4b") {
             $this->optAudioFormat = "mp4";
         }
 
-        if (isset($audioFormatCodecMapping[$this->optAudioFormat])) {
-            if ($this->optAudioFormat === "mp4") {
-                $this->optAudioCodec = $this->loadHighestAvailableQualityAacCodec();
-            } else {
-                $this->optAudioCodec = $audioFormatCodecMapping[$this->optAudioFormat];
+
+        if(!$this->optAudioCodec) {
+            if (isset($audioFormatCodecMapping[$this->optAudioFormat])) {
+                if ($this->optAudioFormat === "mp4") {
+                    $this->optAudioCodec = $this->loadHighestAvailableQualityAacCodec();
+                } else {
+                    $this->optAudioCodec = $audioFormatCodecMapping[$this->optAudioFormat];
+                }
             }
         }
+
 
         $this->optAudioChannels = (int)$this->input->getOption(static::OPTION_AUDIO_CHANNELS);
         $this->optAudioBitRate = $this->input->getOption(static::OPTION_AUDIO_BIT_RATE);
@@ -176,6 +181,24 @@ Codecs:
         $tag->cover = $this->input->getOption("cover");
 
         return $tag;
+    }
+
+
+    protected function bitrateStringToInt() {
+        $multipliers = [
+            "k" => 1000,
+            "M" => 1000 * 1000,
+            "G" => 1000 * 1000* 1000,
+            "T" => 1000 * 1000* 1000* 1000,
+        ];
+        preg_match("/^([0-9]+)[\s]*(".implode("|", array_keys($multipliers)).")[\s]*$/U", $this->optAudioBitRate, $matches);
+
+        if(count($matches) !== 3) {
+            throw new \Exception("Invalid audio-bitrate: " . $this->optAudioBitRate);
+        }
+        $value = $matches[1];
+        $multiplier = $multipliers[$matches[2]];
+        return $value * $multiplier;
     }
 
     protected function appendFfmpegTagParametersToCommand(&$command, Tag $tag)

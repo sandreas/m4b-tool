@@ -1,5 +1,13 @@
 #!/usr/bin/env php
 <?php
+if (!ini_get('date.timezone')) {
+    $timezone = date_default_timezone_get();
+    if(!$timezone) {
+        $timezone = "UTC";
+    }
+    date_default_timezone_set($timezone);
+}
+
 
 require __DIR__.'/../vendor/autoload.php';
 
