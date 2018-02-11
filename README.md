@@ -21,7 +21,7 @@ m4b-tool is written in PHP (Yes, you read it correctly!) and uses ffmpeg and mp4
 
 Download the built application from [releases](https://github.com/sandreas/m4b-tool/releases) and install the runtime dependencies (instructions follow).  Or, [build from source](#building-from-source).
 
-#### General Notes / Known Issues
+#### General Notes
 
 If are not familiar with php configuration or did not already configure PHP, you might get an exception like this:
 
@@ -38,7 +38,7 @@ This happens, because PHP needs a preconfigured timezone to work correctly. Ther
 1. Recommended: Set the value for date.timezone in your php.ini once, e.g. `date.timezone=Europe/Berlin`
 2. Set the configuration value for date.timezone inline everytime you use m4b-tool.phar, e.g. `php -d "date.timezone=UTC" m4b-tool.phar merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"`
 
-This will be addressed in a future release.
+This issue should be fixed in v0.2 and later.
 
 #### MacOS
 On MacOS you can use brew to install the most requirements:
@@ -131,12 +131,14 @@ Options:
       --audio-bitrate[=AUDIO-BITRATE]            audio bitrate, e.g. 64k, 128k, ... [default: ""]
       --audio-samplerate[=AUDIO-SAMPLERATE]      audio samplerate, e.g. 22050, 44100, ... [default: ""]
       --audio-codec[=AUDIO-CODEC]                audio codec, e.g. libmp3lame, aac, ... [default: ""]
+      --adjust-for-ipod                          auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)      
       --name[=NAME]                              provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
       --artist[=ARTIST]                          provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
       --genre[=GENRE]                            provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
       --writer[=WRITER]                          provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
       --albumartist[=ALBUMARTIST]                provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
       --year[=YEAR]                              provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
+      --album[=ALBUM]                            provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
       --cover[=COVER]                            provide a custom audiobook cover, otherwise the existing metadata will be used
       --skip-cover                               skip extracting and embedding covers
       --output-file=OUTPUT-FILE                  output file
@@ -193,6 +195,7 @@ Options:
       --writer[=WRITER]                      provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
       --albumartist[=ALBUMARTIST]            provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
       --year[=YEAR]                          provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
+      --album[=ALBUM]                            provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
       --cover[=COVER]                        provide a custom audiobook cover, otherwise the existing metadata will be used
       --skip-cover                           skip extracting and embedding covers
       --use-existing-chapters-file           adjust chapter position by nearest found silence
