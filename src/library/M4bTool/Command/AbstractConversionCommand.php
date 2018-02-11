@@ -15,6 +15,7 @@ class AbstractConversionCommand extends AbstractCommand
     const OPTION_AUDIO_BIT_RATE = "audio-bitrate";
     const OPTION_AUDIO_SAMPLE_RATE = "audio-samplerate";
     const OPTION_AUDIO_CODEC = "audio-codec";
+    const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
 
     protected $optAudioFormat;
     protected $optAudioExtension;
@@ -22,6 +23,7 @@ class AbstractConversionCommand extends AbstractCommand
     protected $optAudioBitRate;
     protected $optAudioSampleRate;
     protected $optAudioCodec;
+    protected $optAdjustBitrateForIpod;
 
 
     protected function configure()
@@ -32,9 +34,10 @@ class AbstractConversionCommand extends AbstractCommand
         $this->addOption(static::OPTION_AUDIO_BIT_RATE, null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...", ""); // -ab 128k
         $this->addOption(static::OPTION_AUDIO_SAMPLE_RATE, null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...", ""); // -ar 44100
         $this->addOption(static::OPTION_AUDIO_CODEC, null, InputOption::VALUE_OPTIONAL, "audio codec, e.g. libmp3lame, aac, ...", ""); // -ar 44100
-
+        $this->addOption(static::OPTION_ADJUST_FOR_IPOD, null, InputOption::VALUE_NONE, "auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)");
 
         $this->addOption("name", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook name, otherwise the existing metadata will be used", "");
+        $this->addOption("album", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook album, otherwise the existing metadata for name will be used", "");
         $this->addOption("artist", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook artist, otherwise the existing metadata will be used", "");
         $this->addOption("genre", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook genre, otherwise the existing metadata will be used", "");
         $this->addOption("writer", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook writer, otherwise the existing metadata will be used", "");
@@ -55,6 +58,7 @@ class AbstractConversionCommand extends AbstractCommand
             "mp3" => "libmp3lame"
         ];
 
+        $this->optAdjustBitrateForIpod = $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD);
         $this->optAudioCodec = $this->input->getOption(static::OPTION_AUDIO_CODEC);
         $this->optAudioFormat = $this->input->getOption(static::OPTION_AUDIO_FORMAT);
         $this->optAudioExtension = $this->optAudioFormat;
@@ -141,6 +145,7 @@ Codecs:
 
         if ($this->optAudioFormat === "mp4") {
             $command = [];
+
             $this->appendParameterToCommand($command, "-track", $tag->track);
             $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
             $this->appendParameterToCommand($command, "-song", $tag->title);
@@ -149,6 +154,7 @@ Codecs:
             $this->appendParameterToCommand($command, "-writer", $tag->writer);
             $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
             $this->appendParameterToCommand($command, "-year", $tag->year);
+            $this->appendParameterToCommand($command, "-album", $tag->album);
             if (count($command) > 1) {
                 $command[] = $file;
                 $this->mp4tags($command, "tagging file " . $file);
@@ -173,6 +179,13 @@ Codecs:
     {
         $tag = new Tag;
         $tag->title = $this->input->getOption("name");
+        $tag->album = $this->input->getOption("album");
+
+        // on ipods / itunes, album is for title of the audio book
+        if($this->optAdjustBitrateForIpod && $tag->title && !$tag->album) {
+            $tag->album = $tag->title;
+        }
+
         $tag->artist = $this->input->getOption("artist");
         $tag->genre = $this->input->getOption("genre");
         $tag->writer = $this->input->getOption("writer");
@@ -199,6 +212,10 @@ Codecs:
         $value = $matches[1];
         $multiplier = $multipliers[$matches[2]];
         return $value * $multiplier;
+    }
+
+    protected function samplingRateToInt()  {
+        return (int)str_ireplace("hz", "", $this->optAudioSampleRate);
     }
 
     protected function appendFfmpegTagParametersToCommand(&$command, Tag $tag)

@@ -181,6 +181,62 @@ class MergeCommand extends AbstractConversionCommand
         if (!is_dir($dir) && !mkdir($dir, 0700, true)) {
             throw new Exception("Could not create temp directory " . $dir);
         }
+
+        if($this->optAdjustBitrateForIpod)  {
+            $this->output->writeln("ipod auto adjust active, getting track durations");
+            $this->totalDuration = new TimeUnit();
+            foreach ($this->filesToConvert as $index => $file) {
+                $duration = $this->readDuration($file);
+                if (!$duration) {
+                    throw new Exception("could not get duration for file ".$file." - needed for ". static::OPTION_ADJUST_FOR_IPOD);
+                }
+                $this->totalDuration->add($duration->milliseconds());
+            }
+
+            $samplingRateToBitrateMapping = [
+                8000 => "24k",
+                11025 => "32k",
+                12000 => "32k",
+                16000 => "48k",
+                22050 => "64k",
+                32000 => "96k",
+                44100 => "128k",
+            ];
+
+            $durationSeconds = $this->totalDuration->milliseconds() / 1000;
+            $maxSamplingRate = 2147483647 / $durationSeconds;
+            $this->output->writeln("total duration: ".$this->totalDuration->format("%H:%I:%S.%V")." (".$durationSeconds."s)");
+            $this->output->writeln("max possible sampling rate: ".$maxSamplingRate."Hz");
+            $this->output->writeln("desired sampling rate: ".$this->optAudioSampleRate."Hz");
+
+            if($this->samplingRateToInt() > $maxSamplingRate)  {
+                $this->output->writeln("desired sampling rate ".$this->optAudioSampleRate." is greater than max sampling rate ".$maxSamplingRate."Hz, trying to adjust");
+                $resultSamplingRate = 0;
+                $resultBitrate = "";
+                foreach($samplingRateToBitrateMapping as $samplingRate => $bitrate)  {
+                    if($samplingRate <= $maxSamplingRate)  {
+                        $resultSamplingRate = $samplingRate;
+                        $resultBitrate = $bitrate;
+                    } else   {
+                        break;
+                    }
+                }
+
+                if($resultSamplingRate === 0)   {
+                    throw new Exception("Could not find an according setting for ".static::OPTION_AUDIO_BIT_RATE." / ".static::OPTION_AUDIO_SAMPLE_RATE. " for option ".static::OPTION_ADJUST_FOR_IPOD);
+                }
+
+                $this->optAudioSampleRate = $resultSamplingRate;
+                $this->optAudioBitRate = $resultBitrate;
+                $this->output->writeln("adjusted to ".$resultBitrate."/".$resultSamplingRate);
+            } else   {
+                $this->output->writeln("desired sampling rate is ok, nothing to change");
+            }
+
+        }
+
+
+
         foreach ($this->filesToConvert as $index => $file) {
 
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
@@ -204,22 +260,33 @@ class MergeCommand extends AbstractConversionCommand
                 "-map_metadata", "0",
             ];
 
+
+            // backwards compatibility: ffmpeg needed experimental flag in earlier versions
             if ($this->optAudioCodec == "aac") {
                 $command[] = "-strict";
                 $command[] = "experimental";
             }
 
-            if ($this->optAudioCodec == "libfdk_aac" && $this->bitrateStringToInt() <= 64000) {
+            /*
+            // If you require a low audio bitrate, such as ≤ 32kbs/channel, then HE-AAC would be worth considering
+            // if your player or device can support HE-AAC decoding. Anything higher may benefit more from AAC-LC due
+            // to less processing. If in doubt use AAC-LC. All players supporting HE-AAC also support AAC-LC.
+            // These HE-AAC-Files are not iTunes compatible, although iTunes should support it
+            if ($this->optAudioCodec == "libfdk_aac" && $this->bitrateStringToInt() <= 32000) {
                 $command[] = "-profile:a";
                 $command[] = "aac_he";
             }
+            */
 
-
+            // workaround incompatible files (only for windows systems)
             if ($this->isWindows()) {
                 $command[] = "-vf";
                 $command[] = "scale=800:800";
             }
 
+            // Relocating moov atom to the beginning of the file can facilitate playback before the file is completely downloaded by the client.
+            $command[] = "-movflags";
+            $command[] = "+faststart";
 
             $this->appendParameterToCommand($command, "-y", $this->optForce);
             $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
