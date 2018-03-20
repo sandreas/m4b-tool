@@ -25,6 +25,7 @@ class AbstractCommand extends Command
     const OPTION_DEBUG_FILENAME = "debug-filename";
     const OPTION_FORCE = "force";
     const OPTION_NO_CACHE = "no-cache";
+    const OPTION_FFMPEG_THREADS = "ffmpeg-threads";
 
     const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
 
@@ -79,6 +80,8 @@ class AbstractCommand extends Command
         $this->addOption(static::OPTION_DEBUG_FILENAME, null, InputOption::VALUE_OPTIONAL, "file to dump debugging info", "m4b-tool_debug.log");
         $this->addOption(static::OPTION_FORCE, "f", InputOption::VALUE_NONE, "force overwrite of existing files");
         $this->addOption(static::OPTION_NO_CACHE, null, InputOption::VALUE_NONE, "do not use cached values and clear cache completely");
+        $this->addOption(static::OPTION_FFMPEG_THREADS, null, InputOption::VALUE_OPTIONAL, "specify -threads parameter for ffmpeg", "");
+
     }
 
     function dasherize($string)
@@ -199,7 +202,7 @@ class AbstractCommand extends Command
             ], "getting duration for " . $file);
             $output = $proc->getOutput() . $proc->getErrorOutput();
             preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
-            $seconds = $matches[1];
+            $seconds = isset($matches[1]) ? $matches[1]: 0;
             if (!$seconds) {
                 return null;
             }
@@ -324,6 +327,12 @@ class AbstractCommand extends Command
 
     protected function ffmpeg($command, $introductionMessage = null)
     {
+        // if($this->)
+        $threads = (int)$this->input->getOption(static::OPTION_FFMPEG_THREADS);
+        if($threads > 0) {
+            array_unshift($command, $threads);
+            array_unshift($command, "-threads");
+        }
         array_unshift($command, "ffmpeg");
         return $this->shell($command, $introductionMessage);
     }
