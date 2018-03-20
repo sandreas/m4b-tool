@@ -44,6 +44,9 @@ class AbstractConversionCommand extends AbstractCommand
         $this->addOption("albumartist", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook albumartist, otherwise the existing metadata will be used", "");
         $this->addOption("year", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook year, otherwise the existing metadata will be used", "");
         $this->addOption("cover", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook cover, otherwise the existing metadata will be used", null);
+        $this->addOption("comment", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook comment, otherwise the existing metadata will be used", null);
+        $this->addOption("copyright", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook copyright, otherwise the existing metadata will be used", null);
+        $this->addOption("encoded-by", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook encoded-by, otherwise the existing metadata will be used", null);
 
         $this->addOption("skip-cover", null, InputOption::VALUE_NONE, "skip extracting and embedding covers", null);
     }
@@ -155,6 +158,11 @@ Codecs:
             $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
             $this->appendParameterToCommand($command, "-year", $tag->year);
             $this->appendParameterToCommand($command, "-album", $tag->album);
+            $this->appendParameterToCommand($command, "-comment", $tag->comment);
+            $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
+            $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy);
+
+
             if (count($command) > 1) {
                 $command[] = $file;
                 $this->mp4tags($command, "tagging file " . $file);
@@ -192,6 +200,11 @@ Codecs:
         $tag->albumArtist = $this->input->getOption("albumartist");
         $tag->year = $this->input->getOption("year");
         $tag->cover = $this->input->getOption("cover");
+
+        $tag->comment = $this->input->getOption("comment");
+        $tag->copyright = $this->input->getOption("copyright");
+        $tag->encodedBy = $this->input->getOption("encoded-by");
+
 
         return $tag;
     }
@@ -265,5 +278,21 @@ Codecs:
             $command[] = 'date=' . $tag->year;
         }
 
+        if ($tag->comment) {
+            $command[] = '-metadata';
+            $command[] = 'comment=' . $tag->comment;
+        }
+
+
+        if ($tag->copyright) {
+            $command[] = '-metadata';
+            $command[] = 'copyright=' . $tag->copyright;
+        }
+
+
+        if ($tag->encodedBy) {
+            $command[] = '-metadata';
+            $command[] = 'encoded_by=' . $tag->encodedBy;
+        }
     }
 }
