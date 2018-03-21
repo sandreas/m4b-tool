@@ -26,8 +26,8 @@ class AbstractCommand extends Command
     const OPTION_FORCE = "force";
     const OPTION_NO_CACHE = "no-cache";
     const OPTION_FFMPEG_THREADS = "ffmpeg-threads";
-
     const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
+    const OPTION_CONVERT_CHARSET = "convert-charset";
 
     /**
      * @var AbstractAdapter
@@ -81,6 +81,7 @@ class AbstractCommand extends Command
         $this->addOption(static::OPTION_FORCE, "f", InputOption::VALUE_NONE, "force overwrite of existing files");
         $this->addOption(static::OPTION_NO_CACHE, null, InputOption::VALUE_NONE, "do not use cached values and clear cache completely");
         $this->addOption(static::OPTION_FFMPEG_THREADS, null, InputOption::VALUE_OPTIONAL, "specify -threads parameter for ffmpeg", "");
+        $this->addOption(static::OPTION_CONVERT_CHARSET, null, InputOption::VALUE_OPTIONAL, "Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems)", "");
 
     }
 
@@ -200,7 +201,9 @@ class AbstractCommand extends Command
             $proc = $this->shell([
                 "mp4info", $file
             ], "getting duration for " . $file);
+
             $output = $proc->getOutput() . $proc->getErrorOutput();
+
             preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
             $seconds = isset($matches[1]) ? $matches[1]: 0;
             if (!$seconds) {
@@ -225,6 +228,27 @@ class AbstractCommand extends Command
         $this->debug($this->formatShellCommand($command));
         if ($introductionMessage) {
             $this->output->writeln($introductionMessage);
+        }
+
+        $convertCharset = strtolower($this->input->getOption(static::OPTION_CONVERT_CHARSET));
+        if($convertCharset == "" && $this->isWindows()) {
+            $convertCharset = "windows-1252";
+        }
+
+        if($convertCharset && in_array($command[0], ["mp4art", "mp4chaps", "mp4extract", "mp4file", "mp4info","mp4subtitle", "mp4tags", "mp4track", "mp4trackdump"])) {
+            if(function_exists("mb_convert_encoding")) {
+                $availableCharsets = array_map('strtolower', mb_list_encodings());
+                if(!in_array($convertCharset, $availableCharsets, true)) {
+                    throw new Exception("charset ".$convertCharset." is not supported - use one of these instead: ".implode(", ", $availableCharsets)." ");
+                }
+
+                $this->debug("using charset ".$convertCharset);
+                foreach($command as $key => $part) {
+                    $command[$key] = mb_convert_encoding($part, "UTF-8", $convertCharset);
+                }
+            } else if(!$this->optForce) {
+                throw new Exception("mbstring extension is not loaded - please enable in php.ini or use --force to try with unexpected results");
+            }
         }
 
         $builder = new ProcessBuilder($command);

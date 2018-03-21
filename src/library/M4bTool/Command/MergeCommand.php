@@ -241,7 +241,7 @@ class MergeCommand extends AbstractConversionCommand
 
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
             $outputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
-            $finishedOutputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finsihed." . $this->optAudioExtension);
+            $finishedOutputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
 
             $this->filesToMerge[] = $finishedOutputFile;
 
