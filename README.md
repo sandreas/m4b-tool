@@ -12,7 +12,7 @@ m4b-tool is a is a wrapper for ffmpeg and mp4v2 to merge, split or and manipulat
 
 m4b-tool is written in PHP (Yes, you read it correctly!) and uses ffmpeg and mp4v2 to perform conversions. Therefore you will need the following tools in your $PATH:
 
-- PHP >= 7.0
+- PHP >= 7.0 with mbstring extension enabled
 - ffmpeg
 - mp4v2
 
@@ -23,22 +23,7 @@ Download the built application from [releases](https://github.com/sandreas/m4b-t
 
 #### General Notes
 
-If are not familiar with php configuration or did not already configure PHP, you might get an exception like this:
-
-```
-  [Exception]
-  DateTime::__construct(): It is not safe to rely on the system's timezone settings. You are *required* to use the date.time
-  zone setting or the date_default_timezone_set() function. In case you used any of those methods and you are still getting
-  this warning, you most likely misspelled the timezone identifier. We selected the timezone 'UTC' for now, but please set d
-  ate.timezone to select your timezone.
-```
-
-This happens, because PHP needs a preconfigured timezone to work correctly. There are two ways to fix this:
-
-1. Recommended: Set the value for date.timezone in your php.ini once, e.g. `date.timezone=Europe/Berlin`
-2. Set the configuration value for date.timezone inline everytime you use m4b-tool.phar, e.g. `php -d "date.timezone=UTC" m4b-tool.phar merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"`
-
-This issue should be fixed in v0.2 and later.
+If you think there is an issue with m4b-tool, first head over to the [FAQ and Troubleshooting](#faq-and-troubleshooting).
 
 #### MacOS
 On MacOS you can use brew to install the most requirements:
@@ -338,6 +323,61 @@ Help:
   Can add Chapters to m4b files via different types of inputs
 
 ```
+
+
+# FAQ / Troubleshooting
+
+## PHP Exceptions
+
+If you are getting PHP Exceptions, most of the time this is a configuration issue. If are not familiar with php configuration, 
+follow instructions, to fix a few known issues:
+
+
+### Exception DateTime::__construct
+
+
+```
+  [Exception]
+  DateTime::__construct(): It is not safe to rely on the system's timezone settings. You are *required* to use the date.time
+  zone setting or the date_default_timezone_set() function. In case you used any of those methods and you are still getting
+  this warning, you most likely misspelled the timezone identifier. We selected the timezone 'UTC' for now, but please set d
+  ate.timezone to select your timezone.
+```
+
+This happens, because PHP needs a preconfigured timezone to work correctly. There are two ways to fix this:
+
+1. Recommended: Set the value for date.timezone in your php.ini once, e.g. `date.timezone=Europe/Berlin`
+2. Set the configuration value for date.timezone inline everytime you use m4b-tool.phar, e.g. `php -d "date.timezone=UTC" m4b-tool.phar merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"`
+
+This issue should be fixed in v0.2 and later.
+
+### Exception Charset not supported
+
+```
+[Exception]
+  charset windows-1252 is not supported - use one of these instead: utf-8
+```
+
+This mostly happens on windows, because the mbstring-Extension is used to internally convert charsets, so that special chars like german umlauts 
+are supported on every platform. To fix this, you need to enable the mbstring-extension:
+
+Run `php --ini` on the command line:
+```
+C:\>php --ini
+...
+Loaded Configuration File:         C:\Program Files\php\php.ini
+```
+
+Open the configuration file (e.g. `C:\Program Files\php\php.ini`) in a text editor and search for `extension=`. On Windows there should be an item like this:
+```
+;extension=php_mbstring.dll
+```
+remove the `;` to enable the extension:
+```
+extension=php_mbstring.dll
+```
+
+Now everything should work as expected.
 
 # Building from source
 
