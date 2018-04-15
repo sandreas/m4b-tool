@@ -23,7 +23,7 @@ Download the built application from [releases](https://github.com/sandreas/m4b-t
 
 #### General Notes
 
-If you think there is an issue with m4b-tool, first head over to the [FAQ and Troubleshooting](#faq-and-troubleshooting).
+If you think there is an issue with m4b-tool, first head over to the [Troubleshooting](#Troubleshooting).
 
 #### MacOS
 On MacOS you can use brew to install the most requirements:
@@ -325,12 +325,12 @@ Help:
 ```
 
 
-# FAQ / Troubleshooting
+# Troubleshooting
 
 ## PHP Exceptions
 
-If you are getting PHP Exceptions, most of the time this is a configuration issue. If are not familiar with php configuration, 
-follow instructions, to fix a few known issues:
+If you are getting PHP Exceptions, it is a configuration issue with PHP in most cases. If are not familiar with PHP configuration, 
+you could follow these instructions, to fix a few known issues:
 
 
 ### Exception DateTime::__construct
@@ -349,7 +349,7 @@ This happens, because PHP needs a preconfigured timezone to work correctly. Ther
 1. Recommended: Set the value for date.timezone in your php.ini once, e.g. `date.timezone=Europe/Berlin`
 2. Set the configuration value for date.timezone inline everytime you use m4b-tool.phar, e.g. `php -d "date.timezone=UTC" m4b-tool.phar merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"`
 
-This issue should be fixed in v0.2 and later.
+**This issue should be fixed in v0.2 and later.**
 
 ### Exception Charset not supported
 
