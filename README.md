@@ -23,7 +23,7 @@ Download the built application from [releases](https://github.com/sandreas/m4b-t
 
 #### General Notes
 
-If you think there is an issue with m4b-tool, first head over to the [Troubleshooting](#Troubleshooting).
+If you think there is an issue with m4b-tool, first head over to the [Known Issues](#known-issues).
 
 #### MacOS
 On MacOS you can use brew to install the most requirements:
@@ -325,7 +325,7 @@ Help:
 ```
 
 
-# Troubleshooting
+# Known Issues
 
 ## PHP Exceptions
 
@@ -333,7 +333,7 @@ If you are getting PHP Exceptions, it is a configuration issue with PHP in most 
 you could follow these instructions, to fix a few known issues:
 
 
-### Exception DateTime::__construct
+### Exception with DateTime::__construct
 
 
 ```
