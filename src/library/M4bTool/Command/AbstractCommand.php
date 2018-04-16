@@ -26,6 +26,8 @@ class AbstractCommand extends Command
     const OPTION_FORCE = "force";
     const OPTION_NO_CACHE = "no-cache";
     const OPTION_FFMPEG_THREADS = "ffmpeg-threads";
+    const OPTION_FFMPEG_PARAM = "ffmpeg-param";
+
     const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
     const OPTION_CONVERT_CHARSET = "convert-charset";
 
@@ -82,7 +84,7 @@ class AbstractCommand extends Command
         $this->addOption(static::OPTION_NO_CACHE, null, InputOption::VALUE_NONE, "do not use cached values and clear cache completely");
         $this->addOption(static::OPTION_FFMPEG_THREADS, null, InputOption::VALUE_OPTIONAL, "specify -threads parameter for ffmpeg", "");
         $this->addOption(static::OPTION_CONVERT_CHARSET, null, InputOption::VALUE_OPTIONAL, "Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems)", "");
-
+        $this->addOption(static::OPTION_FFMPEG_PARAM, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --".static::OPTION_FFMPEG_PARAM.'="-max_muxing_queue_size" ' .'--'.static::OPTION_FFMPEG_PARAM.'="1000" for ffmpeg [...] -max_muxing_queue_size 1000)', []);
     }
 
     function dasherize($string)
@@ -357,6 +359,14 @@ class AbstractCommand extends Command
             array_unshift($command, $threads);
             array_unshift($command, "-threads");
         }
+
+        $ffmpegArgs = $this->input->getOption(static::OPTION_FFMPEG_PARAM);
+        if(count($ffmpegArgs) > 0) {
+            foreach($ffmpegArgs as $arg) {
+                array_push($command, $arg);
+            }
+        }
+
         array_unshift($command, "ffmpeg");
         return $this->shell($command, $introductionMessage);
     }
