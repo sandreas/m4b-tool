@@ -23,6 +23,7 @@ class MergeCommand extends AbstractConversionCommand
     const OPTION_OUTPUT_FILE = "output-file";
     const OPTION_INCLUDE_EXTENSIONS = "include-extensions";
     const OPTION_MARK_TRACKS = "mark-tracks";
+    const OPTION_AUTO_SPLIT_SECONDS = "auto-split-seconds";
 
     protected $outputDirectory;
 
@@ -65,6 +66,8 @@ class MergeCommand extends AbstractConversionCommand
         $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", "m4b,mp3,aac,mp4,flac");
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
         $this->addOption(static::OPTION_MARK_TRACKS, null, InputOption::VALUE_NONE, "add chapter marks for each track");
+        $this->addOption(static::OPTION_AUTO_SPLIT_SECONDS, null, InputOption::VALUE_OPTIONAL, "auto split chapters after x seconds, if track is too long");
+
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -88,6 +91,8 @@ class MergeCommand extends AbstractConversionCommand
         $this->importChapters();
 
         $this->tagMergedFile();
+
+
     }
 
 
@@ -338,9 +343,10 @@ class MergeCommand extends AbstractConversionCommand
     {
         $this->debug("== build chapters ==");
 
+        $autoSplitMilliSeconds = (int)$this->input->getOption(static::OPTION_AUTO_SPLIT_SECONDS) * 1000;
 
         $this->totalDuration = new TimeUnit();
-        foreach ($this->filesToMerge as $index => $file) {
+        foreach ($this->filesToMerge as $fileIndex => $file) {
             $metaData = $this->readFileMetaData($file);
             $duration = $this->readDuration($file);
             if (!$duration) {
@@ -352,9 +358,25 @@ class MergeCommand extends AbstractConversionCommand
             // $end = $this->totalDuration->milliseconds();
             $title = $metaData->getProperty("title");
             if (!$title) {
-                $title = $index + 1;
+                $title = $fileIndex + 1;
             }
-            $this->chapters[$start] = new Chapter(new TimeUnit($start), new TimeUnit($duration->milliseconds()), $title);
+
+            $index = 1;
+            while ($start < $this->totalDuration->milliseconds()) {
+                $indexedTitle = $title;
+                if($autoSplitMilliSeconds > 0 && $autoSplitMilliSeconds < $duration->milliseconds()) {
+                    $indexedTitle .= "_".($index++)."";
+                }
+                $this->chapters[$start] = new Chapter(new TimeUnit($start), new TimeUnit($duration->milliseconds()), $indexedTitle);
+
+
+                if($autoSplitMilliSeconds <= 0 || $autoSplitMilliSeconds > $duration->milliseconds()) {
+                    break;
+                }
+                $start += $autoSplitMilliSeconds;
+            }
+
+
         }
     }
 
