@@ -346,6 +346,7 @@ class MergeCommand extends AbstractConversionCommand
         $autoSplitMilliSeconds = (int)$this->input->getOption(static::OPTION_AUTO_SPLIT_SECONDS) * 1000;
 
         $this->totalDuration = new TimeUnit();
+        $lastTitle = null;
         foreach ($this->filesToMerge as $fileIndex => $file) {
             $metaData = $this->readFileMetaData($file);
             $duration = $this->readDuration($file);
@@ -357,27 +358,36 @@ class MergeCommand extends AbstractConversionCommand
             $this->totalDuration->add($duration->milliseconds());
             // $end = $this->totalDuration->milliseconds();
             $title = $metaData->getProperty("title");
-            if (!$title) {
+            if(empty($title)) {
                 $title = $fileIndex + 1;
             }
-
-            $index = 1;
-            while ($start < $this->totalDuration->milliseconds()) {
-                $indexedTitle = $title;
-                if($autoSplitMilliSeconds > 0 && $autoSplitMilliSeconds < $duration->milliseconds()) {
-                    $indexedTitle .= "_".($index++)."";
+            $indexedTitle = $title;
+            if($title == $lastTitle) {
+                $indexedTitle = $title." (".($fileIndex+1).")";
+                if($fileIndex == 1 && isset($this->chapters[0])) {
+                    $this->chapters[0]->setName($this->chapters[0]->getName()." (1)");
                 }
-                $this->chapters[$start] = new Chapter(new TimeUnit($start), new TimeUnit($duration->milliseconds()), $indexedTitle);
+            }
+            $chapterIndex = 1;
+            while ($start < $this->totalDuration->milliseconds()) {
+                if($autoSplitMilliSeconds > 0 && $autoSplitMilliSeconds < $duration->milliseconds()) {
+                    $indexedTitle .= " (".($chapterIndex++).")";
+                }
 
+                $this->chapters[$start] = new Chapter(new TimeUnit($start), new TimeUnit($duration->milliseconds()), $indexedTitle);
 
                 if($autoSplitMilliSeconds <= 0 || $autoSplitMilliSeconds > $duration->milliseconds()) {
                     break;
                 }
                 $start += $autoSplitMilliSeconds;
             }
-
-
+            $lastTitle = $title;
         }
+
+        foreach($this->chapters as $chapter) {
+            printf("%s\n", $chapter->getName());
+        }
+        exit;
     }
 
     private function replaceChaptersWithMusicBrainz()
