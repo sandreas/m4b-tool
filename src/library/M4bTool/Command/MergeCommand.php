@@ -370,11 +370,12 @@ class MergeCommand extends AbstractConversionCommand
             }
             $chapterIndex = 1;
             while ($start < $this->totalDuration->milliseconds()) {
+                $chapterTitle = $indexedTitle;
                 if($autoSplitMilliSeconds > 0 && $autoSplitMilliSeconds < $duration->milliseconds()) {
-                    $indexedTitle .= " (".($chapterIndex++).")";
+                    $chapterTitle = $indexedTitle." - (".($chapterIndex++).")";
                 }
 
-                $this->chapters[$start] = new Chapter(new TimeUnit($start), new TimeUnit($duration->milliseconds()), $indexedTitle);
+                $this->chapters[$start] = new Chapter(new TimeUnit($start), new TimeUnit($duration->milliseconds()), $chapterTitle);
 
                 if($autoSplitMilliSeconds <= 0 || $autoSplitMilliSeconds > $duration->milliseconds()) {
                     break;
