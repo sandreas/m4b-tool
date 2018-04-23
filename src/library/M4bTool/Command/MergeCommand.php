@@ -384,11 +384,6 @@ class MergeCommand extends AbstractConversionCommand
             }
             $lastTitle = $title;
         }
-
-        foreach($this->chapters as $chapter) {
-            printf("%s\n", $chapter->getName());
-        }
-        exit;
     }
 
     private function replaceChaptersWithMusicBrainz()
