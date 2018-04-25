@@ -253,6 +253,7 @@ class MergeCommand extends AbstractConversionCommand
 
             $command = [
                 "-i", $file,
+                "-max_muxing_queue_size", "9999",
                 "-map_metadata", "0",
             ];
 
@@ -465,6 +466,7 @@ class MergeCommand extends AbstractConversionCommand
             "-safe", "0",
             "-vn",
             "-i", $listFile,
+            "-max_muxing_queue_size", "9999",
             "-c", "copy",
             "-f", "mp4",
             $this->outputFile
