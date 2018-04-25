@@ -79,8 +79,7 @@ class MergeCommand extends AbstractConversionCommand
 
         $this->loadInputMetadataFromFirstFile();
         $this->convertInputFiles();
-
-
+        $this->lookupAndAddCover();
         $this->buildChaptersFromConvertedFileDurations();
 
         $this->replaceChaptersWithMusicBrainz();
@@ -157,33 +156,6 @@ class MergeCommand extends AbstractConversionCommand
         $this->setOptionIfUndefined("year", $metaData->getProperty("date"));
         $this->setOptionIfUndefined("genre", $metaData->getProperty("genre"));
         $this->setOptionIfUndefined("writer", $metaData->getProperty("writer"));
-        if ($this->argInputFile->isDir() && !$this->input->getOption("skip-cover")) {
-            $autoCoverFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "cover.jpg");
-            if ($autoCoverFile->isFile()) {
-                $this->setOptionIfUndefined("cover", $autoCoverFile);
-            } else {
-                $autoCoverFile = null;
-                $iterator = new \DirectoryIterator($this->argInputFile);
-                foreach ($iterator as $potentialCoverFile) {
-                    if ($potentialCoverFile->isDot() || $potentialCoverFile->isDir()) {
-                        continue;
-                    }
-
-                    $lowerExt = strtolower(ltrim($potentialCoverFile->getExtension(), "."));
-                    if ($lowerExt === "jpg" || $lowerExt === "jpeg" || $lowerExt === "png") {
-                        $autoCoverFile = clone $potentialCoverFile->getFileInfo();
-                        break;
-
-                    }
-
-                }
-
-                if ($autoCoverFile && $autoCoverFile->isFile()) {
-                    $this->setOptionIfUndefined("cover", $autoCoverFile);
-                }
-            }
-        }
-
     }
 
     private function setOptionIfUndefined($optionName, $optionValue)
@@ -254,11 +226,15 @@ class MergeCommand extends AbstractConversionCommand
             } else {
                 $this->output->writeln("desired sampling rate is ok, nothing to change");
             }
-
         }
-
+        $coverTargetFile = new SPLFileInfo($this->argInputFile . "/cover.jpg");
 
         foreach ($this->filesToConvert as $index => $file) {
+
+            if ($this->shouldExtractCoverFromInputFiles($coverTargetFile)) {
+                $this->ffmpeg(["-i", $file, "-an", "-vcodec", "copy", $coverTargetFile], "try to extract cover from " . $file);
+            }
+
 
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
             $outputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
@@ -276,7 +252,6 @@ class MergeCommand extends AbstractConversionCommand
             }
 
             $command = [
-                "-vn",
                 "-i", $file,
                 "-map_metadata", "0",
             ];
@@ -299,20 +274,12 @@ class MergeCommand extends AbstractConversionCommand
             }
             */
 
-            // workaround incompatible files (only for windows systems)
-//            if ($this->isWindows()) {
-//                $command[] = "-vf";
-//                $command[] = "scale=800:800";
-//            }
-
-            // workaround for coversize not divided by 2
-            if (!$this->input->getOption("skip-cover")) {
-                $this->appendParameterToCommand($command, "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2");
-            }
-
             // Relocating moov atom to the beginning of the file can facilitate playback before the file is completely downloaded by the client.
             $command[] = "-movflags";
             $command[] = "+faststart";
+
+            // no video for files is required because chapters will not work if video is embedded and shorter than audio length
+            $command[] = "-vn";
 
             $this->appendParameterToCommand($command, "-y", $this->optForce);
             $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
@@ -339,6 +306,53 @@ class MergeCommand extends AbstractConversionCommand
         }
     }
 
+    private function shouldExtractCoverFromInputFiles(SplFileInfo $coverTargetFile) {
+        if(!$this->argInputFile->isDir()) {
+            return false;
+        }
+        if($coverTargetFile->isFile()) {
+            return false;
+        }
+        if($this->input->getOption("skip-cover")) {
+            return false;
+        }
+
+        if($this->input->getOption("cover")) {
+            return false;
+        }
+        return true;
+    }
+
+    private function lookupAndAddCover() {
+        if ($this->argInputFile->isDir() && !$this->input->getOption("skip-cover")) {
+            $autoCoverFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "cover.jpg");
+            if ($autoCoverFile->isFile()) {
+                $this->setOptionIfUndefined("cover", $autoCoverFile);
+            } else {
+                $autoCoverFile = null;
+                $iterator = new \DirectoryIterator($this->argInputFile);
+                foreach ($iterator as $potentialCoverFile) {
+                    if ($potentialCoverFile->isDot() || $potentialCoverFile->isDir()) {
+                        continue;
+                    }
+
+                    $lowerExt = strtolower(ltrim($potentialCoverFile->getExtension(), "."));
+                    if ($lowerExt === "jpg" || $lowerExt === "jpeg" || $lowerExt === "png") {
+                        $autoCoverFile = clone $potentialCoverFile->getFileInfo();
+                        break;
+
+                    }
+
+                }
+
+                if ($autoCoverFile && $autoCoverFile->isFile()) {
+                    $this->setOptionIfUndefined("cover", $autoCoverFile);
+                }
+            }
+        }
+    }
+
+
     private function buildChaptersFromConvertedFileDurations()
     {
         $this->debug("== build chapters ==");
@@ -358,26 +372,26 @@ class MergeCommand extends AbstractConversionCommand
             $this->totalDuration->add($duration->milliseconds());
             // $end = $this->totalDuration->milliseconds();
             $title = $metaData->getProperty("title");
-            if(empty($title)) {
+            if (empty($title)) {
                 $title = $fileIndex + 1;
             }
             $indexedTitle = $title;
-            if($title == $lastTitle) {
-                $indexedTitle = $title." (".($fileIndex+1).")";
-                if($fileIndex == 1 && isset($this->chapters[0])) {
-                    $this->chapters[0]->setName($this->chapters[0]->getName()." (1)");
+            if ($title == $lastTitle) {
+                $indexedTitle = $title . " (" . ($fileIndex + 1) . ")";
+                if ($fileIndex == 1 && isset($this->chapters[0])) {
+                    $this->chapters[0]->setName($this->chapters[0]->getName() . " (1)");
                 }
             }
             $chapterIndex = 1;
             while ($start < $this->totalDuration->milliseconds()) {
                 $chapterTitle = $indexedTitle;
-                if($autoSplitMilliSeconds > 0 && $autoSplitMilliSeconds < $duration->milliseconds()) {
-                    $chapterTitle = $indexedTitle." - (".($chapterIndex++).")";
+                if ($autoSplitMilliSeconds > 0 && $autoSplitMilliSeconds < $duration->milliseconds()) {
+                    $chapterTitle = $indexedTitle . " - (" . ($chapterIndex++) . ")";
                 }
 
                 $this->chapters[$start] = new Chapter(new TimeUnit($start), new TimeUnit($duration->milliseconds()), $chapterTitle);
 
-                if($autoSplitMilliSeconds <= 0 || $autoSplitMilliSeconds > $duration->milliseconds()) {
+                if ($autoSplitMilliSeconds <= 0 || $autoSplitMilliSeconds > $duration->milliseconds()) {
                     break;
                 }
                 $start += $autoSplitMilliSeconds;
@@ -449,6 +463,7 @@ class MergeCommand extends AbstractConversionCommand
         $command = [
             "-f", "concat",
             "-safe", "0",
+            "-vn",
             "-i", $listFile,
             "-c", "copy",
             "-f", "mp4",
