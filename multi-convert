@@ -15,7 +15,7 @@ AUDIO_SAMPLERATE=22050
 SAVEIFS=$IFS
 IFS=$(echo -en "\n\b")
 
-for D in `find $INPUT_DIR/*/*/ -maxdepth 1 -type d`
+for D in `find $INPUT_DIR/*/*/ -maxdepth 0 -type d`
 do
         NAME="$(echo ${D/$INPUT_DIR/} | sed -e 's/^\/*//')";
         AUTHOR="$(dirname $NAME)"
@@ -42,9 +42,9 @@ do
         fi
 
         if [ "1" == "$ADJUST_FOR_IPOD" ]; then
-            $M4B_TOOL merge --auto-split-seconds=$AUTOSPLIT_SECONDS --adjust-for-ipod --name "$TITLE" --album="$TITLE" --audio-channels $AUDIO_CHANNELS --audio-bitrate $AUDIO_BITRATE --audio-samplerate $AUDIO_SAMPLERATE --audio-codec libfdk_aac "$D" --output-file="$CURRENT_OUTPUT_FILE" && echo "$NAME" >> multi-merge.log
+            $M4B_TOOL merge --auto-split-seconds=$AUTOSPLIT_SECONDS --adjust-for-ipod --name "$TITLE" --album="$TITLE" --audio-channels $AUDIO_CHANNELS --audio-bitrate $AUDIO_BITRATE --audio-samplerate $AUDIO_SAMPLERATE --audio-codec libfdk_aac "$D" --output-file="$CURRENT_OUTPUT_FILE" && echo "$NAME" >> multi-convert.log
         else
-            $M4B_TOOL merge --auto-split-seconds=$AUTOSPLIT_SECONDS --name "$TITLE" --album="$TITLE" --audio-channels $AUDIO_CHANNELS --audio-bitrate $AUDIO_BITRATE --audio-samplerate $AUDIO_SAMPLERATE --audio-codec libfdk_aac "$D" --output-file="$CURRENT_OUTPUT_FILE" && echo "$NAME" >> multi-merge.log
+            $M4B_TOOL merge --auto-split-seconds=$AUTOSPLIT_SECONDS --name "$TITLE" --album="$TITLE" --audio-channels $AUDIO_CHANNELS --audio-bitrate $AUDIO_BITRATE --audio-samplerate $AUDIO_SAMPLERATE --audio-codec libfdk_aac "$D" --output-file="$CURRENT_OUTPUT_FILE" && echo "$NAME" >> multi-convert.log
         fi
 
         if [ -f "$CURRENT_CHAPTERS_FILE" ]; then
@@ -52,4 +52,3 @@ do
         fi
 done
 IFS=$SAVEIFS
-
