@@ -31,7 +31,7 @@ On MacOS you can use brew to install the most requirements:
 
 Install ffmpeg
 ```
-brew install ffmpeg --with-fdk-aac --with-ffplay --with-freetype --with-libass --with-libquvi --with-libvorbis --with-libvpx --with-opus --with-x265
+brew install ffmpeg --with-fdk-aac --with-sdl2 --with-freetype --with-libass --with-libquvi --with-libvorbis --with-libvpx --with-opus --with-x265
 ```
 
 Install mp4v2
