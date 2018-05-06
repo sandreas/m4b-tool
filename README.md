@@ -25,32 +25,45 @@ Download the built application from [releases](https://github.com/sandreas/m4b-t
 
 If you think there is an issue with m4b-tool, first head over to the [Known Issues](#known-issues).
 
+#### Before you start - notes about audio quality
+
+In m4b-tool all audio conversions are performed with ffmpeg with descent audio quality using its free encoders. 
+However, to get the best possible audio quality, it exists a non-free encoder, that is not integrated in ffmpeg by default (licensing reasons). 
+Depending on the operating system you are using, installing the non-free encoder may require a little extra skills, effort and time (see the notes for your operating system below).
+You must decide for yourself, if it is worth the additional effort for getting the slightly better quality.
+
 #### MacOS
-On MacOS you can use brew to install the most requirements:
+On MacOS you can use **brew** to install the requirements:
 
 
-Install ffmpeg
+**Install ffmpeg**
+> Note: The flag _--with-fdk-aac_ easily activates the non-free aac encoder for best audio quality - there should be no reason to skip that
 ```
 brew install ffmpeg --with-fdk-aac --with-sdl2 --with-freetype --with-libass --with-libquvi --with-libvorbis --with-libvpx --with-opus --with-x265
 ```
 
-Install mp4v2
+**Install mp4v2**
 
 ```
 brew install mp4v2
 ```
 
-
-Install PHP >= 7.0
+**Install PHP >= 7.0**
 
 Follow the instructions on https://php-osx.liip.ch
 
-
-
 #### Ubuntu
 
-Install ffmpeg
+**Install ffmpeg**
+> Note: For best audio quality with --with-fdk-aac, you could try to use a non-free repo, like https://launchpad.net/~spvkgn/+archive/ubuntu/ffmpeg-nonfree :
+> ```
+> sudo add-apt-repository ppa:spvkgn/ffmpeg-nonfree
+> sudo apt-get update
+> ```
+> if this does not work, you have to compile yourself or must use the free codec with the command below
+
 ```
+# Free codecs, not the best possible audio quality for aac / m4b
 sudo apt install ffmpeg
 ```
 
@@ -66,11 +79,13 @@ sudo apt install php-cli
 
 #### Windows
 
-Download releases from:
 
-- ffmpeg: https://ffmpeg.org
- 
-- mp4tools: https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip
+To install, download releases from:
+
+- ffmpeg: https://ffmpeg.org 
+> Note: For best audio quality, you have to compile ffmpeg yourself with --with-fdk-aac (experts only) - as an easy approach, you could try the media-autobuild suite: https://github.com/jb-alvarado/media-autobuild_suite
+
+- mp4v2: https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip
 
 - PHP: http://windows.php.net/download/
 
@@ -93,7 +108,7 @@ the tag-title of every file for generating chapters.
 
 If there is a file `data/my-audio-book/cover.jpg`, it will be used as cover for the resulting m4b file.
 
-***Note*** If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](##chapter) for more info.
+***Note*** If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](#chapter) for more info.
 
 ### Reference
 For all options, see `php dist/m4b-tool.phar merge --help`:
