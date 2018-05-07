@@ -5,6 +5,8 @@ namespace M4bTool\Command;
 
 
 use Exception;
+use M4bTool\Chapter\ChapterTitleBuilder;
+use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use M4bTool\Marker\ChapterMarker;
@@ -16,7 +18,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class MergeCommand extends AbstractConversionCommand
+class MergeCommand extends AbstractConversionCommand implements MetaReaderInterface
 {
 
     const ARGUMENT_MORE_INPUT_FILES = "more-input-files";
@@ -78,6 +80,7 @@ class MergeCommand extends AbstractConversionCommand
         $this->loadInputFiles();
 
         $this->loadInputMetadataFromFirstFile();
+        $this->lookupAndAddCover();
         $this->convertInputFiles();
         $this->lookupAndAddCover();
         $this->buildChaptersFromConvertedFileDurations();
@@ -98,7 +101,7 @@ class MergeCommand extends AbstractConversionCommand
     private function loadInputFiles()
     {
         $this->debug("== load input files ==");
-        $includeExtensions = array_filter(explode(',', $this->input->getOption("include-extensions")));
+        $includeExtensions = array_filter(explode(',', $this->input->getOption(static::OPTION_INCLUDE_EXTENSIONS)));
 
         $this->outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
         $this->filesToConvert = [];
@@ -125,7 +128,7 @@ class MergeCommand extends AbstractConversionCommand
             $dir = new \RecursiveDirectoryIterator($f, \FilesystemIterator::SKIP_DOTS);
             $it = new \RecursiveIteratorIterator($dir, \RecursiveIteratorIterator::CHILD_FIRST);
             $filtered = new \CallbackFilterIterator($it, function (SplFileInfo $current /*, $key, $iterator*/) use ($includeExtensions) {
-                return in_array($current->getExtension(), $includeExtensions);
+                return in_array(mb_strtolower($current->getExtension()), $includeExtensions, true);
             });
             foreach ($filtered as $itFile) {
                 if ($itFile->isDir()) {
@@ -234,7 +237,6 @@ class MergeCommand extends AbstractConversionCommand
             if ($this->shouldExtractCoverFromInputFiles($coverTargetFile)) {
                 $this->ffmpeg(["-i", $file, "-an", "-vcodec", "copy", $coverTargetFile], "try to extract cover from " . $file);
             }
-
 
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
             $outputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
@@ -360,45 +362,8 @@ class MergeCommand extends AbstractConversionCommand
 
         $autoSplitMilliSeconds = (int)$this->input->getOption(static::OPTION_AUTO_SPLIT_SECONDS) * 1000;
 
-        $this->totalDuration = new TimeUnit();
-        $lastTitle = null;
-        foreach ($this->filesToMerge as $fileIndex => $file) {
-            $metaData = $this->readFileMetaData($file);
-            $duration = $this->readDuration($file);
-            if (!$duration) {
-                throw new Exception("could not get duration for file " . $file);
-            }
-
-            $start = $this->totalDuration->milliseconds();
-            $this->totalDuration->add($duration->milliseconds());
-            // $end = $this->totalDuration->milliseconds();
-            $title = $metaData->getProperty("title");
-            if (empty($title)) {
-                $title = $fileIndex + 1;
-            }
-            $indexedTitle = $title;
-            if ($title == $lastTitle) {
-                $indexedTitle = $title . " (" . ($fileIndex + 1) . ")";
-                if ($fileIndex == 1 && isset($this->chapters[0])) {
-                    $this->chapters[0]->setName($this->chapters[0]->getName() . " (1)");
-                }
-            }
-            $chapterIndex = 1;
-            while ($start < $this->totalDuration->milliseconds()) {
-                $chapterTitle = $indexedTitle;
-                if ($autoSplitMilliSeconds > 0 && $autoSplitMilliSeconds < $duration->milliseconds()) {
-                    $chapterTitle = $indexedTitle . " - (" . ($chapterIndex++) . ")";
-                }
-
-                $this->chapters[$start] = new Chapter(new TimeUnit($start), new TimeUnit($duration->milliseconds()), $chapterTitle);
-
-                if ($autoSplitMilliSeconds <= 0 || $autoSplitMilliSeconds > $duration->milliseconds()) {
-                    break;
-                }
-                $start += $autoSplitMilliSeconds;
-            }
-            $lastTitle = $title;
-        }
+        $chapterBuilder = new ChapterTitleBuilder($this);
+        $this->chapters = $chapterBuilder->buildChapters($this->filesToConvert, $autoSplitMilliSeconds);
     }
 
     private function replaceChaptersWithMusicBrainz()

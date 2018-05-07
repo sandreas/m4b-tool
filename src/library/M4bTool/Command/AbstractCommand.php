@@ -192,7 +192,7 @@ class AbstractCommand extends Command
         return preg_split("/\r\n|\n|\r/", $chapterString);
     }
 
-    protected function readDuration(SplFileInfo $file)
+    public function readDuration(SplFileInfo $file)
     {
         if ($file->getExtension() == "mp4" || $file->getExtension() == "m4b") {
 
@@ -315,7 +315,7 @@ class AbstractCommand extends Command
         }
     }
 
-    protected function readFileMetaData(SplFileInfo $file)
+    public function readFileMetaData(SplFileInfo $file)
     {
         if (!$file->isFile()) {
             throw new Exception("cannot read metadata, file " . $file . " does not exist");
