@@ -116,6 +116,21 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             if($a->getPath() == $b->getPath()) {
                 return strnatcmp($a->getBasename(), $b->getBasename());
             }
+
+            $aParts = explode(DIRECTORY_SEPARATOR, $a);
+            $aCount = count($aParts);
+            $bParts = explode(DIRECTORY_SEPARATOR, $b);
+            $bCount = count($bParts);
+            if($aCount != $bCount) {
+                return $aCount - $bCount;
+            }
+
+            foreach($aParts as $index => $part) {
+                if($aParts[$index] != $bParts[$index]) {
+                    return strnatcmp($aParts[$index], $bParts[$index]);
+                }
+            }
+
             return strnatcmp($a, $b);
         });
     }
