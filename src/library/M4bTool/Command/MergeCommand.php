@@ -110,7 +110,14 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         foreach ($inputFiles as $fileLink) {
             $this->handleInputFile($fileLink, $includeExtensions);
         }
-        natsort($this->filesToConvert);
+        // natsort($this->filesToConvert);
+
+        usort($this->filesToConvert, function(SplFileInfo $a, SplFileInfo $b) {
+            if($a->getPath() == $b->getPath()) {
+                return strnatcmp($a->getBasename(), $b->getBasename());
+            }
+            return strnatcmp($a, $b);
+        });
     }
 
 
