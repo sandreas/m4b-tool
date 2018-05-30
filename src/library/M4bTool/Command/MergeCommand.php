@@ -81,6 +81,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         $this->loadInputMetadataFromFirstFile();
         $this->lookupAndAddCover();
+        $this->lookupAndAddDescription();
         $this->convertInputFiles();
         $this->lookupAndAddCover();
         $this->buildChaptersFromConvertedFileDurations();
@@ -349,7 +350,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     private function lookupAndAddCover() {
-        if ($this->argInputFile->isDir() && !$this->input->getOption("skip-cover")) {
+        if ($this->argInputFile->isDir() && !$this->input->getOption("skip-cover") && !$this->input->getOption("cover")) {
+            $this->output->writeln("searching for cover in ".$this->argInputFile);
             $autoCoverFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "cover.jpg");
             if ($autoCoverFile->isFile()) {
                 $this->setOptionIfUndefined("cover", $autoCoverFile);
@@ -373,6 +375,30 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 if ($autoCoverFile && $autoCoverFile->isFile()) {
                     $this->setOptionIfUndefined("cover", $autoCoverFile);
                 }
+            }
+
+        }
+        if($this->input->getOption("cover")) {
+            $this->output->writeln("using cover ".$this->input->getOption("cover"));
+        } else {
+            $this->output->writeln("cover not found or specified");
+        }
+    }
+
+    private function lookupAndAddDescription() {
+        if ($this->argInputFile->isDir() && $this->input->getOption("description") != "") {
+            $this->output->writeln("searching for description.txt in ".$this->argInputFile);
+
+            $autoDescriptionFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "description.txt");
+            if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < 1024*1024) {
+                $this->output->writeln("using description file ".$autoDescriptionFile);
+                $description = @file_get_contents($autoDescriptionFile);
+                if($description) {
+                    $description = mb_substr(trim($description), 0, 255);
+                }
+                $this->setOptionIfUndefined("description", $description);
+            } else {
+                $this->output->writeln("description file ".$autoDescriptionFile . " not found or too big (max 255 chars)");
             }
         }
     }
