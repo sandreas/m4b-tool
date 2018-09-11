@@ -13,11 +13,13 @@ class ChapterMarker
     protected $debug = false;
     protected $maxDiffMilliseconds = 25000;
 
-    public function __construct($debug=false) {
+    public function __construct($debug = false)
+    {
         $this->debug = $debug;
     }
 
-    public function setMaxDiffMilliseconds($maxDiffMilliseconds) {
+    public function setMaxDiffMilliseconds($maxDiffMilliseconds)
+    {
         $this->maxDiffMilliseconds = $maxDiffMilliseconds;
     }
 
@@ -120,6 +122,7 @@ class ChapterMarker
 
         }
 
+
         $lastStart = null;
         foreach ($guessedChapters as $chapter) {
             $start = $chapter->getStart()->milliseconds();
@@ -129,12 +132,56 @@ class ChapterMarker
             $lastStart = $start;
         }
 
-        $lastGuessedChapter = end($guessedChapters);
-        $lastGuessedChapter->setLength(new TimeUnit($fullLength->milliseconds() - $lastGuessedChapter->getStart()->milliseconds()));
+        if (count($guessedChapters) > 0) {
+            $lastGuessedChapter = end($guessedChapters);
+            $lastGuessedChapter->setLength(new TimeUnit($fullLength->milliseconds() - $lastGuessedChapter->getStart()->milliseconds()));
+        } else {
+            $lastSilence = new Silence(new TimeUnit(), new TimeUnit(5, TimeUnit::SECOND));
+            $lastChapter = null;
+            $index = 1;
+            foreach($silences as $silence) {
+                if($silence->getStart()->milliseconds()  < $lastSilence->getEnd()->milliseconds()) {
+                    continue;
+                }
+
+                if($lastChapter instanceof Chapter && $lastChapter->getStart()->milliseconds() + 60000 > $silence->getStart()->milliseconds() ) {
+                    continue;
+                }
+
+                $lastChapter = new Chapter($lastSilence->getStart(), new TimeUnit($silence->getStart()->milliseconds() + ($silence->getLength()->milliseconds() / 2)), $index);
+                $guessedChapters[] = $lastChapter;
+                $index++;
+                $lastSilence = $silence;
+            }
+
+            if($lastChapter && !in_array($lastChapter, $guessedChapters, true)) {
+                $guessedChapters[] = $lastChapter;
+            }
+        }
+
 
         return $guessedChapters;
     }
 
+    /**
+     * @param array Silence[]
+     * @return array Silence[]
+     */
+    private function normalizeSilenceArray(array $silences)
+    {
+        $normSilences = [];
+        foreach ($silences as $silence) {
+            $normSilences[$silence->getStart()->milliseconds()] = $silence;
+        }
+        return $normSilences;
+    }
+
+    public function debug($message)
+    {
+        if ($this->debug) {
+            echo $message;
+        }
+    }
 
     /**
      *
@@ -142,35 +189,36 @@ class ChapterMarker
      * @param Chapter[] $trackChapters
      * @return Chapter[] $guessedChapters
      */
-    public function guessChaptersByTracks($mbChapters, $trackChapters) {
+    public function guessChaptersByTracks($mbChapters, $trackChapters)
+    {
 
 
-        $guessedChapters= [];
+        $guessedChapters = [];
         $index = 1;
-        foreach($trackChapters as $key => $trackChapter) {
+        foreach ($trackChapters as $key => $trackChapter) {
             $chapter = clone $trackChapter;
 
-            $this->debug("track ".($index).": ".$chapter->getStart()->format("%H:%I:%S.%V")." - ".$chapter->getEnd()->format("%H:%I:%S.%V")." (".$chapter->getStart()->milliseconds()."-".$chapter->getEnd()->milliseconds().", ".$chapter->getName().")");
+            $this->debug("track " . ($index) . ": " . $chapter->getStart()->format("%H:%I:%S.%V") . " - " . $chapter->getEnd()->format("%H:%I:%S.%V") . " (" . $chapter->getStart()->milliseconds() . "-" . $chapter->getEnd()->milliseconds() . ", " . $chapter->getName() . ")");
 
             reset($mbChapters);
             $bestMatchChapter = current($mbChapters);
 
             $chapterStartMillis = $chapter->getStart()->milliseconds();
             $chapterEndMillis = $chapter->getEnd()->milliseconds();
-            foreach($mbChapters as $mbChapter) {
+            foreach ($mbChapters as $mbChapter) {
                 $mbStart = max($chapterStartMillis, $mbChapter->getStart()->milliseconds());
                 $mbEnd = min($chapterEndMillis, $mbChapter->getEnd()->milliseconds());
                 $mbOverlap = $mbEnd - $mbStart;
 
-                $bestMatchStart = max($chapterStartMillis,  $bestMatchChapter->getStart()->milliseconds());
+                $bestMatchStart = max($chapterStartMillis, $bestMatchChapter->getStart()->milliseconds());
                 $bestMatchEnd = min($chapterEndMillis, $bestMatchChapter->getEnd()->milliseconds());
                 $bestMatchOverlap = $bestMatchEnd - $bestMatchStart;
 
-                if($mbChapter === $bestMatchChapter || $mbOverlap > $bestMatchOverlap) {
-                    $this->debug("   +".$mbChapter->getStart()->format("%H:%I:%S.%V")." - ".$mbChapter->getEnd()->format("%H:%I:%S.%V")." (".$mbChapter->getStart()->milliseconds()."-".$mbChapter->getEnd()->milliseconds().", ".$mbChapter->getName().")");
+                if ($mbChapter === $bestMatchChapter || $mbOverlap > $bestMatchOverlap) {
+                    $this->debug("   +" . $mbChapter->getStart()->format("%H:%I:%S.%V") . " - " . $mbChapter->getEnd()->format("%H:%I:%S.%V") . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
                     $bestMatchChapter = $mbChapter;
                 } else {
-                    $this->debug("   -".$mbChapter->getStart()->format("%H:%I:%S.%V")." - ".$mbChapter->getEnd()->format("%H:%I:%S.%V")." (".$mbChapter->getStart()->milliseconds()."-".$mbChapter->getEnd()->milliseconds().", ".$mbChapter->getName().")");
+                    $this->debug("   -" . $mbChapter->getStart()->format("%H:%I:%S.%V") . " - " . $mbChapter->getEnd()->format("%H:%I:%S.%V") . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
                 }
             }
 
@@ -183,7 +231,6 @@ class ChapterMarker
 
 
     }
-
 
     /**
      * @param Chapter[] $chapters
@@ -255,9 +302,7 @@ class ChapterMarker
         return $chaptersAsLines;
 
 
-
     }
-
 
     private function replaceChapterName($chapter, $chapterPattern, $removeCharsParameter)
     {
@@ -270,35 +315,16 @@ class ChapterMarker
         return implode("", $replacedChars);
     }
 
-    private function parseSpecialOffsetChaptersOption($misplacedChapters)
-    {
-        $tmp = explode(',', $misplacedChapters);
-        $specialOffsetChapters = [];
-        foreach ($tmp as $key => $value) {
-            $chapterNumber = trim($value);
-            if (is_numeric($chapterNumber)) {
-                $specialOffsetChapters[] = (int)$chapterNumber;
-            }
-        }
-        return $specialOffsetChapters;
-    }
-
-    public function debug($message) {
-        if($this->debug) {
-            echo $message;
-        }
-    }
-
-    /**
-     * @param array Silence[]
-     * @return array Silence[]
-     */
-    private function normalizeSilenceArray(array $silences)
-    {
-        $normSilences = [];
-        foreach($silences as $silence) {
-            $normSilences[$silence->getStart()->milliseconds()] = $silence;
-        }
-        return $normSilences;
-    }
+//    private function parseSpecialOffsetChaptersOption($misplacedChapters)
+//    {
+//        $tmp = explode(',', $misplacedChapters);
+//        $specialOffsetChapters = [];
+//        foreach ($tmp as $key => $value) {
+//            $chapterNumber = trim($value);
+//            if (is_numeric($chapterNumber)) {
+//                $specialOffsetChapters[] = (int)$chapterNumber;
+//            }
+//        }
+//        return $specialOffsetChapters;
+//    }
 }

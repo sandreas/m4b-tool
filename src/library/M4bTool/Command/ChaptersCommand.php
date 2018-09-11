@@ -153,8 +153,14 @@ class ChaptersCommand extends AbstractCommand
 
     private function buildChapters()
     {
-        $mbXml = $this->mbChapterParser->loadRecordings();
-        $mbChapters = $this->mbChapterParser->parseRecordings($mbXml);
+
+        if($this->mbChapterParser) {
+            $mbXml = $this->mbChapterParser->loadRecordings();
+            $mbChapters = $this->mbChapterParser->parseRecordings($mbXml);
+        } else {
+            $mbChapters = [];
+        }
+
         $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
         $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
         $this->chapters = $chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $this->silenceParser->getDuration());
@@ -224,8 +230,9 @@ class ChaptersCommand extends AbstractCommand
             static::OPTION_CHAPTER_PATTERN => $this->input->getOption(static::OPTION_CHAPTER_PATTERN),
             static::OPTION_CHAPTER_REMOVE_CHARS => $this->input->getOption(static::OPTION_CHAPTER_REMOVE_CHARS),
         ];
-        $this->chapters = $chapterMarker->normalizeChapters($this->chapters, $options);;
 
+
+        $this->chapters = $chapterMarker->normalizeChapters($this->chapters, $options);;
 
         $specialOffsetChapterNumbers = $this->parseSpecialOffsetChaptersOption();
 
@@ -321,17 +328,17 @@ class ChaptersCommand extends AbstractCommand
         return $specialOffsetChapters;
     }
 
-    private function replaceChapterName($chapter)
-    {
-        $chapterName = preg_replace($this->input->getOption('chapter-pattern'), "$1", $chapter);
-
-        // utf-8 aware char replacement
-        $removeCharsParameter = $this->input->getOption('chapter-remove-chars');
-        $removeChars = preg_split('//u', $removeCharsParameter, null, PREG_SPLIT_NO_EMPTY);
-        $presentChars = preg_split('//u', $chapterName, null, PREG_SPLIT_NO_EMPTY);
-        $replacedChars = array_diff($presentChars, $removeChars);
-        return implode("", $replacedChars);
-    }
+//    private function replaceChapterName($chapter)
+//    {
+//        $chapterName = preg_replace($this->input->getOption('chapter-pattern'), "$1", $chapter);
+//
+//        // utf-8 aware char replacement
+//        $removeCharsParameter = $this->input->getOption('chapter-remove-chars');
+//        $removeChars = preg_split('//u', $removeCharsParameter, null, PREG_SPLIT_NO_EMPTY);
+//        $presentChars = preg_split('//u', $chapterName, null, PREG_SPLIT_NO_EMPTY);
+//        $replacedChars = array_diff($presentChars, $removeChars);
+//        return implode("", $replacedChars);
+//    }
 
     protected function exportChaptersToTxt()
     {
