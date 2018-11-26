@@ -166,6 +166,7 @@ Codecs:
             $this->appendParameterToCommand($command, "-comment", $tag->comment);
             $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
             $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy);
+            $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
 
 
             if (count($command) > 1) {

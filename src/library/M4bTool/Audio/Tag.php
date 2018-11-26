@@ -11,6 +11,8 @@ namespace M4bTool\Audio;
 
 class Tag
 {
+    const MP4_STIK_AUDIOBOOK = 2;
+
     public $encoder = "m4b-tool";
     //-s, -song        STR  Set the title of the song, movie, tv show,...
     public $title;
