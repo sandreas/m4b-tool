@@ -411,7 +411,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $autoSplitMilliSeconds = (int)$this->input->getOption(static::OPTION_AUTO_SPLIT_SECONDS) * 1000;
 
         $chapterBuilder = new ChapterTitleBuilder($this);
-        $this->chapters = $chapterBuilder->buildChapters($this->filesToConvert, $autoSplitMilliSeconds);
+        $this->chapters = $chapterBuilder->buildChapters($this->filesToMerge, $autoSplitMilliSeconds);
     }
 
     private function replaceChaptersWithMusicBrainz()
