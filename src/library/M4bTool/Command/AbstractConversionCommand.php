@@ -202,6 +202,7 @@ Codecs:
         $tag->albumArtist = $this->input->getOption("albumartist");
         $tag->year = $this->input->getOption("year");
         $tag->cover = $this->input->getOption("cover");
+        $tag->description = $this->input->getOption("description");
 
         $tag->comment = $this->input->getOption("comment");
         $tag->copyright = $this->input->getOption("copyright");
@@ -257,7 +258,7 @@ Codecs:
             $command[] = 'genre=' . $tag->genre;
         }
 
-        if ($tag->copyright) {
+        if ($tag->description) {
             $command[] = '-metadata';
             $command[] = 'description=' . $tag->description;
         }

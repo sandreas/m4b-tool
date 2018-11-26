@@ -182,6 +182,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->setOptionIfUndefined("year", $metaData->getProperty("date"));
         $this->setOptionIfUndefined("genre", $metaData->getProperty("genre"));
         $this->setOptionIfUndefined("writer", $metaData->getProperty("writer"));
+        $this->setOptionIfUndefined("description", $metaData->getProperty("description"));
     }
 
     private function setOptionIfUndefined($optionName, $optionValue)
@@ -386,7 +387,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     private function lookupAndAddDescription() {
-        if ($this->argInputFile->isDir() && $this->input->getOption("description") != "") {
+        if ($this->argInputFile->isDir() && !$this->input->getOption("description")) {
             $this->output->writeln("searching for description.txt in ".$this->argInputFile);
 
             $autoDescriptionFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "description.txt");
