@@ -25,6 +25,8 @@ class AbstractConversionCommand extends AbstractCommand
     protected $optAudioCodec;
     protected $optAdjustBitrateForIpod;
 
+    protected $longDescription;
+
 
     protected function configure()
     {
@@ -157,6 +159,7 @@ Codecs:
             $this->appendParameterToCommand($command, "-genre", $tag->genre);
             $this->appendParameterToCommand($command, "-writer", $tag->writer);
             $this->appendParameterToCommand($command, "-description", $tag->description);
+            $this->appendParameterToCommand($command, "-longdesc", $tag->longDescription);
             $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
             $this->appendParameterToCommand($command, "-year", $tag->year);
             $this->appendParameterToCommand($command, "-album", $tag->album);
@@ -203,6 +206,7 @@ Codecs:
         $tag->year = $this->input->getOption("year");
         $tag->cover = $this->input->getOption("cover");
         $tag->description = $this->input->getOption("description");
+        $tag->longDescription = $this->longDescription;
 
         $tag->comment = $this->input->getOption("comment");
         $tag->copyright = $this->input->getOption("copyright");
