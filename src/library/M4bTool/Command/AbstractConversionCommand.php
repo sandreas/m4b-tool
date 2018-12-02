@@ -25,6 +25,8 @@ class AbstractConversionCommand extends AbstractCommand
     protected $optAudioCodec;
     protected $optAdjustBitrateForIpod;
 
+    protected $longDescription;
+
 
     protected function configure()
     {
@@ -157,12 +159,14 @@ Codecs:
             $this->appendParameterToCommand($command, "-genre", $tag->genre);
             $this->appendParameterToCommand($command, "-writer", $tag->writer);
             $this->appendParameterToCommand($command, "-description", $tag->description);
+            $this->appendParameterToCommand($command, "-longdesc", $tag->longDescription);
             $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
             $this->appendParameterToCommand($command, "-year", $tag->year);
             $this->appendParameterToCommand($command, "-album", $tag->album);
             $this->appendParameterToCommand($command, "-comment", $tag->comment);
             $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
             $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy);
+            $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
 
 
             if (count($command) > 1) {
@@ -202,6 +206,8 @@ Codecs:
         $tag->albumArtist = $this->input->getOption("albumartist");
         $tag->year = $this->input->getOption("year");
         $tag->cover = $this->input->getOption("cover");
+        $tag->description = $this->input->getOption("description");
+        $tag->longDescription = $this->longDescription;
 
         $tag->comment = $this->input->getOption("comment");
         $tag->copyright = $this->input->getOption("copyright");
@@ -257,7 +263,7 @@ Codecs:
             $command[] = 'genre=' . $tag->genre;
         }
 
-        if ($tag->copyright) {
+        if ($tag->description) {
             $command[] = '-metadata';
             $command[] = 'description=' . $tag->description;
         }

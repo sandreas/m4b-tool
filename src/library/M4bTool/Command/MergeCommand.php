@@ -182,6 +182,11 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->setOptionIfUndefined("year", $metaData->getProperty("date"));
         $this->setOptionIfUndefined("genre", $metaData->getProperty("genre"));
         $this->setOptionIfUndefined("writer", $metaData->getProperty("writer"));
+        $this->setOptionIfUndefined("description", $metaData->getProperty("description"));
+
+        if (!$this->longDescription) {
+            $this->longDescription = $metaData->getProperty("longdesc");
+        }
     }
 
     private function setOptionIfUndefined($optionName, $optionValue)
@@ -386,14 +391,15 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     private function lookupAndAddDescription() {
-        if ($this->argInputFile->isDir() && $this->input->getOption("description") != "") {
+        if ($this->argInputFile->isDir() && !$this->input->getOption("description")) {
             $this->output->writeln("searching for description.txt in ".$this->argInputFile);
 
             $autoDescriptionFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "description.txt");
             if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < 1024*1024) {
                 $this->output->writeln("using description file ".$autoDescriptionFile);
                 $description = @file_get_contents($autoDescriptionFile);
-                if($description) {
+                if($description && strlen($description) > 255) {
+                    $this->longDescription = trim($description);
                     $description = mb_substr(trim($description), 0, 255);
                 }
                 $this->setOptionIfUndefined("description", $description);
