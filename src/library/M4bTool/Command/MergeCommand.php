@@ -391,7 +391,11 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
                 $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
                 $this->appendParameterToCommand($command, "-acodec", $this->optAudioCodec);
-                $this->appendParameterToCommand($command, "-f", $this->optAudioFormat);
+
+                // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
+                if ($this->optAudioFormat && $this->optAudioCodec !== "alac") {
+                    $this->appendParameterToCommand($command, "-f", $this->optAudioFormat);
+                }
 
                 $command[] = $outputFile;
 
@@ -549,9 +553,17 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             "-i", $listFile,
             "-max_muxing_queue_size", "9999",
             "-c", "copy",
-            "-f", "mp4",
-            $this->outputFile
         ];
+
+
+        // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
+        if ($this->optAudioFormat && $this->optAudioCodec !== "alac") {
+            $command[] = "-f";
+            $command[] = $this->optAudioFormat;
+        }
+
+        $command[] = $this->outputFile;
+
 
         $this->ffmpeg($command, "merging " . $this->outputFile . ", this can take a while");
 
