@@ -104,7 +104,7 @@ class ChaptersCommand extends AbstractCommand
         $chaptersTxtFile = null;
         if ($this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
             $this->loadOutputFile();
-            if ($this->optForce && $this->outputFile) {
+            if ($this->optForce && file_exists($this->outputFile)) {
                 unlink($this->outputFile);
             }
             if (!copy($this->argInputFile, $this->outputFile)) {
