@@ -15,6 +15,7 @@ class AbstractConversionCommand extends AbstractCommand
     const OPTION_AUDIO_BIT_RATE = "audio-bitrate";
     const OPTION_AUDIO_SAMPLE_RATE = "audio-samplerate";
     const OPTION_AUDIO_CODEC = "audio-codec";
+    const OPTION_AUDIO_PROFILE = "audio-profile";
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
 
     protected $optAudioFormat;
@@ -36,6 +37,7 @@ class AbstractConversionCommand extends AbstractCommand
         $this->addOption(static::OPTION_AUDIO_BIT_RATE, null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...", ""); // -ab 128k
         $this->addOption(static::OPTION_AUDIO_SAMPLE_RATE, null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...", ""); // -ar 44100
         $this->addOption(static::OPTION_AUDIO_CODEC, null, InputOption::VALUE_OPTIONAL, "audio codec, e.g. libmp3lame, aac, ...", ""); // -ar 44100
+        $this->addOption(static::OPTION_AUDIO_PROFILE, null, InputOption::VALUE_OPTIONAL, "audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2 ", "");
         $this->addOption(static::OPTION_ADJUST_FOR_IPOD, null, InputOption::VALUE_NONE, "auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)");
 
         $this->addOption("name", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook name, otherwise the existing metadata will be used", "");
@@ -61,7 +63,7 @@ class AbstractConversionCommand extends AbstractCommand
 
         $audioFormatCodecMapping = [
             "mp4" => "aac",
-            "mp3" => "libmp3lame"
+            "mp3" => "libmp3lame",
         ];
 
         $this->optAdjustBitrateForIpod = $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD);

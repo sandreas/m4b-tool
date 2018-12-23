@@ -113,8 +113,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
         // natsort($this->filesToConvert);
 
-        usort($this->filesToConvert, function(SplFileInfo $a, SplFileInfo $b) {
-            if($a->getPath() == $b->getPath()) {
+        usort($this->filesToConvert, function (SplFileInfo $a, SplFileInfo $b) {
+            if ($a->getPath() == $b->getPath()) {
                 return strnatcmp($a->getBasename(), $b->getBasename());
             }
 
@@ -122,12 +122,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $aCount = count($aParts);
             $bParts = explode(DIRECTORY_SEPARATOR, $b);
             $bCount = count($bParts);
-            if($aCount != $bCount) {
+            if ($aCount != $bCount) {
                 return $aCount - $bCount;
             }
 
-            foreach($aParts as $index => $part) {
-                if($aParts[$index] != $bParts[$index]) {
+            foreach ($aParts as $index => $part) {
+                if ($aParts[$index] != $bParts[$index]) {
                     return strnatcmp($aParts[$index], $bParts[$index]);
                 }
             }
@@ -196,6 +196,63 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
     }
 
+    private function lookupAndAddCover()
+    {
+        if ($this->argInputFile->isDir() && !$this->input->getOption("skip-cover") && !$this->input->getOption("cover")) {
+            $this->output->writeln("searching for cover in " . $this->argInputFile);
+            $autoCoverFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "cover.jpg");
+            if ($autoCoverFile->isFile()) {
+                $this->setOptionIfUndefined("cover", $autoCoverFile);
+            } else {
+                $autoCoverFile = null;
+                $iterator = new \DirectoryIterator($this->argInputFile);
+                foreach ($iterator as $potentialCoverFile) {
+                    if ($potentialCoverFile->isDot() || $potentialCoverFile->isDir()) {
+                        continue;
+                    }
+
+                    $lowerExt = strtolower(ltrim($potentialCoverFile->getExtension(), "."));
+                    if ($lowerExt === "jpg" || $lowerExt === "jpeg" || $lowerExt === "png") {
+                        $autoCoverFile = clone $potentialCoverFile->getFileInfo();
+                        break;
+
+                    }
+
+                }
+
+                if ($autoCoverFile && $autoCoverFile->isFile()) {
+                    $this->setOptionIfUndefined("cover", $autoCoverFile);
+                }
+            }
+
+        }
+        if ($this->input->getOption("cover")) {
+            $this->output->writeln("using cover " . $this->input->getOption("cover"));
+        } else {
+            $this->output->writeln("cover not found or specified");
+        }
+    }
+
+    private function lookupAndAddDescription()
+    {
+        if ($this->argInputFile->isDir() && !$this->input->getOption("description")) {
+            $this->output->writeln("searching for description.txt in " . $this->argInputFile);
+
+            $autoDescriptionFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "description.txt");
+            if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < 1024 * 1024) {
+                $this->output->writeln("using description file " . $autoDescriptionFile);
+                $description = @file_get_contents($autoDescriptionFile);
+                if ($description && strlen($description) > 255) {
+                    $this->longDescription = trim($description);
+                    $description = mb_substr(trim($description), 0, 255);
+                }
+                $this->setOptionIfUndefined("description", $description);
+            } else {
+                $this->output->writeln("description file " . $autoDescriptionFile . " not found or too big (max 255 chars)");
+            }
+        }
+    }
+
     private function convertInputFiles()
     {
 
@@ -260,6 +317,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
         $coverTargetFile = new SPLFileInfo($this->argInputFile . "/cover.jpg");
 
+
+        $fdkAacCommand = $this->buildFdkaacCommand();
+
+
         foreach ($this->filesToConvert as $index => $file) {
 
             if ($this->shouldExtractCoverFromInputFiles($coverTargetFile)) {
@@ -281,48 +342,64 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 continue;
             }
 
-            $command = [
-                "-i", $file,
-                "-max_muxing_queue_size", "9999",
-                "-map_metadata", "0",
-            ];
+
+            if ($fdkAacCommand) {
+                $tmpOutputFile = (string)$outputFile . ".fdkaac-input";
+                $command = ["-i", $file, "-vn", "-ac", $this->optAudioChannels, "-ar", $this->optAudioSampleRate, "-f", "caf", $tmpOutputFile];
+                $this->ffmpeg($command);
+
+                $fdkAacCommand[] = "-o";
+                $fdkAacCommand[] = $outputFile;
+                $fdkAacCommand[] = $tmpOutputFile;
+                $this->fdkaac($fdkAacCommand);
+
+                if (file_exists($tmpOutputFile) && !$this->optDebug) {
+                    unlink($tmpOutputFile);
+                }
+            } else {
+                $command = [
+                    "-i", $file,
+                    "-max_muxing_queue_size", "9999",
+                    "-map_metadata", "0",
+                ];
 
 
-            // backwards compatibility: ffmpeg needed experimental flag in earlier versions
-            if ($this->optAudioCodec == "aac") {
-                $command[] = "-strict";
-                $command[] = "experimental";
+                // backwards compatibility: ffmpeg needed experimental flag in earlier versions
+                if ($this->optAudioCodec == "aac") {
+                    $command[] = "-strict";
+                    $command[] = "experimental";
+                }
+
+                /*
+                // If you require a low audio bitrate, such as ≤ 32kbs/channel, then HE-AAC would be worth considering
+                // if your player or device can support HE-AAC decoding. Anything higher may benefit more from AAC-LC due
+                // to less processing. If in doubt use AAC-LC. All players supporting HE-AAC also support AAC-LC.
+                // These HE-AAC-Files are not iTunes compatible, although iTunes should support it
+                if ($this->optAudioCodec == "libfdk_aac" && $this->bitrateStringToInt() <= 32000) {
+                    $command[] = "-profile:a";
+                    $command[] = "aac_he";
+                }
+                */
+
+                // Relocating moov atom to the beginning of the file can facilitate playback before the file is completely downloaded by the client.
+                $command[] = "-movflags";
+                $command[] = "+faststart";
+
+                // no video for files is required because chapters will not work if video is embedded and shorter than audio length
+                $command[] = "-vn";
+
+                $this->appendParameterToCommand($command, "-y", $this->optForce);
+                $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
+                $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
+                $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
+                $this->appendParameterToCommand($command, "-acodec", $this->optAudioCodec);
+                $this->appendParameterToCommand($command, "-f", $this->optAudioFormat);
+
+                $command[] = $outputFile;
+
+                $this->ffmpeg($command, "ffmpeg: converting " . $file . " to " . $outputFile . "");
             }
 
-            /*
-            // If you require a low audio bitrate, such as ≤ 32kbs/channel, then HE-AAC would be worth considering
-            // if your player or device can support HE-AAC decoding. Anything higher may benefit more from AAC-LC due
-            // to less processing. If in doubt use AAC-LC. All players supporting HE-AAC also support AAC-LC.
-            // These HE-AAC-Files are not iTunes compatible, although iTunes should support it
-            if ($this->optAudioCodec == "libfdk_aac" && $this->bitrateStringToInt() <= 32000) {
-                $command[] = "-profile:a";
-                $command[] = "aac_he";
-            }
-            */
-
-            // Relocating moov atom to the beginning of the file can facilitate playback before the file is completely downloaded by the client.
-            $command[] = "-movflags";
-            $command[] = "+faststart";
-
-            // no video for files is required because chapters will not work if video is embedded and shorter than audio length
-            $command[] = "-vn";
-
-            $this->appendParameterToCommand($command, "-y", $this->optForce);
-            $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
-            $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
-            $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
-            $this->appendParameterToCommand($command, "-acodec", $this->optAudioCodec);
-            $this->appendParameterToCommand($command, "-f", $this->optAudioFormat);
-
-
-            $command[] = $outputFile;
-
-            $this->ffmpeg($command, "converting " . $file . " to " . $outputFile . "");
 
             if (!$outputFile->isFile()) {
                 throw new Exception("could not convert " . $file . " to " . $outputFile);
@@ -337,78 +414,65 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
     }
 
-    private function shouldExtractCoverFromInputFiles(SplFileInfo $coverTargetFile) {
-        if(!$this->argInputFile->isDir()) {
+    private function buildFdkaacCommand()
+    {
+        $profileCmd = [];
+        $profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
+        if ($profile !== "") {
+            $process = $this->fdkaac([]);
+            if (stripos($process->getOutput(), 'Usage: fdkaac') === false) {
+                throw new Exception('You need fdkaac to be installed for using audio profiles');
+            }
+            switch ($profile) {
+                case "aac_he":
+                    $this->optAudioChannels = 1;
+                    $fdkaacProfile = 5;
+                    break;
+                case "aac_he_v2":
+                    $this->optAudioChannels = 2;
+                    $fdkaacProfile = 29;
+                    break;
+                default:
+                    throw new Exception("--audio-profile has only two valid values: aac_he (for mono) and aac_he_v2 (for stereo)");
+            }
+
+            $profileCmd = ["--raw-channels", $this->optAudioChannels];
+
+            if ($this->optAudioSampleRate) {
+                $profileCmd[] = "--raw-rate";
+                $profileCmd[] = $this->optAudioSampleRate;
+            }
+
+            $profileCmd[] = "-p";
+            $profileCmd[] = $fdkaacProfile;
+
+
+            if (!$this->optAudioBitRate) {
+                throw new Exception("--audio-profile only works with --audio-bitrate=...");
+            }
+            $profileCmd[] = "-b";
+            $profileCmd[] = $this->optAudioBitRate;
+        }
+        return $profileCmd;
+    }
+
+    private function shouldExtractCoverFromInputFiles(SplFileInfo $coverTargetFile)
+    {
+        if (!$this->argInputFile->isDir()) {
             return false;
         }
-        if($coverTargetFile->isFile()) {
+        if ($coverTargetFile->isFile()) {
             return false;
         }
-        if($this->input->getOption("skip-cover")) {
+        if ($this->input->getOption("skip-cover")) {
             return false;
         }
 
-        if($this->input->getOption("cover")) {
+        if ($this->input->getOption("cover")) {
             return false;
         }
         return true;
     }
-
-    private function lookupAndAddCover() {
-        if ($this->argInputFile->isDir() && !$this->input->getOption("skip-cover") && !$this->input->getOption("cover")) {
-            $this->output->writeln("searching for cover in ".$this->argInputFile);
-            $autoCoverFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "cover.jpg");
-            if ($autoCoverFile->isFile()) {
-                $this->setOptionIfUndefined("cover", $autoCoverFile);
-            } else {
-                $autoCoverFile = null;
-                $iterator = new \DirectoryIterator($this->argInputFile);
-                foreach ($iterator as $potentialCoverFile) {
-                    if ($potentialCoverFile->isDot() || $potentialCoverFile->isDir()) {
-                        continue;
-                    }
-
-                    $lowerExt = strtolower(ltrim($potentialCoverFile->getExtension(), "."));
-                    if ($lowerExt === "jpg" || $lowerExt === "jpeg" || $lowerExt === "png") {
-                        $autoCoverFile = clone $potentialCoverFile->getFileInfo();
-                        break;
-
-                    }
-
-                }
-
-                if ($autoCoverFile && $autoCoverFile->isFile()) {
-                    $this->setOptionIfUndefined("cover", $autoCoverFile);
-                }
-            }
-
-        }
-        if($this->input->getOption("cover")) {
-            $this->output->writeln("using cover ".$this->input->getOption("cover"));
-        } else {
-            $this->output->writeln("cover not found or specified");
-        }
-    }
-
-    private function lookupAndAddDescription() {
-        if ($this->argInputFile->isDir() && !$this->input->getOption("description")) {
-            $this->output->writeln("searching for description.txt in ".$this->argInputFile);
-
-            $autoDescriptionFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "description.txt");
-            if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < 1024*1024) {
-                $this->output->writeln("using description file ".$autoDescriptionFile);
-                $description = @file_get_contents($autoDescriptionFile);
-                if($description && strlen($description) > 255) {
-                    $this->longDescription = trim($description);
-                    $description = mb_substr(trim($description), 0, 255);
-                }
-                $this->setOptionIfUndefined("description", $description);
-            } else {
-                $this->output->writeln("description file ".$autoDescriptionFile . " not found or too big (max 255 chars)");
-            }
-        }
-    }
-
 
     private function buildChaptersFromConvertedFileDurations()
     {

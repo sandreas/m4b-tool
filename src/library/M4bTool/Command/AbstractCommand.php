@@ -351,6 +351,12 @@ class AbstractCommand extends Command
     }
 
 
+    protected function fdkaac($command, $introductionMessage = null)
+    {
+        array_unshift($command, "fdkaac");
+        return $this->shell($command, $introductionMessage);
+    }
+
     protected function ffmpeg($command, $introductionMessage = null)
     {
         // if($this->)
