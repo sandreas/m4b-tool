@@ -35,6 +35,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     protected $filesToConvert = [];
     protected $filesToMerge = [];
+    protected $otherTmpFiles = [];
     protected $sameFormatFiles = [];
 
     /**
@@ -345,6 +346,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
             if ($fdkAacCommand) {
                 $tmpOutputFile = (string)$outputFile . ".fdkaac-input";
+                $this->otherTmpFiles[] = $tmpOutputFile;
                 $command = ["-i", $file, "-vn", "-ac", $this->optAudioChannels, "-ar", $this->optAudioSampleRate, "-f", "caf", $tmpOutputFile];
                 $this->ffmpeg($command);
 
@@ -352,10 +354,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 $fdkAacCommand[] = $outputFile;
                 $fdkAacCommand[] = $tmpOutputFile;
                 $this->fdkaac($fdkAacCommand);
-
-                if (file_exists($tmpOutputFile) && !$this->optDebug) {
-                    unlink($tmpOutputFile);
-                }
             } else {
                 $command = [
                     "-i", $file,
@@ -561,11 +559,17 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             throw new Exception("could not merge to " . $this->outputFile);
         }
 
+
         if (!$this->optDebug) {
             unlink($listFile);
             foreach ($this->filesToMerge as $file) {
                 unlink($file);
             }
+
+            foreach ($this->otherTmpFiles as $file) {
+                unlink($file);
+            }
+
             rmdir(dirname($file));
         }
 
