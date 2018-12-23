@@ -292,6 +292,28 @@ class AbstractCommand extends Command
         file_put_contents($this->optDebugFile, $message . PHP_EOL, FILE_APPEND);
     }
 
+    protected function exportChaptersForFile(SplFileInfo $file)
+    {
+
+        if (!$file->isFile()) {
+            throw new Exception("File " . $file . " does not exist - could not export chapters");
+        }
+
+        $chaptersFile = $this->audioFileToChaptersFile($file);
+        if ($chaptersFile->isFile()) {
+            if (!$this->optForce) {
+                throw new Exception("Chapter file  " . $chaptersFile . " already exists - use --force to override");
+            }
+            unlink($chaptersFile);
+        }
+
+        $this->mp4chaps(["-x", $file], "exporting chapters for " . $file);
+        if (!$chaptersFile->isFile()) {
+            throw new Exception("Chapter file  " . $chaptersFile . " does not exist - export failed");
+        }
+        return $chaptersFile;
+    }
+
     protected function formatShellCommand(array $command)
     {
 

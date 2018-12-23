@@ -95,4 +95,5 @@ class MusicBrainzChapterParser
         return $chapters;
     }
 
+
 }

@@ -7,6 +7,7 @@ namespace M4bTool\Command;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use M4bTool\Marker\ChapterMarker;
+use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use M4bTool\Parser\SilenceParser;
 use M4bTool\Time\TimeUnit;
@@ -35,6 +36,7 @@ class ChaptersCommand extends AbstractCommand
 
     const OPTION_NO_CHAPTER_NUMBERING = "no-chapter-numbering";
     const OPTION_NO_CHAPTER_IMPORT = "no-chapter-import";
+    const OPTION_ADJUST_BY_SILENCE = "adjust-by-silence";
 
     /**
      * @var MusicBrainzChapterParser
@@ -70,6 +72,7 @@ class ChaptersCommand extends AbstractCommand
         $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "b", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
         $this->addOption(static::OPTION_MERGE_SIMILAR, "s", InputOption::VALUE_NONE, "merge similar chapter names");
         $this->addOption(static::OPTION_OUTPUT_FILE, "o", InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
+        $this->addOption(static::OPTION_ADJUST_BY_SILENCE, null, InputOption::VALUE_NONE, "will try to adjust chapters of a file by silence detection and existing chapter marks");
 
         $this->addOption(static::OPTION_FIND_MISPLACED_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "mark silence around chapter numbers that where not detected correctly, e.g. 8,15,18", "");
         $this->addOption(static::OPTION_FIND_MISPLACED_OFFSET, null, InputOption::VALUE_OPTIONAL, "mark silence around chapter numbers with this offset seconds maximum", 120);
@@ -95,12 +98,34 @@ class ChaptersCommand extends AbstractCommand
         $this->loadFileToProcess();
 
         $this->detectSilencesForChapterGuessing($this->filesToProcess);
-        $this->buildChapters();
-        $this->normalizeChapters();
 
+        $parsedChapters = [];
 
-        $this->exportChaptersToTxt();
+        $chaptersTxtFile = null;
+        if ($this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
+            $this->loadOutputFile();
+            if ($this->optForce && $this->outputFile) {
+                unlink($this->outputFile);
+            }
+            if (!copy($this->argInputFile, $this->outputFile)) {
+                throw new Exception("Could not copy " . $this->argInputFile . " to " . $this->outputFile);
+            }
+            $chaptersTxtFile = $this->exportChaptersForFile(new SplFileInfo($this->outputFile));
+            $chapterParser = new Mp4ChapsChapterParser();
+            $parsedChapters = $chapterParser->parse(file_get_contents($chaptersTxtFile));
+            if (!$this->optDebug) {
+                unlink($chaptersTxtFile);
+            }
+        } else if ($this->mbChapterParser) {
+            $mbXml = $this->mbChapterParser->loadRecordings();
+            $parsedChapters = $this->mbChapterParser->parseRecordings($mbXml);
+        }
 
+        $this->buildChapters($parsedChapters);
+        if (!$this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
+            $this->normalizeChapters();
+        }
+        $this->exportChaptersToTxt($chaptersTxtFile);
         $this->importChaptersToM4b();
     }
 
@@ -151,16 +176,20 @@ class ChaptersCommand extends AbstractCommand
         $this->cache->save($cacheItem);
     }
 
-    private function buildChapters()
+    private function loadOutputFile()
     {
-
-        if($this->mbChapterParser) {
-            $mbXml = $this->mbChapterParser->loadRecordings();
-            $mbChapters = $this->mbChapterParser->parseRecordings($mbXml);
-        } else {
-            $mbChapters = [];
+        $this->outputFile = $this->input->getOption(static::OPTION_OUTPUT_FILE);
+        if ($this->outputFile === "") {
+            $this->outputFile = $this->filesToProcess->getPath() . DIRECTORY_SEPARATOR . $this->filesToProcess->getBasename("." . $this->filesToProcess->getExtension()) . ".chapters.txt";
+            if (file_exists($this->outputFile) && !$this->input->getOption(static::OPTION_FORCE)) {
+                $this->output->writeln("output file already exists, add --force option to overwrite");
+                $this->outputFile = "";
+            }
         }
+    }
 
+    private function buildChapters(array $mbChapters)
+    {
         $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
         $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
         $this->chapters = $chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $this->silenceParser->getDuration());
@@ -169,61 +198,9 @@ class ChaptersCommand extends AbstractCommand
     private function normalizeChapters()
     {
 
-//
-//        $chaptersAsLines = [];
-//        $index = 0;
-//        $chapterIndex = 1;
-//        $lastChapterName = "";
-//        $firstChapterOffset = (int)$this->input->getOption('first-chapter-offset');
-//        $lastChapterOffset = (int)$this->input->getOption('last-chapter-offset');
-//
-//
-//        if ($firstChapterOffset) {
-//            $firstOffset = new TimeUnit(0, TimeUnit::MILLISECOND);
-//            $chaptersAsLines[] = new Chapter($firstOffset, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset First Chapter");
-//        }
-//        foreach ($this->chapters as $chapter) {
-//            $index++;
-//            $replacedChapterName = $this->replaceChapterName($chapter->getName());
-//            $suffix = "";
-//
-//            if ($lastChapterName != $replacedChapterName) {
-//                $chapterIndex = 1;
-//            } else {
-//                $chapterIndex++;
-//            }
-//            if ($this->input->getOption(self::OPTION_MERGE_SIMILAR)) {
-//                if ($chapterIndex > 1) {
-//                    continue;
-//                }
-//            } else if (!$this->input->getOption(static::OPTION_NO_CHAPTER_NUMBERING)) {
-//                $suffix = " (" . $chapterIndex . ")";
-//            }
-//            /**
-//             * @var TimeUnit $start
-//             */
-//            $start = $chapter->getStart();
-//            if ($index === 1 && $firstChapterOffset) {
-//                $start->add($firstChapterOffset, TimeUnit::MILLISECOND);
-//            }
-//
-//            $newChapter = clone $chapter;
-//            $newChapter->setStart($start);
-//            $newChapter->setName($replacedChapterName . $suffix);
-//            $chaptersAsLines[$newChapter->getStart()->milliseconds()] = $newChapter;
-//            $lastChapterName = $replacedChapterName;
-//        }
-//
-//        if ($lastChapterOffset && isset($chapter)) {
-//            $offsetChapterStart = new TimeUnit($chapter->getEnd()->milliseconds() - $lastChapterOffset, TimeUnit::MILLISECOND);
-//            $chaptersAsLines[$offsetChapterStart->milliseconds()] = new Chapter($offsetChapterStart, new TimeUnit(0, TimeUnit::MILLISECOND), "Offset Last Chapter");
-//        }
-//        $firstChapterOffset =;
-//        $lastChapterOffset = ;
-
         $chapterMarker = new ChapterMarker();
         $options = [
-            static::OPTION_FIRST_CHAPTER_OFFSET =>  (int)$this->input->getOption(static::OPTION_FIRST_CHAPTER_OFFSET),
+            static::OPTION_FIRST_CHAPTER_OFFSET => (int)$this->input->getOption(static::OPTION_FIRST_CHAPTER_OFFSET),
             static::OPTION_LAST_CHAPTER_OFFSET => (int)$this->input->getOption(static::OPTION_LAST_CHAPTER_OFFSET),
             static::OPTION_MERGE_SIMILAR => $this->input->getOption(static::OPTION_MERGE_SIMILAR),
             static::OPTION_NO_CHAPTER_NUMBERING => $this->input->getOption(static::OPTION_NO_CHAPTER_NUMBERING),
@@ -306,15 +283,6 @@ class ChaptersCommand extends AbstractCommand
 
     }
 
-    private function chaptersAsLines()
-    {
-        $chaptersAsLines = [];
-        foreach ($this->chapters as $chapter) {
-            $chaptersAsLines[] = $chapter->getStart()->format("%H:%I:%S.%V") . " " . $chapter->getName();
-        }
-        return $chaptersAsLines;
-    }
-
     private function parseSpecialOffsetChaptersOption()
     {
         $tmp = explode(',', $this->input->getOption(static::OPTION_FIND_MISPLACED_CHAPTERS));
@@ -340,35 +308,36 @@ class ChaptersCommand extends AbstractCommand
 //        return implode("", $replacedChars);
 //    }
 
-    protected function exportChaptersToTxt()
+    protected function exportChaptersToTxt($chaptersTxtFile = null)
     {
         $chapterLines = $this->chaptersAsLines();
         $chapterLinesAsString = implode(PHP_EOL, $chapterLines);
         $this->output->writeln($chapterLinesAsString);
-        $this->loadOutputFile();
 
-        if ($this->outputFile) {
+        if ($chaptersTxtFile === null) {
+            $this->loadOutputFile();
+            $chaptersTxtFile = $this->outputFile;
+        }
+
+        if ($chaptersTxtFile) {
             $outputDir = dirname($this->outputFile);
             if (!is_dir($outputDir) && !mkdir($outputDir, 0777, true)) {
                 $this->output->writeln("Could not create output directory: " . $outputDir);
-            } elseif (!file_put_contents($this->outputFile, $chapterLinesAsString)) {
-                $this->output->writeln("Could not write output file: " . $this->outputFile);
+            } elseif (!file_put_contents($chaptersTxtFile, $chapterLinesAsString)) {
+                $this->output->writeln("Could not write output file: " . $chaptersTxtFile);
             } else {
-                $this->output->writeln("Chapters successfully exported to file: " . $this->outputFile);
+                $this->output->writeln("Chapters successfully exported to file: " . $chaptersTxtFile);
             }
         }
     }
 
-    private function loadOutputFile()
+    private function chaptersAsLines()
     {
-        $this->outputFile = $this->input->getOption(static::OPTION_OUTPUT_FILE);
-        if ($this->outputFile === "") {
-            $this->outputFile = $this->filesToProcess->getPath() . DIRECTORY_SEPARATOR . $this->filesToProcess->getBasename("." . $this->filesToProcess->getExtension()) . ".chapters.txt";
-            if (file_exists($this->outputFile) && !$this->input->getOption(static::OPTION_FORCE)) {
-                $this->output->writeln("output file already exists, add --force option to overwrite");
-                $this->outputFile = "";
-            }
+        $chaptersAsLines = [];
+        foreach ($this->chapters as $chapter) {
+            $chaptersAsLines[] = $chapter->getStart()->format("%H:%I:%S.%V") . " " . $chapter->getName();
         }
+        return $chaptersAsLines;
     }
 
     protected function importChaptersToM4b()

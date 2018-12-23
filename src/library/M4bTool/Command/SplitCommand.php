@@ -6,6 +6,7 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Chapter;
+use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
@@ -73,34 +74,9 @@ class SplitCommand extends AbstractConversionCommand
 
     private function parseChapters()
     {
-        $lines = file($this->chaptersFile);
-        $this->chapters = [];
-        /**
-         * @var TimeUnit $lastUnit
-         */
-        $lastUnit = null;
-        foreach ($lines as $index => $line) {
-            $chapterStartMarker = substr($line, 0, 12);
-            $chapterTitle = trim(substr($line, 13));
 
-            if (empty($chapterStartMarker)) {
-                continue;
-            }
-
-            $unit = new TimeUnit(0, timeunit::MILLISECOND);
-            $unit->fromFormat($chapterStartMarker, "%H:%I:%S.%v");
-
-
-            $this->chapters[$index] = new Chapter($unit, new TimeUnit(), $chapterTitle);
-
-            if ($lastUnit) {
-                $this->chapters[$index - 1]->setLength(new TimeUnit($unit->milliseconds() - $lastUnit->milliseconds()));
-            }
-
-            $lastUnit = $unit;
-        }
-
-
+        $chapterParser = new Mp4ChapsChapterParser();
+        $this->chapters = $chapterParser->parse(file_get_contents($this->chaptersFile));
     }
 
     private function splitChapters()

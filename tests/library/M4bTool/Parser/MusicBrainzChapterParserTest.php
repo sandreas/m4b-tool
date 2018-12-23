@@ -18,7 +18,7 @@ class MusicBrainzChapterParserTest extends TestCase
     protected $subject;
 
     public function setUp() {
-        $this->subject = new MusicBrainzChapterParser();
+        $this->subject = new MusicBrainzChapterParser(null);
     }
 
     public function testParse() {
