@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="favicon.ico">
+
+    <title>Starter Template for Bootstrap</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.2.1/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            padding-top: 5rem;
+        }
+
+        pre, code {
+            padding: 5px;
+            background: silver;
+        }
+
+        pre {
+            border: 1px solid #666;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand" href="#">m4b-tool</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault"
+            aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item">
+                <a class="nav-link" href="#m4b-tool">Home</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#contact">Contact</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="//github.com/sandreas/m4b-tool" target="_blank">Github</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<main role="main" class="container">
+    <a name="m4b-tool"></a>
+    <div class="m4b-tool"><h1>m4b-tool</h1>
+        <p>m4b-tool is a is a wrapper for ffmpeg and mp4v2 to merge, split or and manipulate m4b audiobook files with
+            chapters</p>
+        <h2>Features</h2>
+        <ul>
+            <li>Merge a set of audio files (e.g. MP3 or AAC) into a single m4b file</li>
+            <li>Split a single m4b-File into several output files by chapters</li>
+            <li>Add or adjust chapters to an existing m4b-File via musicbrainz and / or silence detection</li>
+        </ul>
+        <h2>Requirements</h2>
+        <p>m4b-tool is written in PHP and uses ffmpeg, mp4v2 and optionally fdkaac for high efficiency codecs to perform
+            conversions. Therefore you will need the following tools in your $PATH:</p>
+        <ul>
+            <li>PHP &gt;= 7.0 with mbstring extension enabled</li>
+            <li>ffmpeg</li>
+            <li>mp4v2</li>
+            <li>fdkaac (only if you need high efficiency for low bitrates &lt;= 32k)</li>
+        </ul>
+        <h3>Installation</h3>
+        <p>Download the built application from <a href="https://github.com/sandreas/m4b-tool/releases">releases</a> and
+            install the runtime dependencies (instructions follow). Or, <a href="#building-from-source">build from
+                source</a>.</p>
+        <h4>General Notes</h4>
+        <p>If you think there is an issue with m4b-tool, first head over to the <a href="#known-issues">Known Issues</a>.
+        </p>
+        <h4>Before you start - notes about audio quality</h4>
+        <p>In m4b-tool all audio conversions are performed with ffmpeg with descent audio quality using its free
+            encoders.
+            However, best quality takes some extra effort. To get the best possible audio quality, you have to use a
+            non-free encoder, that is not integrated in ffmpeg by default (licensing reasons).
+            Depending on the operating system you are using, installing the non-free encoder may require a little extra
+            skills, effort and time (see the notes for your operating system below).
+            You must decide for yourself, if it is worth the additional effort for getting the slightly better
+            quality.</p>
+        <p>If you are using very low bitrates (&lt;= 32k), you could use high efficiency profiles, to further improve
+            audio quality. Unfortunately, <code>ffmpeg</code> produces files, that are incompatible with many players
+            (including iTunes). To produce high efficiency files, that are compatible with at least most common players,
+            you will need fdkaac for now.</p>
+        <p>More Details:</p>
+        <ul>
+            <li>
+                <a href="https://github.com/sandreas/m4b-tool/issues/19">https://github.com/sandreas/m4b-tool/issues/19</a>
+            </li>
+            <li><a href="https://trac.ffmpeg.org/wiki/Encode/AAC">https://trac.ffmpeg.org/wiki/Encode/AAC</a></li>
+            <li><a href="https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio">https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio</a>
+            </li>
+        </ul>
+        <h4>MacOS</h4>
+        <p>On MacOS you can use <strong>brew</strong> to install the requirements:</p>
+        <p><strong>Install ffmpeg</strong></p>
+        <blockquote>
+            <p>Note: The flag <em>--with-fdk-aac</em> easily activates the non-free aac encoder for best audio quality -
+                there should be no reason to skip that</p>
+            <pre><code>brew install ffmpeg --with-fdk-aac --with-sdl2 --with-freetype --with-libass --with-libquvi --with-libvorbis --with-libvpx --with-opus --with-x265</code></pre>
+        </blockquote>
+        <p><strong>Install mp4v2</strong></p>
+        <pre><code>brew install mp4v2</code></pre>
+        <p><strong>Install fdkaac</strong></p>
+        <pre><code>brew install fdk-aac-encoder</code></pre>
+        <p><strong>Install PHP &gt;= 7.0</strong></p>
+        <p>Follow the instructions on <a href="https://php-osx.liip.ch">https://php-osx.liip.ch</a></p>
+        <h4>Ubuntu</h4>
+        <p><strong>Install ffmpeg</strong></p>
+        <blockquote>
+            <p>Note: For best audio quality with --with-fdk-aac, you could try to use a non-free repo, like <a
+                    href="https://launchpad.net/~spvkgn/+archive/ubuntu/ffmpeg-nonfree">https://launchpad.net/~spvkgn/+archive/ubuntu/ffmpeg-nonfree</a>
+                :</p>
+            <pre><code>sudo add-apt-repository ppa:spvkgn/ffmpeg-nonfree
+sudo apt-get update</code></pre>
+            <p>if this does not work, you have to compile yourself (<a
+                    href="https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu">https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu</a>)
+                or must use the free codec with the command below</p>
+        </blockquote>
+        <pre><code># Free codecs, not the best possible audio quality for aac / m4b
+sudo apt install ffmpeg</code></pre>
+        <p>Install mp4v2-utils</p>
+        <pre><code>sudo apt install mp4v2-utils</code></pre>
+        <p>Install fdkaac</p>
+        <pre><code>sudo apt install fdkaac</code></pre>
+        <p>Install PHP &gt; 7.0</p>
+        <pre><code>sudo apt install php-cli</code></pre>
+        <h4>Windows</h4>
+        <p>To install, download releases from:</p>
+        <ul>
+            <li>
+                <p>ffmpeg: <a href="https://ffmpeg.org">https://ffmpeg.org</a></p>
+                <blockquote>
+                    <p>Note: For best audio quality, you have to compile ffmpeg yourself with --with-fdk-aac (experts
+                        only) - as an easy approach, you could try the media-autobuild suite: <a
+                                href="https://github.com/jb-alvarado/media-autobuild_suite">https://github.com/jb-alvarado/media-autobuild_suite</a>
+                    </p>
+                </blockquote>
+            </li>
+            <li>
+                <p>mp4v2: <a href="https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip">https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip</a>
+                </p>
+            </li>
+            <li>
+                <p>fdkaac (no official source!): <a href="http://wlc.io/2015/06/20/fdk-aac/">http://wlc.io/2015/06/20/fdk-aac/</a>
+                </p>
+            </li>
+            <li>
+                <p>PHP: <a href="http://windows.php.net/download/">http://windows.php.net/download/</a></p>
+            </li>
+        </ul>
+        <p>And place them in your %PATH%</p>
+        <h1>m4b-tool commands</h1>
+        <h2>merge</h2>
+        <p>With m4b-tool you can merge a set of audio files to one single m4b audiobook file. </p>
+        <h3>An example:</h3>
+        <pre><code>php m4b-tool.phar merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"</code></pre>
+        <p>This merges all Audio-Files in folder <code>data/my-audio-book</code> into <code>my-audio-book.m4b</code>,
+            using
+            the tag-title of every file for generating chapters.</p>
+        <p>If there is a file <code>data/my-audio-book/cover.jpg</code>, it will be used as cover for the resulting m4b
+            file.</p>
+        <p><strong><em>Note</em></strong> If you use untagged audio files, you could provide a musicbrainz id to get the
+            correct chapter names, see command <a href="#chapter">chapter</a> for more info.</p>
+        <h3>Reference</h3>
+        <p>For all options, see <code>php dist/m4b-tool.phar merge --help</code>:</p>
+        <pre><code>Usage:
+  merge [options] [--] &lt;input&gt; [&lt;more-input-files&gt;]...
+
+Arguments:
+  input                                          Input file or folder
+  more-input-files                               Other Input files or folders
+
+Options:
+  -d, --debug                                    file to dump debugging info
+      --debug-filename[=DEBUG-FILENAME]          file to dump debugging info [default: "m4b-tool_debug.log"]
+  -f, --force                                    force overwrite of existing files
+      --no-cache                                 do not use cached values and clear cache completely
+      --ffmpeg-threads[=FFMPEG-THREADS]          specify -threads parameter for ffmpeg [default: ""]
+      --convert-charset[=CONVERT-CHARSET]        Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --ffmpeg-param[=FFMPEG-PARAM]              Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
+      --audio-format[=AUDIO-FORMAT]              output format, that ffmpeg will use to create files [default: "m4b"]
+      --audio-channels[=AUDIO-CHANNELS]          audio channels, e.g. 1, 2 [default: ""]
+      --audio-bitrate[=AUDIO-BITRATE]            audio bitrate, e.g. 64k, 128k, ... [default: ""]
+      --audio-samplerate[=AUDIO-SAMPLERATE]      audio samplerate, e.g. 22050, 44100, ... [default: ""]
+      --audio-codec[=AUDIO-CODEC]                audio codec, e.g. libmp3lame, aac, ... [default: ""]
+      --audio-profile[=AUDIO-PROFILE]            audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2  [default: ""]
+      --adjust-for-ipod                          auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)
+      --name[=NAME]                              provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
+      --album[=ALBUM]                            provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
+      --artist[=ARTIST]                          provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
+      --genre[=GENRE]                            provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
+      --writer[=WRITER]                          provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
+      --albumartist[=ALBUMARTIST]                provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
+      --year[=YEAR]                              provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
+      --cover[=COVER]                            provide a custom audiobook cover, otherwise the existing metadata will be used
+      --description[=DESCRIPTION]                provide a custom audiobook short description, otherwise the existing metadata will be used
+      --comment[=COMMENT]                        provide a custom audiobook comment, otherwise the existing metadata will be used
+      --copyright[=COPYRIGHT]                    provide a custom audiobook copyright, otherwise the existing metadata will be used
+      --encoded-by[=ENCODED-BY]                  provide a custom audiobook encoded-by, otherwise the existing metadata will be used
+      --skip-cover                               skip extracting and embedding covers
+      --output-file=OUTPUT-FILE                  output file
+      --include-extensions[=INCLUDE-EXTENSIONS]  comma separated list of file extensions to include (others are skipped) [default: "aac,alac,flac,m4a,m4b,mp3,oga,ogg,wav,wma,mp4"]
+  -m, --musicbrainz-id=MUSICBRAINZ-ID            musicbrainz id so load chapters from
+      --mark-tracks                              add chapter marks for each track
+      --auto-split-seconds[=AUTO-SPLIT-SECONDS]  auto split chapters after x seconds, if track is too long
+  -h, --help                                     Display this help message
+  -q, --quiet                                    Do not output any message
+  -V, --version                                  Display this application version
+      --ansi                                     Force ANSI output
+      --no-ansi                                  Disable ANSI output
+  -n, --no-interaction                           Do not ask any interactive question
+  -v|vv|vvv, --verbose                           Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
+
+Help:
+  Merges a set of files to one single file
+</code></pre>
+        <h2>split</h2>
+        <p>m4b-tool can be used to split a single m4b into a file per chapter.</p>
+        <h3>An example:</h3>
+        <pre><code>php m4b-tool.phar split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"</code></pre>
+        <p>This splits the file <code>data/my-audio-book.m4b into</code> an mp3 file for each chapter, writing the files
+            into <code>data/my-audio-book_splitted/</code>.</p>
+        <h3>Reference</h3>
+        <p>For all options, see <code>php dist/m4b-tool.phar split --help</code>:</p>
+        <pre><code>Usage:
+  split [options] [--] &lt;input&gt;
+
+Arguments:
+  input                                      Input file or folder
+
+Options:
+  -d, --debug                                file to dump debugging info
+      --debug-filename[=DEBUG-FILENAME]      file to dump debugging info [default: "m4b-tool_debug.log"]
+  -f, --force                                force overwrite of existing files
+      --no-cache                             do not use cached values and clear cache completely
+      --ffmpeg-threads[=FFMPEG-THREADS]      specify -threads parameter for ffmpeg [default: ""]
+      --convert-charset[=CONVERT-CHARSET]    Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --ffmpeg-param[=FFMPEG-PARAM]          Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
+      --audio-format[=AUDIO-FORMAT]          output format, that ffmpeg will use to create files [default: "m4b"]
+      --audio-channels[=AUDIO-CHANNELS]      audio channels, e.g. 1, 2 [default: ""]
+      --audio-bitrate[=AUDIO-BITRATE]        audio bitrate, e.g. 64k, 128k, ... [default: ""]
+      --audio-samplerate[=AUDIO-SAMPLERATE]  audio samplerate, e.g. 22050, 44100, ... [default: ""]
+      --audio-codec[=AUDIO-CODEC]            audio codec, e.g. libmp3lame, aac, ... [default: ""]
+      --audio-profile[=AUDIO-PROFILE]        audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2  [default: ""]
+      --adjust-for-ipod                      auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)
+      --name[=NAME]                          provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
+      --album[=ALBUM]                        provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
+      --artist[=ARTIST]                      provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
+      --genre[=GENRE]                        provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
+      --writer[=WRITER]                      provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
+      --albumartist[=ALBUMARTIST]            provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
+      --year[=YEAR]                          provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
+      --cover[=COVER]                        provide a custom audiobook cover, otherwise the existing metadata will be used
+      --description[=DESCRIPTION]            provide a custom audiobook short description, otherwise the existing metadata will be used
+      --comment[=COMMENT]                    provide a custom audiobook comment, otherwise the existing metadata will be used
+      --copyright[=COPYRIGHT]                provide a custom audiobook copyright, otherwise the existing metadata will be used
+      --encoded-by[=ENCODED-BY]              provide a custom audiobook encoded-by, otherwise the existing metadata will be used
+      --skip-cover                           skip extracting and embedding covers
+      --use-existing-chapters-file           adjust chapter position by nearest found silence
+  -h, --help                                 Display this help message
+  -q, --quiet                                Do not output any message
+  -V, --version                              Display this application version
+      --ansi                                 Force ANSI output
+      --no-ansi                              Disable ANSI output
+  -n, --no-interaction                       Do not ask any interactive question
+  -v|vv|vvv, --verbose                       Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
+
+Help:
+  Split an m4b into multiple m4b or mp3 files by chapter</code></pre>
+        <h2>chapter</h2>
+        <p>Many m4b audiobook files do not contain valid chapters for different reasons. <code>m4b-tool</code> can
+            handle two cases:</p>
+        <ul>
+            <li>Correct misplaced chapters by silence detection</li>
+            <li>Add chapters from an internet source (mostly for well known titles)</li>
+        </ul>
+        <h3>Misplaced chapters</h3>
+        <p>In some cases there is a shift between the chapter mark and the real beginning of a chapter.
+            <code>m4b-tool</code> could try
+            to correct that by detecting silences and relocating the chapter to the nearest silence:</p>
+        <pre><code>php m4b-tool.phar chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"</code></pre>
+        <p>It won't work, if the shift is to large or if the chapters are strongly misplaced, but since everything is
+            done automatically, it's worth a try, isn't it?</p>
+        <h3>No chapters at all</h3>
+        <p>If you have a well known audiobook, like <strong><em>Harry Potter and the Philosopher’s Stone</em></strong>,
+            you might be lucky that it is on musicbrainz.</p>
+        <p>In this case m4b-tool can try to correct the chapter information using silence
+            detection and the musicbrainz data.</p>
+        <p>Since this is not a trivial task and prone to error, m4b-tool offers some parameters to correct
+            misplaced chapter positions manually. </p>
+        <h3>A typical workflow</h3>
+        <h4>Getting the musicbrainz id</h4>
+        <p>You have to find the exact musicbrainz id:</p>
+        <ul>
+            <li>An easy way to find the book is to use the authors name or the readers name to search for it</li>
+            <li>Once you found the book of interest, click on the list entry to show further information</li>
+            <li>To get the musicbrainz id, open the <strong><em>details</em></strong> page and find the MBID (e.g.
+                <code>8669da33-bf9c-47fe-adc9-23798a37b096</code>)
+            </li>
+        </ul>
+        <p>Example: <a href="https://musicbrainz.org/work/8669da33-bf9c-47fe-adc9-23798a37b096">https://musicbrainz.org/work/8669da33-bf9c-47fe-adc9-23798a37b096</a>
+        </p>
+        <pre><code>MBID: 8669da33-bf9c-47fe-adc9-23798a37b096</code></pre>
+        <h4>Finding main chapters</h4>
+        <p>After getting the MBID you should find the main chapter points (where the name of the current chapter name is
+            read aloud by the author).</p>
+        <pre><code>php m4b-tool.phar chapters --merge-similar --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"</code></pre>
+        <p>Explanation:</p>
+        <ul>
+            <li><code>--merge-similar</code>: merges all similar chapters (e.g. <strong><em>The Boy Who Lived, Part
+                1</em></strong> and <strong><em>The Boy Who Lived, Part 2</em></strong> will be merged to <strong><em>The
+                Boy Who Lived</em></strong>)
+            </li>
+            <li><code>--first-chapter-offset</code>: creates an start offset chapter called <strong><em>Offset First
+                Chapter</em></strong> with a length of 4 seconds for skipping intros (e.g. audible, etc.)
+            </li>
+            <li><code>--last-chapter-offset</code>: creates an end offset chapter called <strong><em>Offset Last
+                Chapter</em></strong> with a length of 3,5 seconds for skipping outros (e.g. audible, etc.)
+            </li>
+            <li><code>-m</code>: MBID</li>
+        </ul>
+        <h4>Finding misplaced main chapters</h4>
+        <p>Now listen to the audiobook an go through the chapters. Lets assume, all but 2 chapters were detected
+            correctly.
+            The two misplaced chapters are chapter number 6 and 9.</p>
+        <p>To find the real position of chapters 6 and 9 invoke:</p>
+        <pre><code>php m4b-tool.phar chapter --find-misplaced-chapters 5,8  --merge-similar --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"</code></pre>
+        <p>Explanation:
+            <code>--find-misplaced-chapters</code>: Comma separated list of chapter numbers, that were not detected
+            correctly.</p>
+        <p>Now m4b-tool will generate a <strong><em>potential chapter</em></strong> for every silence around the used
+            chapter mark to find the right chapter position.</p>
+        <p>Listen to the audiobook again and find the right chapter position. Note them down.</p>
+        <h4>Manually adjust misplaced chapters</h4>
+        <p>Next run the full chapter detection with the --no-chapter-import option, which prevents writing the chapters
+            directly to the file.</p>
+        <pre><code>php m4b-tool.phar chapter --no-chapter-import --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"</code></pre>
+        <p>To Adjust misplaced chapters, do the following:</p>
+        <ul>
+            <li>Change the start position of all misplaced chapters manually in the file <code>../data/harry-potter-1.chapters.txt</code>
+            </li>
+            <li>Import the corrected chapters with <code>mp4chaps -i ../data/harry-potter-1.m4b</code></li>
+        </ul>
+        <p>Listen to <code>harry-potter-1.m4b</code> again, now the chapters should be at the correct position.</p>
+        <h4>Troubleshooting</h4>
+        <p>If none of the chapters are detected correctly, this can have different reasons:</p>
+        <ul>
+            <li>The silence parts of this audiobook are too short for detection. To adjust the minimum silence length,
+                use <code>--silence-min-length 1000</code> setting the silence length to 1 second.
+                <ul>
+                    <li>Caution: To low values can lead to misplaced chapters and increased detection time.</li>
+                </ul>
+            </li>
+            <li>You provided the wrong MBID</li>
+            <li>There is too much background noise in this specific audiobook, so that silences cannot be detected</li>
+        </ul>
+        <h4>Reference</h4>
+        <p>For all options, see <code>php dist/m4b-tool.phar chapters --help</code>:</p>
+        <pre><code>Usage:
+  chapters [options] [--] &lt;input&gt;
+
+Arguments:
+  input                                                      Input file or folder
+
+Options:
+  -d, --debug                                                file to dump debugging info
+      --debug-filename[=DEBUG-FILENAME]                      file to dump debugging info [default: "m4b-tool_debug.log"]
+  -f, --force                                                force overwrite of existing files
+      --no-cache                                             do not use cached values and clear cache completely
+      --ffmpeg-threads[=FFMPEG-THREADS]                      specify -threads parameter for ffmpeg [default: ""]
+      --convert-charset[=CONVERT-CHARSET]                    Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --ffmpeg-param[=FFMPEG-PARAM]                          Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
+  -m, --musicbrainz-id=MUSICBRAINZ-ID                        musicbrainz id so load chapters from
+  -a, --silence-min-length[=SILENCE-MIN-LENGTH]              silence minimum length in milliseconds [default: 1750]
+  -b, --silence-max-length[=SILENCE-MAX-LENGTH]              silence maximum length in milliseconds [default: 0]
+  -s, --merge-similar                                        merge similar chapter names
+  -o, --output-file[=OUTPUT-FILE]                            write chapters to this output file [default: ""]
+      --adjust-by-silence                                    will try to adjust chapters of a file by silence detection and existing chapter marks
+      --find-misplaced-chapters[=FIND-MISPLACED-CHAPTERS]    mark silence around chapter numbers that where not detected correctly, e.g. 8,15,18 [default: ""]
+      --find-misplaced-offset[=FIND-MISPLACED-OFFSET]        mark silence around chapter numbers with this offset seconds maximum [default: 120]
+      --find-misplaced-tolerance[=FIND-MISPLACED-TOLERANCE]  mark another chapter with this offset before each silence to compensate ffmpeg mismatches [default: -4000]
+      --no-chapter-numbering                                 do not append chapter number after name, e.g. My Chapter (1)
+      --no-chapter-import                                    do not import chapters into m4b-file, just create chapters.txt
+      --chapter-pattern[=CHAPTER-PATTERN]                    regular expression for matching chapter name [default: "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i"]
+      --chapter-replacement[=CHAPTER-REPLACEMENT]            regular expression replacement for matching chapter name [default: "$1"]
+      --chapter-remove-chars[=CHAPTER-REMOVE-CHARS]          remove these chars from chapter name [default: "„“”"]
+      --first-chapter-offset[=FIRST-CHAPTER-OFFSET]          milliseconds to add after silence on chapter start [default: 0]
+      --last-chapter-offset[=LAST-CHAPTER-OFFSET]            milliseconds to add after silence on chapter start [default: 0]
+  -h, --help                                                 Display this help message
+  -q, --quiet                                                Do not output any message
+  -V, --version                                              Display this application version
+      --ansi                                                 Force ANSI output
+      --no-ansi                                              Disable ANSI output
+  -n, --no-interaction                                       Do not ask any interactive question
+  -v|vv|vvv, --verbose                                       Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
+
+Help:
+  Can add Chapters to m4b files via different types of inputs</code></pre>
+        <h1>Known Issues</h1>
+        <h2>PHP Exceptions</h2>
+        <p>If you are getting PHP Exceptions, it is a configuration issue with PHP in most cases. If are not familiar
+            with PHP configuration,
+            you could follow these instructions, to fix a few known issues:</p>
+        <h3>Exception with DateTime::__construct</h3>
+        <pre><code>  [Exception]
+  DateTime::__construct(): It is not safe to rely on the system's timezone settings. You are *required* to use the date.time
+  zone setting or the date_default_timezone_set() function. In case you used any of those methods and you are still getting
+  this warning, you most likely misspelled the timezone identifier. We selected the timezone 'UTC' for now, but please set d
+  ate.timezone to select your timezone.</code></pre>
+        <p>This happens, because PHP needs a preconfigured timezone to work correctly. There are two ways to fix
+            this:</p>
+        <ol>
+            <li>Recommended: Set the value for date.timezone in your php.ini once, e.g. <code>date.timezone=Europe/Berlin</code>
+            </li>
+            <li>Set the configuration value for date.timezone inline everytime you use m4b-tool.phar, e.g. <code>php -d
+                "date.timezone=UTC" m4b-tool.phar merge "data/my-audio-book"
+                --output-file="data/my-audio-book.m4b"</code></li>
+        </ol>
+        <p><strong>This issue should be fixed in v0.2 and later.</strong></p>
+        <h3>Exception Charset not supported</h3>
+        <pre><code>[Exception]
+  charset windows-1252 is not supported - use one of these instead: utf-8</code></pre>
+        <p>This mostly happens on windows, because the mbstring-Extension is used to internally convert charsets, so
+            that special chars like german umlauts
+            are supported on every platform. To fix this, you need to enable the mbstring-extension:</p>
+        <p>Run <code>php --ini</code> on the command line:</p>
+        <pre><code>C:\&gt;php --ini
+...
+Loaded Configuration File:         C:\Program Files\php\php.ini</code></pre>
+        <p>Open the configuration file (e.g. <code>C:\Program Files\php\php.ini</code>) in a text editor and search for
+            <code>extension=</code>. On Windows there should be an item like this:</p>
+        <pre><code>;extension=php_mbstring.dll</code></pre>
+        <p>remove the <code>;</code> to enable the extension:</p>
+        <pre><code>extension=php_mbstring.dll</code></pre>
+        <p>Now everything should work as expected.</p>
+        <h1>Building from source</h1>
+        <p>m4b-tool contains a <code>build</code> script, which will create an executable m4b-tool.phar in the dist
+            folder. Composer for PHP
+            is required, so after installing composer, run following commands in project root folder:</p>
+        <h2>Linux / Unix</h2>
+        <h3>Install Dependencies (Ubuntu)</h3>
+        <pre><code class="language-shell">sudo apt install ffmpeg mp4v2-utils fdkaac php-cli composer phpunit php-mbstring</code></pre>
+        <h3>Build</h3>
+        <pre><code>composer update
+./build</code></pre>
+        <h2>Windows</h2>
+        <pre><code>composer update
+build</code></pre>
+
+    </div>
+    <a name="contact"></a>
+    <div class="imprint">
+        <h1>Contact</h1>
+        <address>
+            <p class="fy-name">Andreas Fuhrich</p>
+            <span class="fy-street-address">Schröderstr. 32</span><br>
+            <span class="fy-postal-code">69120</span> <span class="town">Heidelberg</span><br>
+            <span class="fy-region">Baden-Württemberg</span><br>
+            <span class="fy-country-name">Germany</span>
+            <p>Send me an email: <img src="//fynder.de/img/imprint/email.svg" height="14" alt="e-mail"></p>
+            <p>Or open an issue: <a
+                    href="//github.com/sandreas/m4b-tool/issues">//github.com/sandreas/m4b-tool/issues</a></p>
+        </address>
+    </div>
+</main>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.slim.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/popper.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.2.1/js/bootstrap.min.js"></script>
+</body>
+</html>

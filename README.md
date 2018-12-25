@@ -6,15 +6,16 @@ m4b-tool is a is a wrapper for ffmpeg and mp4v2 to merge, split or and manipulat
 
 - Merge a set of audio files (e.g. MP3 or AAC) into a single m4b file
 - Split a single m4b-File into several output files by chapters
-- Add chapters to an existing m4b-File via musicbrainz and silence detection
+- Add or adjust chapters to an existing m4b-File via musicbrainz and / or silence detection
 
 ## Requirements
 
-m4b-tool is written in PHP (Yes, you read it correctly!) and uses ffmpeg and mp4v2 to perform conversions. Therefore you will need the following tools in your $PATH:
+m4b-tool is written in PHP and uses ffmpeg, mp4v2 and optionally fdkaac for high efficiency codecs to perform conversions. Therefore you will need the following tools in your $PATH:
 
 - PHP >= 7.0 with mbstring extension enabled
 - ffmpeg
 - mp4v2
+- fdkaac (only if you need high efficiency for low bitrates <= 32k)
 
 
 ### Installation
@@ -28,9 +29,16 @@ If you think there is an issue with m4b-tool, first head over to the [Known Issu
 #### Before you start - notes about audio quality
 
 In m4b-tool all audio conversions are performed with ffmpeg with descent audio quality using its free encoders. 
-However, to get the best possible audio quality, it exists a non-free encoder, that is not integrated in ffmpeg by default (licensing reasons). 
+However, best quality takes some extra effort. To get the best possible audio quality, you have to use a non-free encoder, that is not integrated in ffmpeg by default (licensing reasons). 
 Depending on the operating system you are using, installing the non-free encoder may require a little extra skills, effort and time (see the notes for your operating system below).
 You must decide for yourself, if it is worth the additional effort for getting the slightly better quality.
+
+If you are using very low bitrates (<= 32k), you could use high efficiency profiles, to further improve audio quality. Unfortunately, `ffmpeg` produces files, that are incompatible with many players (including iTunes). To produce high efficiency files, that are compatible with at least most common players, you will need fdkaac for now.
+
+More Details:
+- https://github.com/sandreas/m4b-tool/issues/19
+- https://trac.ffmpeg.org/wiki/Encode/AAC
+- https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio 
 
 #### MacOS
 On MacOS you can use **brew** to install the requirements:
@@ -48,6 +56,13 @@ brew install ffmpeg --with-fdk-aac --with-sdl2 --with-freetype --with-libass --w
 brew install mp4v2
 ```
 
+
+**Install fdkaac**
+
+```
+brew install fdk-aac-encoder
+```
+
 **Install PHP >= 7.0**
 
 Follow the instructions on https://php-osx.liip.ch
@@ -60,7 +75,7 @@ Follow the instructions on https://php-osx.liip.ch
 > sudo add-apt-repository ppa:spvkgn/ffmpeg-nonfree
 > sudo apt-get update
 > ```
-> if this does not work, you have to compile yourself or must use the free codec with the command below
+> if this does not work, you have to compile yourself (https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu) or must use the free codec with the command below
 
 ```
 # Free codecs, not the best possible audio quality for aac / m4b
@@ -70,6 +85,11 @@ sudo apt install ffmpeg
 Install mp4v2-utils
 ```
 sudo apt install mp4v2-utils
+```
+
+Install fdkaac
+```
+sudo apt install fdkaac
 ```
 
 Install PHP > 7.0
@@ -86,6 +106,8 @@ To install, download releases from:
 > Note: For best audio quality, you have to compile ffmpeg yourself with --with-fdk-aac (experts only) - as an easy approach, you could try the media-autobuild suite: https://github.com/jb-alvarado/media-autobuild_suite
 
 - mp4v2: https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip
+
+- fdkaac (no official source!): http://wlc.io/2015/06/20/fdk-aac/
 
 - PHP: http://windows.php.net/download/
 
@@ -126,25 +148,34 @@ Options:
       --debug-filename[=DEBUG-FILENAME]          file to dump debugging info [default: "m4b-tool_debug.log"]
   -f, --force                                    force overwrite of existing files
       --no-cache                                 do not use cached values and clear cache completely
+      --ffmpeg-threads[=FFMPEG-THREADS]          specify -threads parameter for ffmpeg [default: ""]
+      --convert-charset[=CONVERT-CHARSET]        Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --ffmpeg-param[=FFMPEG-PARAM]              Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
       --audio-format[=AUDIO-FORMAT]              output format, that ffmpeg will use to create files [default: "m4b"]
       --audio-channels[=AUDIO-CHANNELS]          audio channels, e.g. 1, 2 [default: ""]
       --audio-bitrate[=AUDIO-BITRATE]            audio bitrate, e.g. 64k, 128k, ... [default: ""]
       --audio-samplerate[=AUDIO-SAMPLERATE]      audio samplerate, e.g. 22050, 44100, ... [default: ""]
       --audio-codec[=AUDIO-CODEC]                audio codec, e.g. libmp3lame, aac, ... [default: ""]
-      --adjust-for-ipod                          auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)      
+      --audio-profile[=AUDIO-PROFILE]            audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2  [default: ""]
+      --adjust-for-ipod                          auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)
       --name[=NAME]                              provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
+      --album[=ALBUM]                            provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
       --artist[=ARTIST]                          provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
       --genre[=GENRE]                            provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
       --writer[=WRITER]                          provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
       --albumartist[=ALBUMARTIST]                provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
       --year[=YEAR]                              provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
-      --album[=ALBUM]                            provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
       --cover[=COVER]                            provide a custom audiobook cover, otherwise the existing metadata will be used
+      --description[=DESCRIPTION]                provide a custom audiobook short description, otherwise the existing metadata will be used
+      --comment[=COMMENT]                        provide a custom audiobook comment, otherwise the existing metadata will be used
+      --copyright[=COPYRIGHT]                    provide a custom audiobook copyright, otherwise the existing metadata will be used
+      --encoded-by[=ENCODED-BY]                  provide a custom audiobook encoded-by, otherwise the existing metadata will be used
       --skip-cover                               skip extracting and embedding covers
       --output-file=OUTPUT-FILE                  output file
-      --include-extensions[=INCLUDE-EXTENSIONS]  comma separated list of file extensions to include (others are skipped) [default: "m4b,mp3,aac,mp4,flac"]
+      --include-extensions[=INCLUDE-EXTENSIONS]  comma separated list of file extensions to include (others are skipped) [default: "aac,alac,flac,m4a,m4b,mp3,oga,ogg,wav,wma,mp4"]
   -m, --musicbrainz-id=MUSICBRAINZ-ID            musicbrainz id so load chapters from
       --mark-tracks                              add chapter marks for each track
+      --auto-split-seconds[=AUTO-SPLIT-SECONDS]  auto split chapters after x seconds, if track is too long
   -h, --help                                     Display this help message
   -q, --quiet                                    Do not output any message
   -V, --version                                  Display this application version
@@ -181,22 +212,32 @@ Arguments:
   input                                      Input file or folder
 
 Options:
-  -d, --debug                                show debugging info about chapters and silences
+  -d, --debug                                file to dump debugging info
+      --debug-filename[=DEBUG-FILENAME]      file to dump debugging info [default: "m4b-tool_debug.log"]
   -f, --force                                force overwrite of existing files
       --no-cache                             do not use cached values and clear cache completely
+      --ffmpeg-threads[=FFMPEG-THREADS]      specify -threads parameter for ffmpeg [default: ""]
+      --convert-charset[=CONVERT-CHARSET]    Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --ffmpeg-param[=FFMPEG-PARAM]          Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
       --audio-format[=AUDIO-FORMAT]          output format, that ffmpeg will use to create files [default: "m4b"]
       --audio-channels[=AUDIO-CHANNELS]      audio channels, e.g. 1, 2 [default: ""]
       --audio-bitrate[=AUDIO-BITRATE]        audio bitrate, e.g. 64k, 128k, ... [default: ""]
       --audio-samplerate[=AUDIO-SAMPLERATE]  audio samplerate, e.g. 22050, 44100, ... [default: ""]
       --audio-codec[=AUDIO-CODEC]            audio codec, e.g. libmp3lame, aac, ... [default: ""]
+      --audio-profile[=AUDIO-PROFILE]        audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2  [default: ""]
+      --adjust-for-ipod                      auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)
       --name[=NAME]                          provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
+      --album[=ALBUM]                        provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
       --artist[=ARTIST]                      provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
       --genre[=GENRE]                        provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
       --writer[=WRITER]                      provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
       --albumartist[=ALBUMARTIST]            provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
       --year[=YEAR]                          provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
-      --album[=ALBUM]                            provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
       --cover[=COVER]                        provide a custom audiobook cover, otherwise the existing metadata will be used
+      --description[=DESCRIPTION]            provide a custom audiobook short description, otherwise the existing metadata will be used
+      --comment[=COMMENT]                    provide a custom audiobook comment, otherwise the existing metadata will be used
+      --copyright[=COPYRIGHT]                provide a custom audiobook copyright, otherwise the existing metadata will be used
+      --encoded-by[=ENCODED-BY]              provide a custom audiobook encoded-by, otherwise the existing metadata will be used
       --skip-cover                           skip extracting and embedding covers
       --use-existing-chapters-file           adjust chapter position by nearest found silence
   -h, --help                                 Display this help message
@@ -209,13 +250,28 @@ Options:
 
 Help:
   Split an m4b into multiple m4b or mp3 files by chapter
-
 ```
 
 
 ## chapter
 
-Many m4b audiobook files do not contain valid chapters for different reasons. 
+Many m4b audiobook files do not contain valid chapters for different reasons. `m4b-tool` can handle two cases:
+
+- Correct misplaced chapters by silence detection
+- Add chapters from an internet source (mostly for well known titles)
+
+### Misplaced chapters
+In some cases there is a shift between the chapter mark and the real beginning of a chapter. `m4b-tool` could try
+to correct that by detecting silences and relocating the chapter to the nearest silence:
+
+```
+php m4b-tool.phar chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"
+```
+
+It won't work, if the shift is to large or if the chapters are strongly misplaced, but since everything is done automatically, it's worth a try, isn't it?
+
+
+### No chapters at all
 If you have a well known audiobook, like ***Harry Potter and the Philosopher’s Stone***, 
 you might be lucky that it is on musicbrainz.
  
@@ -308,14 +364,19 @@ Arguments:
   input                                                      Input file or folder
 
 Options:
-  -d, --debug                                                show debugging info about chapters and silences
+  -d, --debug                                                file to dump debugging info
+      --debug-filename[=DEBUG-FILENAME]                      file to dump debugging info [default: "m4b-tool_debug.log"]
   -f, --force                                                force overwrite of existing files
       --no-cache                                             do not use cached values and clear cache completely
+      --ffmpeg-threads[=FFMPEG-THREADS]                      specify -threads parameter for ffmpeg [default: ""]
+      --convert-charset[=CONVERT-CHARSET]                    Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --ffmpeg-param[=FFMPEG-PARAM]                          Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
   -m, --musicbrainz-id=MUSICBRAINZ-ID                        musicbrainz id so load chapters from
   -a, --silence-min-length[=SILENCE-MIN-LENGTH]              silence minimum length in milliseconds [default: 1750]
   -b, --silence-max-length[=SILENCE-MAX-LENGTH]              silence maximum length in milliseconds [default: 0]
   -s, --merge-similar                                        merge similar chapter names
   -o, --output-file[=OUTPUT-FILE]                            write chapters to this output file [default: ""]
+      --adjust-by-silence                                    will try to adjust chapters of a file by silence detection and existing chapter marks
       --find-misplaced-chapters[=FIND-MISPLACED-CHAPTERS]    mark silence around chapter numbers that where not detected correctly, e.g. 8,15,18 [default: ""]
       --find-misplaced-offset[=FIND-MISPLACED-OFFSET]        mark silence around chapter numbers with this offset seconds maximum [default: 120]
       --find-misplaced-tolerance[=FIND-MISPLACED-TOLERANCE]  mark another chapter with this offset before each silence to compensate ffmpeg mismatches [default: -4000]
@@ -336,7 +397,6 @@ Options:
 
 Help:
   Can add Chapters to m4b files via different types of inputs
-
 ```
 
 
@@ -404,7 +464,7 @@ is required, so after installing composer, run following commands in project roo
 ### Install Dependencies (Ubuntu)
 
 ```shell
-sudo apt install ffmpeg mp4v2-utils php-cli composer phpunit php-mbstring
+sudo apt install ffmpeg mp4v2-utils fdkaac php-cli composer phpunit php-mbstring
 ```
 
 ### Build
