@@ -319,7 +319,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $coverTargetFile = new SPLFileInfo($this->argInputFile . "/cover.jpg");
 
 
-        $fdkAacCommand = $this->buildFdkaacCommand();
+        $baseFdkAacCommand = $this->buildFdkaacCommand();
 
 
         foreach ($this->filesToConvert as $index => $file) {
@@ -344,7 +344,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             }
 
 
-            if ($fdkAacCommand) {
+            if ($baseFdkAacCommand) {
+                $fdkAacCommand = $baseFdkAacCommand;
                 $tmpOutputFile = (string)$outputFile . ".fdkaac-input";
                 $this->otherTmpFiles[] = $tmpOutputFile;
                 $command = ["-i", $file, "-vn", "-ac", $this->optAudioChannels, "-ar", $this->optAudioSampleRate, "-f", "caf", $tmpOutputFile];
