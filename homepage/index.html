@@ -7,7 +7,7 @@
     <meta name="author" content="">
     <link rel="icon" href="favicon.ico">
 
-    <title>Starter Template for Bootstrap</title>
+    <title>m4b-tool - a tool to merge, split or and manipulate m4b audiobooks with chapters</title>
 
     <!-- Bootstrap core CSS -->
     <link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.2.1/css/bootstrap.min.css" rel="stylesheet">
@@ -102,19 +102,24 @@
             </li>
         </ul>
         <h4>MacOS</h4>
-        <p>On MacOS you can use <strong>brew</strong> to install the requirements:</p>
-        <p><strong>Install ffmpeg</strong></p>
-        <blockquote>
-            <p>Note: The flag <em>--with-fdk-aac</em> easily activates the non-free aac encoder for best audio quality -
-                there should be no reason to skip that</p>
-            <pre><code>brew install ffmpeg --with-fdk-aac --with-sdl2 --with-freetype --with-libass --with-libquvi --with-libvorbis --with-libvpx --with-opus --with-x265</code></pre>
-        </blockquote>
-        <p><strong>Install mp4v2</strong></p>
-        <pre><code>brew install mp4v2</code></pre>
-        <p><strong>Install fdkaac</strong></p>
-        <pre><code>brew install fdk-aac-encoder</code></pre>
-        <p><strong>Install PHP &gt;= 7.0</strong></p>
-        <p>Follow the instructions on <a href="https://php-osx.liip.ch">https://php-osx.liip.ch</a></p>
+        <p>On MacOS you can use <strong>brew tap</strong> to install <code>m4b-tool</code> via its own formula:</p>
+        <h5>brew formula (recommended)</h5>
+        <pre><code>brew tap sandreas/tap
+
+# this can take a while
+brew install m4b-tool</code></pre>
+        <h5>manual installation</h5>
+        <p><strong><em>Install requirements via brew</em></strong></p>
+        <pre><code># ffmpeg - Note: The flag _--with-fdk-aac easily activates the non-free aac encoder for best audio quality - there should be no reason to skip that
+brew install ffmpeg --with-chromaprint --with-fdk-aac --with-freetype --with-libass --with-sdl2 --with-freetype --with-libquvi --with-libvorbis --with-libquvi --with-libvpx --with-opus --with-x265
+
+# additional requirements
+brew install php mp4v2 fdk-aac-encoder</code></pre>
+        <p><strong>Install m4b-tool</strong>
+            Download the latest release of m4b-tool.phar from <a href="https://github.com/sandreas/m4b-tool/releases">https://github.com/sandreas/m4b-tool/releases</a>
+            to a directory of your choice.</p>
+        <pre><code>wget https://github.com/sandreas/m4b-tool/releases/download/v.0.3.1/m4b-tool.phar -O m4b-tool &amp;&amp; chmod +x m4b-tool
+m4b-tool --version</code></pre>
         <h4>Ubuntu</h4>
         <p><strong>Install ffmpeg</strong></p>
         <blockquote>
@@ -470,7 +475,8 @@ build</code></pre>
             <span class="fy-country-name">Germany</span>
             <p>Send me an email: <img src="//fynder.de/img/imprint/email.svg" height="14" alt="e-mail"></p>
             <p>Or open an issue: <a
-                    href="//github.com/sandreas/m4b-tool/issues">//github.com/sandreas/m4b-tool/issues</a></p>
+                    href="//github.com/sandreas/m4b-tool/issues">//github.com/sandreas/m4b-tool/issues</a>
+            </p>
         </address>
     </div>
 </main>
