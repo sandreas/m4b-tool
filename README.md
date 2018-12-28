@@ -41,31 +41,35 @@ More Details:
 - https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio 
 
 #### MacOS
-On MacOS you can use **brew** to install the requirements:
+On MacOS you can use **brew tap** to install `m4b-tool` via its own formula:
 
 
-**Install ffmpeg**
-> Note: The flag _--with-fdk-aac_ easily activates the non-free aac encoder for best audio quality - there should be no reason to skip that
+##### brew formula (recommended)
 ```
-brew install ffmpeg --with-fdk-aac --with-sdl2 --with-freetype --with-libass --with-libquvi --with-libvorbis --with-libvpx --with-opus --with-x265
-```
+brew tap sandreas/tap
 
-**Install mp4v2**
-
-```
-brew install mp4v2
+# this can take a while
+brew install m4b-tool
 ```
 
+##### manual installation
 
-**Install fdkaac**
+***Install requirements via brew***
+```
+# ffmpeg - Note: The flag _--with-fdk-aac easily activates the non-free aac encoder for best audio quality - there should be no reason to skip that
+brew install ffmpeg --with-chromaprint --with-fdk-aac --with-freetype --with-libass --with-sdl2 --with-freetype --with-libquvi --with-libvorbis --with-libquvi --with-libvpx --with-opus --with-x265
+
+# additional requirements
+brew install php mp4v2 fdk-aac-encoder
+```
+
+**Install m4b-tool**
+Download the latest release of m4b-tool.phar from https://github.com/sandreas/m4b-tool/releases to a directory of your choice.
 
 ```
-brew install fdk-aac-encoder
+wget https://github.com/sandreas/m4b-tool/releases/download/v.0.3.1/m4b-tool.phar -O m4b-tool && chmod +x m4b-tool
+m4b-tool --version
 ```
-
-**Install PHP >= 7.0**
-
-Follow the instructions on https://php-osx.liip.ch
 
 #### Ubuntu
 
