@@ -1,3 +1,3 @@
 #!/bin/sh
 rm dist/m4b-tool*
-php -d phar.readonly=off tools/box.phar build && chmod +x dist/*.phar && tar -C dist -czf dist/m4b-tool.tar.gz m4b-tool.phar && zip dist/m4b-tool.zip dist/m4b-tool.phar
+php -d phar.readonly=off tools/box.phar build && chmod +x dist/*.phar && tar -C dist -czf dist/m4b-tool.tar.gz m4b-tool.phar && pushd dist && zip m4b-tool.zip m4b-tool.phar && popd
