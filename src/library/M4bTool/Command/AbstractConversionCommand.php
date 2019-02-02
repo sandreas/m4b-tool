@@ -28,6 +28,34 @@ class AbstractConversionCommand extends AbstractCommand
 
     protected $longDescription;
 
+    public function inputOptionsToTag()
+    {
+        $tag = new Tag;
+
+        $tag->title = $this->input->getOption("name");
+        $tag->album = $this->input->getOption("album");
+
+        // on ipods / itunes, album is for title of the audio book
+        if ($this->optAdjustBitrateForIpod && $tag->title && !$tag->album) {
+            $tag->album = $tag->title;
+        }
+
+        $tag->artist = $this->input->getOption("artist");
+        $tag->genre = $this->input->getOption("genre");
+        $tag->writer = $this->input->getOption("writer");
+        $tag->albumArtist = $this->input->getOption("albumartist");
+        $tag->year = $this->input->getOption("year");
+        $tag->cover = $this->input->getOption("cover");
+        $tag->description = $this->input->getOption("description");
+        $tag->longDescription = $this->longDescription;
+
+        $tag->comment = $this->input->getOption("comment");
+        $tag->copyright = $this->input->getOption("copyright");
+        $tag->encodedBy = $this->input->getOption("encoded-by");
+
+
+        return $tag;
+    }
 
     protected function configure()
     {
@@ -75,7 +103,7 @@ class AbstractConversionCommand extends AbstractCommand
         }
 
 
-        if(!$this->optAudioCodec) {
+        if (!$this->optAudioCodec) {
             if (isset($audioFormatCodecMapping[$this->optAudioFormat])) {
                 if ($this->optAudioFormat === "mp4") {
                     $this->optAudioCodec = $this->loadHighestAvailableQualityAacCodec();
@@ -105,7 +133,8 @@ class AbstractConversionCommand extends AbstractCommand
             "aac"
         ];
 
-        $process = $this->ffmpeg(["-hide_banner", "-codecs"]);
+        $process = $this->ffmpeg(["-hide_banner", "-codecs"], "determine highest available audio codec");
+        $process->stop(10);
         /*
 Codecs:
  D..... = Decoding supported
@@ -146,7 +175,6 @@ Codecs:
         return $returnValue;
     }
 
-
     protected function tagFile(SplFileInfo $file, Tag $tag)
     {
 
@@ -181,55 +209,31 @@ Codecs:
                     $this->output->writeln("cover file " . $tag->cover . " does not exist");
                     return;
                 }
-                $command = [ "--add", $tag->cover, $file];
+                $command = ["--add", $tag->cover, $file];
                 $this->appendParameterToCommand($command, "-f", $this->optForce);
                 $process = $this->mp4art($command, "adding cover " . $tag->cover . " to " . $file);
-                $this->debug($process->getOutput().$process->getErrorOutput());
+                $this->debug($process->getOutput() . $process->getErrorOutput());
             }
 
             return;
         }
-    }
 
-    public function inputOptionsToTag()
-    {
-        $tag = new Tag;
-        $tag->title = $this->input->getOption("name");
-        $tag->album = $this->input->getOption("album");
-
-        // on ipods / itunes, album is for title of the audio book
-        if($this->optAdjustBitrateForIpod && $tag->title && !$tag->album) {
-            $tag->album = $tag->title;
+        if ($this->optAudioFormat === "mp3") {
+            $this->appendTemplateParameterToCommand($command, '-metadata title="%s"', $tag->title);
         }
-
-        $tag->artist = $this->input->getOption("artist");
-        $tag->genre = $this->input->getOption("genre");
-        $tag->writer = $this->input->getOption("writer");
-        $tag->albumArtist = $this->input->getOption("albumartist");
-        $tag->year = $this->input->getOption("year");
-        $tag->cover = $this->input->getOption("cover");
-        $tag->description = $this->input->getOption("description");
-        $tag->longDescription = $this->longDescription;
-
-        $tag->comment = $this->input->getOption("comment");
-        $tag->copyright = $this->input->getOption("copyright");
-        $tag->encodedBy = $this->input->getOption("encoded-by");
-
-
-        return $tag;
     }
 
-
-    protected function bitrateStringToInt() {
+    protected function bitrateStringToInt()
+    {
         $multipliers = [
             "k" => 1000,
             "M" => 1000 * 1000,
-            "G" => 1000 * 1000* 1000,
-            "T" => 1000 * 1000* 1000* 1000,
+            "G" => 1000 * 1000 * 1000,
+            "T" => 1000 * 1000 * 1000 * 1000,
         ];
-        preg_match("/^([0-9]+)[\s]*(".implode("|", array_keys($multipliers)).")[\s]*$/U", $this->optAudioBitRate, $matches);
+        preg_match("/^([0-9]+)[\s]*(" . implode("|", array_keys($multipliers)) . ")[\s]*$/U", $this->optAudioBitRate, $matches);
 
-        if(count($matches) !== 3) {
+        if (count($matches) !== 3) {
             throw new \Exception("Invalid audio-bitrate: " . $this->optAudioBitRate);
         }
         $value = $matches[1];
@@ -237,7 +241,8 @@ Codecs:
         return $value * $multiplier;
     }
 
-    protected function samplingRateToInt()  {
+    protected function samplingRateToInt()
+    {
         return (int)str_ireplace("hz", "", $this->optAudioSampleRate);
     }
 
@@ -302,7 +307,6 @@ Codecs:
             $command[] = '-metadata';
             $command[] = 'copyright=' . $tag->copyright;
         }
-
 
 
         if ($tag->encodedBy) {

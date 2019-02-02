@@ -187,6 +187,20 @@ class AbstractCommand extends Command
         }
     }
 
+    protected function appendTemplateParameterToCommand(&$command, $parameterTemplate, $parameterValue = null, $escapeChars = ['"' => '\\"'])
+    {
+
+        if (is_bool($parameterValue)) {
+            $command[] = $parameterTemplate;
+            return;
+        }
+
+        if ($parameterValue) {
+            $escapedValue = strtr($parameterValue, $escapeChars);
+            $command[] = sprintf($parameterTemplate, $escapedValue);
+        }
+    }
+
     protected function splitLines($chapterString)
     {
         return preg_split("/\r\n|\n|\r/", $chapterString);

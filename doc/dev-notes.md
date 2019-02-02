@@ -5,6 +5,15 @@
 
 ## FFMPEG samples
 
+### audio fingerprinting
+compile with --with-chromaprint, fingerprint is very long for large files,
+cut off some seconds?!
+```
+ffmpeg -i "input.mp3" -f chromaprint fingerprint.txt
+ffmpeg -i weitseher_2mins.m4b  -vn -ss 00:00:00.000 -t 00:02:00.000 -f chromaprint weitseher_2mins_fingerprint_new.txt
+ffmpeg -i weitseher.m4b  -vn -ss 00:00:00.000 -t 00:01:20.000 -f chromaprint - 2>/dev/null | wc -c
+```
+
 ### detect silence
 
 Detect 3 seconds of silence with -30dB noise tolerance:

@@ -5,6 +5,7 @@ namespace M4bTool\Parser;
 
 
 use M4bTool\Audio\Chapter;
+use M4bTool\Audio\Tag;
 use M4bTool\Time\TimeUnit;
 use Mockery\Exception;
 
@@ -118,5 +119,19 @@ class FfmetaDataParser
         $end = new TimeUnit($chapterDataLowerCase["end"], $timeUnit);
         $length = new TimeUnit($end->milliseconds() - $start->milliseconds());
         return new Chapter($start, $length, $chapterDataLowerCase["title"]);
+    }
+
+    public function toTag()
+    {
+        $tag = new Tag();
+        $tag->album = $this->getProperty("album");
+        $tag->artist = $this->getProperty("artist");
+        $tag->albumArtist = $this->getProperty("album_artist");
+        $tag->year = $this->getProperty("date");
+        $tag->genre = $this->getProperty("genre");
+        $tag->writer = $this->getProperty("writer");
+        $tag->description = $this->getProperty("description");
+        $tag->longDescription = $this->getProperty("longdesc");
+        return $tag;
     }
 }

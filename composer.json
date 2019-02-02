@@ -3,7 +3,8 @@
     "monolog/monolog": "^1.22",
     "symfony/console": "^3.2",
     "symfony/process": "^3.2",
-    "symfony/cache": "^3.2"
+    "symfony/cache": "^3.2",
+    "twig/twig": "^2.0"
   },
   "autoload": {
     "psr-4": {
