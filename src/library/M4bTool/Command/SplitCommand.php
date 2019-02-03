@@ -74,7 +74,11 @@ class SplitCommand extends AbstractConversionCommand
         parent::initExecution($input, $output);
         $this->outputDirectory = $input->getOption(static::OPTION_OUTPUT_DIRECTORY);
         if ($this->outputDirectory === "") {
-            $this->outputDirectory = new SplFileInfo($this->argInputFile->getPath() . "/" . $this->argInputFile->getBasename("." . $this->argInputFile->getExtension()) . "_splitted/");
+            $path = $this->argInputFile->getPath();
+            if ($path) {
+                $path .= "/";
+            }
+            $this->outputDirectory = new SplFileInfo($path . $this->argInputFile->getBasename("." . $this->argInputFile->getExtension()) . "_splitted/");
         }
 
         $this->optFilenameTemplate = $input->getOption(static::OPTION_FILENAME_TEMPLATE);
@@ -139,7 +143,11 @@ class SplitCommand extends AbstractConversionCommand
             $tag->tracks = count($this->chapters);
             $tag->merge($metaDataTag);
 
-            $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($tag)); // new SplFileInfo($this->outputDirectory . "/" . sprintf("%03d", $index + 1) . "-" . $this->stripInvalidFilenameChars($chapter->getName()) . "." . $this->optAudioExtension);
+            $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($tag));
+
+            if (!is_dir($outputFile->getPath()) && !mkdir($outputFile->getPath(), 0777, true)) {
+                throw new Exception("Could not create output directory: " . $outputFile->getPath());
+            }
 
             $outputFile = $this->extractChapter($chapter, $outputFile, $tag);
             if ($outputFile) {

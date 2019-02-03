@@ -24,6 +24,7 @@
         "vendor/phar-io",
         "vendor/psr",
         "vendor/symfony",
+        "vendor/twig",
         "vendor/theseer"
       ]
     }
