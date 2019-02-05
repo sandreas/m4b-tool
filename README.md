@@ -213,49 +213,80 @@ Usage:
   split [options] [--] <input>
 
 Arguments:
-  input                                      Input file or folder
+  input                                        Input file or folder
 
 Options:
-  -d, --debug                                file to dump debugging info
-      --debug-filename[=DEBUG-FILENAME]      file to dump debugging info [default: "m4b-tool_debug.log"]
-  -f, --force                                force overwrite of existing files
-      --no-cache                             do not use cached values and clear cache completely
-      --ffmpeg-threads[=FFMPEG-THREADS]      specify -threads parameter for ffmpeg [default: ""]
-      --convert-charset[=CONVERT-CHARSET]    Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
-      --ffmpeg-param[=FFMPEG-PARAM]          Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
-      --audio-format[=AUDIO-FORMAT]          output format, that ffmpeg will use to create files [default: "m4b"]
-      --audio-channels[=AUDIO-CHANNELS]      audio channels, e.g. 1, 2 [default: ""]
-      --audio-bitrate[=AUDIO-BITRATE]        audio bitrate, e.g. 64k, 128k, ... [default: ""]
-      --audio-samplerate[=AUDIO-SAMPLERATE]  audio samplerate, e.g. 22050, 44100, ... [default: ""]
-      --audio-codec[=AUDIO-CODEC]            audio codec, e.g. libmp3lame, aac, ... [default: ""]
-      --audio-profile[=AUDIO-PROFILE]        audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2  [default: ""]
-      --adjust-for-ipod                      auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)
-      --name[=NAME]                          provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
-      --album[=ALBUM]                        provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
-      --artist[=ARTIST]                      provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
-      --genre[=GENRE]                        provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
-      --writer[=WRITER]                      provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
-      --albumartist[=ALBUMARTIST]            provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
-      --year[=YEAR]                          provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
-      --cover[=COVER]                        provide a custom audiobook cover, otherwise the existing metadata will be used
-      --description[=DESCRIPTION]            provide a custom audiobook short description, otherwise the existing metadata will be used
-      --comment[=COMMENT]                    provide a custom audiobook comment, otherwise the existing metadata will be used
-      --copyright[=COPYRIGHT]                provide a custom audiobook copyright, otherwise the existing metadata will be used
-      --encoded-by[=ENCODED-BY]              provide a custom audiobook encoded-by, otherwise the existing metadata will be used
-      --skip-cover                           skip extracting and embedding covers
-      --use-existing-chapters-file           adjust chapter position by nearest found silence
-  -h, --help                                 Display this help message
-  -q, --quiet                                Do not output any message
-  -V, --version                              Display this application version
-      --ansi                                 Force ANSI output
-      --no-ansi                              Disable ANSI output
-  -n, --no-interaction                       Do not ask any interactive question
-  -v|vv|vvv, --verbose                       Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
+  -d, --debug                                  file to dump debugging info
+      --debug-filename[=DEBUG-FILENAME]        file to dump debugging info [default: "m4b-tool_debug.log"]
+  -f, --force                                  force overwrite of existing files
+      --no-cache                               do not use cached values and clear cache completely
+      --ffmpeg-threads[=FFMPEG-THREADS]        specify -threads parameter for ffmpeg [default: ""]
+      --convert-charset[=CONVERT-CHARSET]      Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --ffmpeg-param[=FFMPEG-PARAM]            Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
+      --audio-format[=AUDIO-FORMAT]            output format, that ffmpeg will use to create files [default: "m4b"]
+      --audio-channels[=AUDIO-CHANNELS]        audio channels, e.g. 1, 2 [default: ""]
+      --audio-bitrate[=AUDIO-BITRATE]          audio bitrate, e.g. 64k, 128k, ... [default: ""]
+      --audio-samplerate[=AUDIO-SAMPLERATE]    audio samplerate, e.g. 22050, 44100, ... [default: ""]
+      --audio-codec[=AUDIO-CODEC]              audio codec, e.g. libmp3lame, aac, ... [default: ""]
+      --audio-profile[=AUDIO-PROFILE]          audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2  [default: ""]
+      --adjust-for-ipod                        auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)
+      --name[=NAME]                            provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
+      --album[=ALBUM]                          provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
+      --artist[=ARTIST]                        provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
+      --genre[=GENRE]                          provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
+      --writer[=WRITER]                        provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
+      --albumartist[=ALBUMARTIST]              provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
+      --year[=YEAR]                            provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
+      --cover[=COVER]                          provide a custom audiobook cover, otherwise the existing metadata will be used
+      --description[=DESCRIPTION]              provide a custom audiobook short description, otherwise the existing metadata will be used
+      --comment[=COMMENT]                      provide a custom audiobook comment, otherwise the existing metadata will be used
+      --copyright[=COPYRIGHT]                  provide a custom audiobook copyright, otherwise the existing metadata will be used
+      --encoded-by[=ENCODED-BY]                provide a custom audiobook encoded-by, otherwise the existing metadata will be used
+      --skip-cover                             skip extracting and embedding covers
+  -o, --output-dir[=OUTPUT-DIR]                output directory [default: ""]
+      --filename-template[=FILENAME-TEMPLATE]  filename twig-template for output file naming [default: "{{\"%03d\"|format(track)}}-{{title}}"]
+      --use-existing-chapters-file             use an existing manually edited chapters file <audiobook-name>.chapters.txt instead of embedded chapters for splitting
+  -h, --help                                   Display this help message
+  -q, --quiet                                  Do not output any message
+  -V, --version                                Display this application version
+      --ansi                                   Force ANSI output
+      --no-ansi                                Disable ANSI output
+  -n, --no-interaction                         Do not ask any interactive question
+  -v|vv|vvv, --verbose                         Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
 
 Help:
   Split an m4b into multiple m4b or mp3 files by chapter
 ```
 
+### filename-template reference
+
+If you would like to use a custom filename template, the [Twig](https://twig.symfony.com/) template engine is provided. The following variables are available:
+
+```
+{{encoder}}         
+{{title}}           
+{{artist}}          
+{{genre}}
+{{writer}}
+{{album}}
+{{disk}}
+{{disks}}
+{{albumArtist}}
+{{year}}
+{{track}}
+{{tracks}}
+{{cover}}
+{{description}}
+{{longDescription}}
+{{comment}}
+{{copyright}}
+{{encodedBy}}
+```
+
+- You can also use some Twig specific template extensions to pad or reformat these values. The default template is `{{\"%03d\"|format(track)}}-{{title}}`, which results in filenames like `001-mychapter`
+- Slashes are interpreted as directory separators, so if you use a template `{{year}}/{{artist}}/{{title}}` the resulting directory and file is `2018/Joanne K. Rowling/Harry Potter 1`
+- It is not recommended to use `{{description}}` or `{{longdescription}}` for filenames but they are also provided, if the field contains other information than intended
+- Special chars, that are forbidden in filenames are removed automatically
 
 ## chapter
 
