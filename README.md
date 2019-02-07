@@ -180,6 +180,7 @@ Options:
   -m, --musicbrainz-id=MUSICBRAINZ-ID            musicbrainz id so load chapters from
       --mark-tracks                              add chapter marks for each track
       --auto-split-seconds[=AUTO-SPLIT-SECONDS]  auto split chapters after x seconds, if track is too long
+      --no-conversion                            skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)
   -h, --help                                     Display this help message
   -q, --quiet                                    Do not output any message
   -V, --version                                  Display this application version
@@ -190,7 +191,6 @@ Options:
 
 Help:
   Merges a set of files to one single file
-
 ```
 
 

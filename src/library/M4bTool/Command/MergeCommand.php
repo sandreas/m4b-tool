@@ -26,6 +26,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     const OPTION_INCLUDE_EXTENSIONS = "include-extensions";
     const OPTION_MARK_TRACKS = "mark-tracks";
     const OPTION_AUTO_SPLIT_SECONDS = "auto-split-seconds";
+    const OPTION_NO_CONVERSION = "no-conversion";
 
     protected $outputDirectory;
 
@@ -70,6 +71,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
         $this->addOption(static::OPTION_MARK_TRACKS, null, InputOption::VALUE_NONE, "add chapter marks for each track");
         $this->addOption(static::OPTION_AUTO_SPLIT_SECONDS, null, InputOption::VALUE_OPTIONAL, "auto split chapters after x seconds, if track is too long");
+        $this->addOption(static::OPTION_NO_CONVERSION, null, InputOption::VALUE_NONE, "skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)");
 
     }
 
@@ -83,7 +85,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->loadInputMetadataFromFirstFile();
         $this->lookupAndAddCover();
         $this->lookupAndAddDescription();
-        $this->convertInputFiles();
+
+        if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
+            $this->prepareMergeWithoutConversion();
+        } else {
+            $this->convertInputFiles();
+        }
         $this->lookupAndAddCover();
         $this->buildChaptersFromConvertedFileDurations();
 
@@ -325,7 +332,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         foreach ($this->filesToConvert as $index => $file) {
 
             if ($this->shouldExtractCoverFromInputFiles($coverTargetFile)) {
-                $this->ffmpeg(["-i", $file, "-an", "-vcodec", "copy", $coverTargetFile], "try to extract cover from " . $file);
+                $this->extractCover($file, $coverTargetFile);
             }
 
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
@@ -596,7 +603,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             return;
         }
 
-        if ($this->optAudioFormat != "mp4") {
+        if ($this->optAudioFormat != static::AUDIO_FORMAT_MP4) {
             return;
         }
         $chaptersFile = $this->audioFileToChaptersFile($this->outputFile);
@@ -621,5 +628,40 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     {
         $tag = $this->inputOptionsToTag();
         $this->tagFile($this->outputFile, $tag);
+    }
+
+    private function prepareMergeWithoutConversion()
+    {
+        $coverTargetFile = new SPLFileInfo($this->argInputFile . "/cover.jpg");
+
+        $this->filesToMerge = $this->filesToConvert;
+        $extensions = [];
+        foreach ($this->filesToMerge as $file) {
+            if ($this->shouldExtractCoverFromInputFiles($coverTargetFile)) {
+                $this->extractCover($file, $coverTargetFile);
+            }
+
+            if (!in_array($file->getExtension(), $extensions, true)) {
+                $extensions[] = $file->getExtension();
+            }
+        }
+
+        if (count($extensions) === 0) {
+            throw new \Exception("no files found to merge");
+        }
+        if (count($extensions) > 1 && !$this->optForce) {
+            throw new \Exception("--no-conversion flag is unlikely to work, because files with multiple extensions are present, use --force to merge anyway");
+        }
+
+        $mergeExtension = current($extensions);
+
+        if (isset(static::AUDIO_EXTENSION_FORMAT_MAPPING[$mergeExtension])) {
+            $this->optAudioFormat = static::AUDIO_EXTENSION_FORMAT_MAPPING[$mergeExtension];
+        }
+    }
+
+    private function extractCover($file, $coverTargetFile)
+    {
+        $this->ffmpeg(["-i", $file, "-an", "-vcodec", "copy", $coverTargetFile], "try to extract cover from " . $file);
     }
 }

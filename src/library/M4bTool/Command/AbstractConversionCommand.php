@@ -88,27 +88,21 @@ class AbstractConversionCommand extends AbstractCommand
     {
         parent::loadArguments();
 
-
-        $audioFormatCodecMapping = [
-            "mp4" => "aac",
-            "mp3" => "libmp3lame",
-        ];
-
         $this->optAdjustBitrateForIpod = $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD);
         $this->optAudioCodec = $this->input->getOption(static::OPTION_AUDIO_CODEC);
         $this->optAudioFormat = $this->input->getOption(static::OPTION_AUDIO_FORMAT);
         $this->optAudioExtension = $this->optAudioFormat;
-        if ($this->optAudioFormat === "m4b") {
-            $this->optAudioFormat = "mp4";
+        if ($this->optAudioFormat === static::AUDIO_EXTENSION_M4B) {
+            $this->optAudioFormat = static::AUDIO_FORMAT_MP4;
         }
 
 
         if (!$this->optAudioCodec) {
-            if (isset($audioFormatCodecMapping[$this->optAudioFormat])) {
-                if ($this->optAudioFormat === "mp4") {
+            if (isset(static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat])) {
+                if ($this->optAudioFormat === static::AUDIO_FORMAT_MP4) {
                     $this->optAudioCodec = $this->loadHighestAvailableQualityAacCodec();
                 } else {
-                    $this->optAudioCodec = $audioFormatCodecMapping[$this->optAudioFormat];
+                    $this->optAudioCodec = static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat];
                 }
             }
         }
@@ -179,7 +173,7 @@ Codecs:
     {
 
 
-        if ($this->optAudioFormat === "mp4") {
+        if ($this->optAudioFormat === static::AUDIO_FORMAT_MP4) {
             $command = [];
 
             $this->appendParameterToCommand($command, "-track", $tag->track);
@@ -218,7 +212,7 @@ Codecs:
             return;
         }
 
-        if ($this->optAudioFormat === "mp3") {
+        if ($this->optAudioFormat === static::AUDIO_FORMAT_MP3) {
             $this->appendTemplateParameterToCommand($command, '-metadata title="%s"', $tag->title);
         }
     }

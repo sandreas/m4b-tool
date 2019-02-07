@@ -18,6 +18,29 @@ use Symfony\Component\Process\ProcessBuilder;
 
 class AbstractCommand extends Command
 {
+    const AUDIO_EXTENSION_MP3 = "mp3";
+    const AUDIO_EXTENSION_M4A = "m4a";
+    const AUDIO_EXTENSION_M4B = "m4b";
+
+    const AUDIO_FORMAT_MP4 = "mp4";
+    const AUDIO_FORMAT_MP3 = "mp3";
+
+
+    const AUDIO_CODEC_ALAC = "alac";
+    const AUDIO_CODEC_AAC = "aac";
+    const AUDIO_CODEC_MP3 = "libmp3lame";
+
+
+    const AUDIO_FORMAT_CODEC_MAPPING = [
+        self::AUDIO_FORMAT_MP4 => self::AUDIO_CODEC_AAC,
+        self::AUDIO_FORMAT_MP3 => self::AUDIO_CODEC_MP3,
+    ];
+
+    const AUDIO_EXTENSION_FORMAT_MAPPING = [
+        self::AUDIO_EXTENSION_M4A => self::AUDIO_FORMAT_MP4,
+        self::AUDIO_EXTENSION_M4B => self::AUDIO_FORMAT_MP4,
+        self::AUDIO_EXTENSION_MP3 => self::AUDIO_FORMAT_MP3,
+    ];
 
     const ARGUMENT_INPUT = "input";
 
