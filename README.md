@@ -48,9 +48,22 @@ On MacOS you can use **brew tap** to install `m4b-tool` via its own formula:
 ```
 brew tap sandreas/tap
 
-# this can take a while
+# install m4b-tool - this can take a while
 brew install m4b-tool
+
+# upgrade m4b-tool
+brew upgrade m4b-tool
+
+# check installed m4b-tool version
+m4b-tool --version
+
+# force an upgrade of an outdated version (if brew upgrade fails)
+brew reinstall m4b-tool
 ```
+
+
+
+
 
 ##### manual installation
 
