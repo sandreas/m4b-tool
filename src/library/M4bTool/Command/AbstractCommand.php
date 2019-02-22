@@ -455,4 +455,17 @@ class AbstractCommand extends Command
         return $this->shell($command, $introductionMessage);
     }
 
+    protected function fixMimeType(SplFileInfo $file)
+    {
+        $fixedFile = new SplFileInfo((string)$file . "-tmp." . $file->getExtension());
+        $this->ffmpeg([
+            "-i", $file, "-vn", "-acodec", "copy", $fixedFile
+        ], "fixing mimetype to audio/mp4");
+        if ($fixedFile->isFile()) {
+            if (!unlink($file) || !rename($fixedFile, $file)) {
+                throw new Exception("could not rename file with fixed mimetype - check possibly remaining garbage files " . $file . " and " . $fixedFile);
+            }
+        }
+    }
+
 }

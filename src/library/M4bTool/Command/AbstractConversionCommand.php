@@ -17,6 +17,8 @@ class AbstractConversionCommand extends AbstractCommand
     const OPTION_AUDIO_CODEC = "audio-codec";
     const OPTION_AUDIO_PROFILE = "audio-profile";
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
+    const OPTION_SKIP_COVER = "skip-cover";
+    const OPTION_FIX_MIME_TYPE = "fix-mime-type";
 
     protected $optAudioFormat;
     protected $optAudioExtension;
@@ -81,7 +83,8 @@ class AbstractConversionCommand extends AbstractCommand
         $this->addOption("copyright", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook copyright, otherwise the existing metadata will be used", null);
         $this->addOption("encoded-by", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook encoded-by, otherwise the existing metadata will be used", null);
 
-        $this->addOption("skip-cover", null, InputOption::VALUE_NONE, "skip extracting and embedding covers", null);
+        $this->addOption(static::OPTION_SKIP_COVER, null, InputOption::VALUE_NONE, "skip extracting and embedding covers", null);
+        $this->addOption(static::OPTION_FIX_MIME_TYPE, null, InputOption::VALUE_NONE, "try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent video window", null);
     }
 
     protected function loadArguments()
@@ -171,7 +174,9 @@ Codecs:
 
     protected function tagFile(SplFileInfo $file, Tag $tag)
     {
-
+        if ($this->input->getOption(static::OPTION_FIX_MIME_TYPE)) {
+            $this->fixMimeType($file);
+        }
 
         if ($this->optAudioFormat === static::AUDIO_FORMAT_MP4) {
             $command = [];
@@ -198,7 +203,7 @@ Codecs:
                 $this->mp4tags($command, "tagging file " . $file);
             }
 
-            if ($tag->cover && !$this->input->getOption("skip-cover")) {
+            if ($tag->cover && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
                 if (!file_exists($tag->cover)) {
                     $this->output->writeln("cover file " . $tag->cover . " does not exist");
                     return;
