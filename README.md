@@ -1,58 +1,47 @@
 # m4b-tool
-m4b-tool is a is a wrapper for ffmpeg and mp4v2 to merge, split or and manipulate m4b audiobook files with chapters
-
+m4b-tool is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manipulate audiobook files with chapters. Although `m4b-tool` is designed to handle m4b files, nearly all audio formats should be supported, e.g. mp3, aac, ogg, alac and flac.
 
 ## Features
 
-- Merge a set of audio files (e.g. MP3 or AAC) into a single m4b file
-- Split a single m4b-File into several output files by chapters
-- Add or adjust chapters to an existing m4b-File via musicbrainz and / or silence detection
+- `merge` a set of audio files (e.g. MP3 or AAC) into a single m4b file
+- `split` a single m4b-File into several output files by chapters
+- Adding or adjusting `chapters` for an existing m4b-File via silence detection or musicbrainz
 
-## Requirements
+## TL;DR - examples for the most common tasks
 
-m4b-tool is written in PHP and uses ffmpeg, mp4v2 and optionally fdkaac for high efficiency codecs to perform conversions. Therefore you will need the following tools in your $PATH:
-
-- PHP >= 7.0 with mbstring extension enabled
-- ffmpeg
-- mp4v2
-- fdkaac (only if you need high efficiency for low bitrates <= 32k)
-
-
-### Installation
-
-Download the built application from [releases](https://github.com/sandreas/m4b-tool/releases) and install the runtime dependencies (instructions follow).  Or, [build from source](#building-from-source).
-
-#### General Notes
-
-If you think there is an issue with m4b-tool, first head over to the [Known Issues](#known-issues).
-
-#### Before you start - notes about audio quality
-
-In m4b-tool all audio conversions are performed with ffmpeg with descent audio quality using its free encoders. 
-However, best quality takes some extra effort. To get the best possible audio quality, you have to use a non-free encoder, that is not integrated in ffmpeg by default (licensing reasons). 
-Depending on the operating system you are using, installing the non-free encoder may require a little extra skills, effort and time (see the notes for your operating system below).
-You must decide for yourself, if it is worth the additional effort for getting the slightly better quality.
-
-If you are using very low bitrates (<= 32k), you could use high efficiency profiles, to further improve audio quality. Unfortunately, `ffmpeg` produces files, that are incompatible with many players (including iTunes). To produce high efficiency files, that are compatible with at least most common players, you will need fdkaac for now.
-
-More Details:
-- https://github.com/sandreas/m4b-tool/issues/19
-- https://trac.ffmpeg.org/wiki/Encode/AAC
-- https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio 
-
-#### MacOS
-On MacOS you can use **brew tap** to install `m4b-tool` via its own formula:
-
-
-##### brew formula (recommended)
+`merge` all audio files in directory `data/my-audio-book` into file `data/merged.m4b` (tags are retained and `data/my-audio-book/cover.jpg` is embedded, if available)
 ```
+m4b-tool merge "data/my-audio-book/" --output-file="data/merged.m4b"
+```
+
+`split` one big m4b file by chapter into multiple mp3 files at `data/my-audio-book_splitted/` (tags are retained, `data/my-audio-book_splitted/cover.jpg` is created, if m4b contains a cover)
+```
+m4b-tool split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"
+``` 
+
+`chapters` can try to adjust existing chapters of an m4b by silence detection
+```
+m4b-tool chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"
+``` 
+
+## Installation
+
+### MacOS
+
+```
+# install ffmpeg with best audio quality options
+brew tap varenc/ffmpeg
+brew tap-pin varenc/ffmpeg
+brew uninstall ffmpeg
+brew install ffmpeg --with-chromaprint --with-fdk-aac
+
+
+# tap m4b-tool repository
 brew tap sandreas/tap
+brew tap-pin sandreas/tap
 
-# install m4b-tool - this can take a while
+# install m4b-tool
 brew install m4b-tool
-
-# upgrade m4b-tool
-brew upgrade m4b-tool
 
 # check installed m4b-tool version
 m4b-tool --version
@@ -62,73 +51,60 @@ brew reinstall m4b-tool
 ```
 
 
-
-
-
-##### manual installation
-
-***Install requirements via brew***
-```
-# ffmpeg - Note: The flag _--with-fdk-aac easily activates the non-free aac encoder for best audio quality - there should be no reason to skip that
-brew install ffmpeg --with-chromaprint --with-fdk-aac --with-freetype --with-libass --with-sdl2 --with-freetype --with-libquvi --with-libvorbis --with-libquvi --with-libvpx --with-opus --with-x265
-
-# additional requirements
-brew install php mp4v2 fdk-aac-encoder
-```
-
-**Install m4b-tool**
-Download the latest release of m4b-tool.phar from https://github.com/sandreas/m4b-tool/releases to a directory of your choice.
+### Ubuntu
 
 ```
-wget https://github.com/sandreas/m4b-tool/releases/download/v.0.3.1/m4b-tool.phar -O m4b-tool && chmod +x m4b-tool
+# install all dependencies
+sudo apt install ffmpeg mp4v2-utils fdkaac php-cli
+
+# install / upgrade m4b-tool
+sudo wget https://github.com/sandreas/m4b-tool/releases/download/v.0.3.2/m4b-tool.phar -O /usr/local/bin/m4b-tool && sudo chmod +x /usr/local/bin/m4b-tool
+
+# check installed m4b-tool version 
 m4b-tool --version
 ```
 
-#### Ubuntu
-
-**Install ffmpeg**
-> Note: For best audio quality with --with-fdk-aac, you could try to use a non-free repo, like https://launchpad.net/~spvkgn/+archive/ubuntu/ffmpeg-nonfree :
-> ```
-> sudo add-apt-repository ppa:spvkgn/ffmpeg-nonfree
-> sudo apt-get update
-> ```
-> if this does not work, you have to compile yourself (https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu) or must use the free codec with the command below
-
-```
-# Free codecs, not the best possible audio quality for aac / m4b
-sudo apt install ffmpeg
-```
-
-Install mp4v2-utils
-```
-sudo apt install mp4v2-utils
-```
-
-Install fdkaac
-```
-sudo apt install fdkaac
-```
-
-Install PHP > 7.0
-```
-sudo apt install php-cli
-```
-
-#### Windows
+> Note: If you would like to get the [best possible audio quality](#about-audio-quality), you have to compile `ffmpeg` with the high quality encoder `fdk-aac` - see https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu for a step-by-step guide to compile `ffmpeg`.
 
 
-To install, download releases from:
+### Manual installation (only recommended on Windows systems)
 
-- ffmpeg: https://ffmpeg.org 
-> Note: For best audio quality, you have to compile ffmpeg yourself with --with-fdk-aac (experts only) - as an easy approach, you could try the media-autobuild suite: https://github.com/jb-alvarado/media-autobuild_suite
+m4b-tool is written in PHP and uses `ffmpeg`, `mp4v2` and optionally `fdkaac` for high efficiency codecs to perform conversions. Therefore you will need the following tools in your $PATH:
 
-- mp4v2: https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip
+- `php` >= 7.0 with `mbstring` extension enabled
+- `ffmpeg`
+- `mp4v2` (`mp4chaps`, `mp4art`, etc.)
+- `fdkaac` (optional, only if you need high efficiency for low bitrates <= 32k)
 
-- fdkaac (no official source!): http://wlc.io/2015/06/20/fdk-aac/
+If these are all installed, `m4b-tool` should work like expected. To install `m4b-tool` and its dependencies manually:
 
-- PHP: http://windows.php.net/download/
+- Ensure that the required tools are installed, placed in your `%PATH%` and available via command line
+    - `ffmpeg` (https://www.ffmpeg.org)
+    - `mp4v2` (https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip, sources at https://github.com/TechSmith/mp4v2)
+    - `fdkaac` (http://wlc.io/2015/06/20/fdk-aac/ - caution: not official!), sources at https://github.com/nu774/fdkaac
+    - `php` (https://php.net)
+- And download the latest release from https://github.com/sandreas/m4b-tool/releases, call e.g. `php m4b-tool.phar --version` or `m4b-tool --version`, you could also [build from source](#building-from-source).
 
-And place them in your %PATH%
+
+ You think there is an issue with `m4b-tool`? First head over to the [Known Issues](#known-issues).
+
+
+## About audio quality
+
+In `m4b-tool` all audio conversions are performed with `ffmpeg` resulting in pretty descent audio quality using its free encoders. However, best quality takes some extra effort, so if you are using the free encoders, `m4b-tool` will show the following hint:
+
+> Your ffmpeg version cannot produce top quality aac using encoder aac instead of libfdk_aac
+
+To overcome this hint and get the best possible audio quality, you have to use a non-free encoder, that is not integrated in `ffmpeg` by default (licensing reasons). 
+Depending on the operating system you are using, installing the non-free encoder may require a little extra skills, effort and time (see the notes for your operating system above).
+You have to decide, if it is worth the additional effort for getting the slightly better quality.
+
+If you are using very low bitrates (<= 32k), you could also use high efficiency profiles to further improve audio quality. Unfortunately, `ffmpeg`'s high efficiency implementation produces audio files, that are incompatible with many players (including iTunes). To produce high efficiency files, that are compatible with at least most common players, you will need `fdkaac` for now.
+
+More Details:
+- https://github.com/sandreas/m4b-tool/issues/19
+- https://trac.ffmpeg.org/wiki/Encode/AAC
+- https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio 
 
 
 # m4b-tool commands

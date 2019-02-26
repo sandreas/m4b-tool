@@ -95,6 +95,184 @@ class AbstractCommand extends Command
      */
     protected $optDebugFile;
 
+    public function readDuration(SplFileInfo $file)
+    {
+        if ($file->getExtension() == "mp4" || $file->getExtension() == "m4b") {
+
+            $cacheItem = $this->cache->getItem("duration." . hash('sha256', $file->getRealPath()));
+            if ($cacheItem->isHit()) {
+                return new TimeUnit($cacheItem->get(), TimeUnit::SECOND);
+            }
+            $proc = $this->shell([
+                "mp4info", $file
+            ], "getting duration for " . $file);
+
+            $output = $proc->getOutput() . $proc->getErrorOutput();
+
+            preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
+            $seconds = isset($matches[1]) ? $matches[1] : 0;
+            if (!$seconds) {
+                return null;
+            }
+            $cacheItem->set($seconds);
+            $this->cache->save($cacheItem);
+            return new TimeUnit($seconds, TimeUnit::SECOND);
+        }
+
+        $meta = $this->readFileMetaData($file);
+        if (!$meta) {
+            return null;
+        }
+        return $meta->getDuration();
+
+
+    }
+
+    protected function shell(array $command, $introductionMessage = null)
+    {
+        $this->debug($this->formatShellCommand($command));
+        if ($introductionMessage) {
+            $this->output->writeln($introductionMessage);
+        }
+
+        $convertCharset = strtolower($this->input->getOption(static::OPTION_CONVERT_CHARSET));
+        if ($convertCharset == "" && $this->isWindows()) {
+            $convertCharset = "windows-1252";
+        }
+
+        if ($convertCharset && in_array($command[0], ["mp4art", "mp4chaps", "mp4extract", "mp4file", "mp4info", "mp4subtitle", "mp4tags", "mp4track", "mp4trackdump"])) {
+            if (function_exists("mb_convert_encoding")) {
+                $availableCharsets = array_map('strtolower', mb_list_encodings());
+                if (!in_array($convertCharset, $availableCharsets, true)) {
+                    throw new Exception("charset " . $convertCharset . " is not supported - use one of these instead: " . implode(", ", $availableCharsets) . " ");
+                }
+
+                $this->debug("using charset " . $convertCharset);
+                foreach ($command as $key => $part) {
+                    $command[$key] = mb_convert_encoding($part, "UTF-8", $convertCharset);
+                }
+            } else if (!$this->optForce) {
+                throw new Exception("mbstring extension is not loaded - please enable in php.ini or use --force to try with unexpected results");
+            }
+        }
+
+        $builder = new ProcessBuilder($command);
+        $process = $builder->getProcess();
+        $process->start();
+
+
+        usleep(250000);
+        $shouldShowEmptyLine = false;
+        while ($process->isRunning()) {
+            $shouldShowEmptyLine = true;
+            $this->updateProgress();
+
+        }
+        if ($shouldShowEmptyLine) {
+            $this->output->writeln('');
+        }
+
+        if ($process->getExitCode() != 0) {
+            $this->debug($process->getOutput() . $process->getErrorOutput());
+        }
+
+        return $process;
+    }
+
+    protected function debug($message)
+    {
+        if (!$this->optDebug) {
+            return;
+        }
+
+        if (!touch($this->optDebugFile) || !$this->optDebugFile->isWritable()) {
+            throw new Exception("Debug file " . $this->optDebugFile . " is not writable");
+        }
+
+        if (!is_scalar($message)) {
+            $message = var_export($message, true);
+        }
+        file_put_contents($this->optDebugFile, $message . PHP_EOL, FILE_APPEND);
+    }
+
+    protected function formatShellCommand(array $command)
+    {
+
+        $cmd = array_map(function ($part) {
+            if (preg_match('/\s/', $part)) {
+                return '"' . $part . '"';
+            }
+            return $part;
+        }, $command);
+        return implode(" ", $cmd);
+    }
+
+    protected function updateProgress()
+    {
+        static $i = 0;
+        if (++$i % 60 == 0) {
+            $this->output->writeln('+');
+        } else {
+            $this->output->write('+');
+            usleep(1000000);
+        }
+    }
+
+    public function readFileMetaData(SplFileInfo $file)
+    {
+        if (!$file->isFile()) {
+            throw new Exception("cannot read metadata, file " . $file . " does not exist");
+        }
+
+        $metaData = new FfmetaDataParser();
+        $metaData->parse($this->readFileMetaDataOutput($file));
+        return $metaData;
+    }
+
+    private function readFileMetaDataOutput(SplFileInfo $file)
+    {
+        $cacheItem = $this->cache->getItem("metadata." . hash('sha256', $file->getRealPath()));
+        $cacheItem->expiresAt(new \DateTime("+12 hours"));
+        if ($cacheItem->isHit()) {
+            return $cacheItem->get();
+        }
+
+        $command = [
+            "-i", $file,
+            "-f", "ffmetadata",
+            "-"
+        ];
+        $process = $this->ffmpeg($command, "reading metadata for file " . $file);
+        $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
+
+        $this->debug($metaDataOutput);
+
+        $cacheItem->set($metaDataOutput);
+        $this->cache->save($cacheItem);
+        return $metaDataOutput;
+
+    }
+
+    protected function ffmpeg($command, $introductionMessage = null)
+    {
+        // if($this->)
+        $threads = (int)$this->input->getOption(static::OPTION_FFMPEG_THREADS);
+        if ($threads > 0) {
+            array_unshift($command, $threads);
+            array_unshift($command, "-threads");
+        }
+
+        $ffmpegArgs = $this->input->getOption(static::OPTION_FFMPEG_PARAM);
+        if (count($ffmpegArgs) > 0) {
+            foreach ($ffmpegArgs as $arg) {
+                array_push($command, $arg);
+            }
+        }
+
+        array_unshift($command, "ffmpeg");
+        return $this->shell($command, $introductionMessage);
+    }
+
     protected function configure()
     {
         $className = get_class($this);
@@ -107,7 +285,7 @@ class AbstractCommand extends Command
         $this->addOption(static::OPTION_NO_CACHE, null, InputOption::VALUE_NONE, "do not use cached values and clear cache completely");
         $this->addOption(static::OPTION_FFMPEG_THREADS, null, InputOption::VALUE_OPTIONAL, "specify -threads parameter for ffmpeg", "");
         $this->addOption(static::OPTION_CONVERT_CHARSET, null, InputOption::VALUE_OPTIONAL, "Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems)", "");
-        $this->addOption(static::OPTION_FFMPEG_PARAM, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --".static::OPTION_FFMPEG_PARAM.'="-max_muxing_queue_size" ' .'--'.static::OPTION_FFMPEG_PARAM.'="1000" for ffmpeg [...] -max_muxing_queue_size 1000)', []);
+        $this->addOption(static::OPTION_FFMPEG_PARAM, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --" . static::OPTION_FFMPEG_PARAM . '="-max_muxing_queue_size" ' . '--' . static::OPTION_FFMPEG_PARAM . '="1000" for ffmpeg [...] -max_muxing_queue_size 1000)', []);
     }
 
     function dasherize($string)
@@ -142,13 +320,6 @@ class AbstractCommand extends Command
         if (!$this->argInputFile->isFile()) {
             throw new Exception("Input is not a file");
         }
-    }
-
-    protected function audioFileToChaptersFile(SplFileInfo $audioFile)
-    {
-        $dirName = dirname($audioFile);
-        $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
-        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".chapters.txt");
     }
 
     protected function chaptersFileToAudioFile(SplFileInfo $chaptersFile, $audioExtension = "m4b")
@@ -229,106 +400,6 @@ class AbstractCommand extends Command
         return preg_split("/\r\n|\n|\r/", $chapterString);
     }
 
-    public function readDuration(SplFileInfo $file)
-    {
-        if ($file->getExtension() == "mp4" || $file->getExtension() == "m4b") {
-
-            $cacheItem = $this->cache->getItem("duration." . hash('sha256', $file->getRealPath()));
-            if($cacheItem->isHit()) {
-                return new TimeUnit($cacheItem->get(), TimeUnit::SECOND);
-            }
-            $proc = $this->shell([
-                "mp4info", $file
-            ], "getting duration for " . $file);
-
-            $output = $proc->getOutput() . $proc->getErrorOutput();
-
-            preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
-            $seconds = isset($matches[1]) ? $matches[1]: 0;
-            if (!$seconds) {
-                return null;
-            }
-            $cacheItem->set($seconds);
-            $this->cache->save($cacheItem);
-            return new TimeUnit($seconds, TimeUnit::SECOND);
-        }
-
-        $meta = $this->readFileMetaData($file);
-        if (!$meta) {
-            return null;
-        }
-        return $meta->getDuration();
-
-
-    }
-
-    protected function shell(array $command, $introductionMessage = null)
-    {
-        $this->debug($this->formatShellCommand($command));
-        if ($introductionMessage) {
-            $this->output->writeln($introductionMessage);
-        }
-
-        $convertCharset = strtolower($this->input->getOption(static::OPTION_CONVERT_CHARSET));
-        if($convertCharset == "" && $this->isWindows()) {
-            $convertCharset = "windows-1252";
-        }
-
-        if($convertCharset && in_array($command[0], ["mp4art", "mp4chaps", "mp4extract", "mp4file", "mp4info","mp4subtitle", "mp4tags", "mp4track", "mp4trackdump"])) {
-            if(function_exists("mb_convert_encoding")) {
-                $availableCharsets = array_map('strtolower', mb_list_encodings());
-                if(!in_array($convertCharset, $availableCharsets, true)) {
-                    throw new Exception("charset ".$convertCharset." is not supported - use one of these instead: ".implode(", ", $availableCharsets)." ");
-                }
-
-                $this->debug("using charset ".$convertCharset);
-                foreach($command as $key => $part) {
-                    $command[$key] = mb_convert_encoding($part, "UTF-8", $convertCharset);
-                }
-            } else if(!$this->optForce) {
-                throw new Exception("mbstring extension is not loaded - please enable in php.ini or use --force to try with unexpected results");
-            }
-        }
-
-        $builder = new ProcessBuilder($command);
-        $process = $builder->getProcess();
-        $process->start();
-
-
-        usleep(250000);
-        $shouldShowEmptyLine = false;
-        while ($process->isRunning()) {
-            $shouldShowEmptyLine = true;
-            $this->updateProgress();
-
-        }
-        if ($shouldShowEmptyLine) {
-            $this->output->writeln('');
-        }
-
-        if ($process->getExitCode() != 0) {
-            $this->debug($process->getOutput() . $process->getErrorOutput());
-        }
-
-        return $process;
-    }
-
-    protected function debug($message)
-    {
-        if (!$this->optDebug) {
-            return;
-        }
-
-        if (!touch($this->optDebugFile) || !$this->optDebugFile->isWritable()) {
-            throw new Exception("Debug file " . $this->optDebugFile . " is not writable");
-        }
-
-        if (!is_scalar($message)) {
-            $message = var_export($message, true);
-        }
-        file_put_contents($this->optDebugFile, $message . PHP_EOL, FILE_APPEND);
-    }
-
     protected function exportChaptersForFile(SplFileInfo $file)
     {
 
@@ -351,94 +422,22 @@ class AbstractCommand extends Command
         return $chaptersFile;
     }
 
-    protected function formatShellCommand(array $command)
+    protected function audioFileToChaptersFile(SplFileInfo $audioFile)
     {
-
-        $cmd = array_map(function ($part) {
-            if (preg_match('/\s/', $part)) {
-                return '"' . $part . '"';
-            }
-            return $part;
-        }, $command);
-        return implode(" ", $cmd);
-    }
-
-    protected function updateProgress()
-    {
-        static $i = 0;
-        if (++$i % 60 == 0) {
-            $this->output->writeln('+');
-        } else {
-            $this->output->write('+');
-            usleep(1000000);
-        }
-    }
-
-    public function readFileMetaData(SplFileInfo $file)
-    {
-        if (!$file->isFile()) {
-            throw new Exception("cannot read metadata, file " . $file . " does not exist");
-        }
-
-        $metaData = new FfmetaDataParser();
-        $metaData->parse($this->readFileMetaDataOutput($file));
-        return $metaData;
-    }
-
-    private function readFileMetaDataOutput(SplFileInfo $file)
-    {
-        $cacheItem = $this->cache->getItem("metadata." . hash('sha256', $file->getRealPath()));
-        $cacheItem->expiresAt(new \DateTime("+12 hours"));
-        if ($cacheItem->isHit()) {
-            return $cacheItem->get();
-        }
-
-        $command = [
-            "-i", $file,
-            "-f", "ffmetadata",
-            "-"
-        ];
-        $process = $this->ffmpeg($command, "reading metadata for file " . $file);
-        $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
-
-        $this->debug($metaDataOutput);
-
-        $cacheItem->set($metaDataOutput);
-        $this->cache->save($cacheItem);
-        return $metaDataOutput;
-
-    }
-
-
-    protected function fdkaac($command, $introductionMessage = null)
-    {
-        array_unshift($command, "fdkaac");
-        return $this->shell($command, $introductionMessage);
-    }
-
-    protected function ffmpeg($command, $introductionMessage = null)
-    {
-        // if($this->)
-        $threads = (int)$this->input->getOption(static::OPTION_FFMPEG_THREADS);
-        if($threads > 0) {
-            array_unshift($command, $threads);
-            array_unshift($command, "-threads");
-        }
-
-        $ffmpegArgs = $this->input->getOption(static::OPTION_FFMPEG_PARAM);
-        if(count($ffmpegArgs) > 0) {
-            foreach($ffmpegArgs as $arg) {
-                array_push($command, $arg);
-            }
-        }
-
-        array_unshift($command, "ffmpeg");
-        return $this->shell($command, $introductionMessage);
+        $dirName = dirname($audioFile);
+        $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
+        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".chapters.txt");
     }
 
     protected function mp4chaps($command, $introductionMessage = null)
     {
         array_unshift($command, "mp4chaps");
+        return $this->shell($command, $introductionMessage);
+    }
+
+    protected function fdkaac($command, $introductionMessage = null)
+    {
+        array_unshift($command, "fdkaac");
         return $this->shell($command, $introductionMessage);
     }
 
@@ -459,7 +458,8 @@ class AbstractCommand extends Command
     {
         $fixedFile = new SplFileInfo((string)$file . "-tmp." . $file->getExtension());
         $this->ffmpeg([
-            "-i", $file, "-vn", "-acodec", "copy", $fixedFile
+            "-i", $file, "-vn", "-acodec", "copy", "-map_metadata", "0",
+            $fixedFile
         ], "fixing mimetype to audio/mp4");
         if ($fixedFile->isFile()) {
             if (!unlink($file) || !rename($fixedFile, $file)) {
