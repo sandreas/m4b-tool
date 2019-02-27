@@ -4,22 +4,22 @@ m4b-tool is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manip
 ## Features
 
 - `merge` a set of audio files (e.g. MP3 or AAC) into a single m4b file
-- `split` a single m4b-File into several output files by chapters
-- Adding or adjusting `chapters` for an existing m4b-File via silence detection or musicbrainz
+- `split` a single m4b file into several output files by chapters
+- Adding or adjusting `chapters` for an existing m4b file via silence detection or musicbrainz
 
 ## TL;DR - examples for the most common tasks
 
-`merge` all audio files in directory `data/my-audio-book` into file `data/merged.m4b` (tags are retained and `data/my-audio-book/cover.jpg` is embedded, if available)
+> `merge` all audio files in directory `data/my-audio-book` into file `data/merged.m4b` (tags are retained and `data/my-audio-book/cover.jpg` is embedded, if available)
 ```
 m4b-tool merge "data/my-audio-book/" --output-file="data/merged.m4b"
 ```
 
-`split` one big m4b file by chapter into multiple mp3 files at `data/my-audio-book_splitted/` (tags are retained, `data/my-audio-book_splitted/cover.jpg` is created, if m4b contains a cover)
+> `split` one big m4b file by chapter into multiple mp3 files at `data/my-audio-book_splitted/` (tags are retained, `data/my-audio-book_splitted/cover.jpg` is created, if m4b contains a cover)
 ```
 m4b-tool split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"
 ``` 
 
-`chapters` can try to adjust existing chapters of an m4b by silence detection
+> `chapters` can try to adjust existing chapters of an m4b by silence detection
 ```
 m4b-tool chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"
 ``` 
@@ -45,9 +45,6 @@ brew install m4b-tool
 
 # check installed m4b-tool version
 m4b-tool --version
-
-# force an upgrade of an outdated version (if brew upgrade fails)
-brew reinstall m4b-tool
 ```
 
 
@@ -86,8 +83,12 @@ If these are all installed, `m4b-tool` should work like expected. To install `m4
 - And download the latest release from https://github.com/sandreas/m4b-tool/releases, call e.g. `php m4b-tool.phar --version` or `m4b-tool --version`, you could also [build from source](#building-from-source).
 
 
- You think there is an issue with `m4b-tool`? First head over to the [Known Issues](#known-issues).
+You think there is an issue with `m4b-tool`? First head over to the [Known Issues](#known-issues), if this does not help, please provide the following information when adding an issue:
 
+- the operating system you use
+- the exact command, that you tried, e.g. `m4b-tool merge my-audio-book/ -o merged.m4b`
+- the error message, that occured or the circumstances, e.g. `the resulting file merged.m4b is only 5kb`
+- other relevant information, e.g. sample files if needed
 
 ## About audio quality
 
@@ -99,7 +100,7 @@ To overcome this hint and get the best possible audio quality, you have to use a
 Depending on the operating system you are using, installing the non-free encoder may require a little extra skills, effort and time (see the notes for your operating system above).
 You have to decide, if it is worth the additional effort for getting the slightly better quality.
 
-If you are using very low bitrates (<= 32k), you could also use high efficiency profiles to further improve audio quality. Unfortunately, `ffmpeg`'s high efficiency implementation produces audio files, that are incompatible with many players (including iTunes). To produce high efficiency files, that are compatible with at least most common players, you will need `fdkaac` for now.
+If you are using very low bitrates (<= 32k), you could also use high efficiency profiles to further improve audio quality (e.g. `--audio-profile=aac_he` for mono). Unfortunately, `ffmpeg`'s high efficiency implementation produces audio files, that are incompatible with many players (including iTunes). To produce high efficiency files, that are compatible with at least most common players, you will need to install `fdkaac` for now.
 
 More Details:
 - https://github.com/sandreas/m4b-tool/issues/19
@@ -113,7 +114,7 @@ More Details:
 
 With m4b-tool you can merge a set of audio files to one single m4b audiobook file. 
 
-### An example:
+### Example:
 ```
 php m4b-tool.phar merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"
 ```
@@ -187,7 +188,7 @@ Help:
 
 m4b-tool can be used to split a single m4b into a file per chapter.
 
-### An example:
+### Example:
 ```
 php m4b-tool.phar split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"
 ```
