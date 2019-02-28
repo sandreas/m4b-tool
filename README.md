@@ -116,7 +116,7 @@ With m4b-tool you can merge a set of audio files to one single m4b audiobook fil
 
 ### Example:
 ```
-php m4b-tool.phar merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"
+m4b-tool merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"
 ```
 
 This merges all Audio-Files in folder `data/my-audio-book` into `my-audio-book.m4b`, using 
@@ -127,7 +127,7 @@ If there is a file `data/my-audio-book/cover.jpg`, it will be used as cover for 
 ***Note*** If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](#chapter) for more info.
 
 ### Reference
-For all options, see `php dist/m4b-tool.phar merge --help`:
+For all options, see `m4b-tool merge --help`:
 
 ```
 Usage:
@@ -190,13 +190,13 @@ m4b-tool can be used to split a single m4b into a file per chapter.
 
 ### Example:
 ```
-php m4b-tool.phar split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"
+m4b-tool split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"
 ```
 
 This splits the file `data/my-audio-book.m4b into` an mp3 file for each chapter, writing the files into `data/my-audio-book_splitted/`.
 
 ### Reference
-For all options, see `php dist/m4b-tool.phar split --help`:
+For all options, see `m4b-tool split --help`:
 
 ```
 Usage:
@@ -290,7 +290,7 @@ In some cases there is a shift between the chapter mark and the real beginning o
 to correct that by detecting silences and relocating the chapter to the nearest silence:
 
 ```
-php m4b-tool.phar chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"
+m4b-tool chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"
 ```
 
 It won't work, if the shift is to large or if the chapters are strongly misplaced, but since everything is done automatically, it's worth a try, isn't it?
@@ -323,7 +323,7 @@ MBID: 8669da33-bf9c-47fe-adc9-23798a37b096
 
 After getting the MBID you should find the main chapter points (where the name of the current chapter name is read aloud by the author).
 ```
-php m4b-tool.phar chapters --merge-similar --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"
+m4b-tool chapters --merge-similar --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"
 ```
 
 Explanation:
@@ -342,7 +342,7 @@ The two misplaced chapters are chapter number 6 and 9.
 To find the real position of chapters 6 and 9 invoke:
 
 ```
-php m4b-tool.phar chapter --find-misplaced-chapters 5,8  --merge-similar --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"
+m4b-tool chapter --find-misplaced-chapters 5,8  --merge-similar --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"
 ```
 
 Explanation:
@@ -356,7 +356,7 @@ Listen to the audiobook again and find the right chapter position. Note them dow
 
 Next run the full chapter detection with the --no-chapter-import option, which prevents writing the chapters directly to the file.
 ```
-php m4b-tool.phar chapter --no-chapter-import --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"
+m4b-tool chapter --no-chapter-import --first-chapter-offset 4000 --last-chapter-offset 3500 -m 8669da33-bf9c-47fe-adc9-23798a37b096 "../data/harry-potter-1.m4b"
 ```
 
 To Adjust misplaced chapters, do the following:
@@ -379,7 +379,7 @@ If none of the chapters are detected correctly, this can have different reasons:
 
 
 #### Reference
-For all options, see `php dist/m4b-tool.phar chapters --help`:
+For all options, see `m4b-tool chapters --help`:
 
 ```
 Usage:
