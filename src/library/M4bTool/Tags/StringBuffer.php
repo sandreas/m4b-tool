@@ -33,18 +33,29 @@ class StringBuffer
             return $truncatedToRunes;
         }
 
-        $keepGoing = $preserveWords;
         $runes = preg_split('//u', $truncatedToRunes, -1, PREG_SPLIT_NO_EMPTY);
-        while (strlen(implode("", $runes)) > $length || $keepGoing) {
-            $lastChar = array_pop($runes);
-            // if words should be preserved, last char must be a whitespace, otherwise keep going
-            $keepGoing = ($lastChar !== null && trim($lastChar) === $lastChar && $preserveWords);
+        while ($lastChar = array_pop($runes)) {
+
+            // runes still contain too many bytes
+            if (strlen(implode("", $runes)) > $length) {
+                continue;
+            }
+
+            // runes bytes are correct and words should not be preserved
+            if (!$preserveWords) {
+                break;
+            }
+
+            // words should be preserved and lastChar is a whitespace => end of word found
+            if (trim($lastChar) !== $lastChar) {
+                break;
+            }
         }
 
 
         $result = implode("", $runes);
         // if preserving words results in an empty string, hard truncate is preferred
-        if ($result === "" && $this->original !== "") {
+        if ($preserveWords && $result === "" && $this->original !== "") {
             return $this->truncateBytesHelper($length);
         }
         return $result;
