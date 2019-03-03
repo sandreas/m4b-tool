@@ -191,10 +191,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->setOptionIfUndefined("genre", $metaData->getProperty("genre"));
         $this->setOptionIfUndefined("writer", $metaData->getProperty("writer"));
         $this->setOptionIfUndefined("description", $metaData->getProperty("description"));
-
-        if (!$this->longDescription) {
-            $this->longDescription = $metaData->getProperty("longdesc");
-        }
+        $this->setOptionIfUndefined("longdesc", $metaData->getProperty("longdesc"));
     }
 
     private function setOptionIfUndefined($optionName, $optionValue)
@@ -249,11 +246,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $autoDescriptionFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "description.txt");
             if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < 1024 * 1024) {
                 $this->output->writeln("using description file " . $autoDescriptionFile);
-                $description = @file_get_contents($autoDescriptionFile);
-                if ($description && strlen($description) > 255) {
-                    $this->longDescription = trim($description);
-                    $description = mb_substr(trim($description), 0, 255);
-                }
+                $description = file_get_contents($autoDescriptionFile);
                 $this->setOptionIfUndefined("description", $description);
             } else {
                 $this->output->writeln("description file " . $autoDescriptionFile . " not found or too big (max 255 chars)");

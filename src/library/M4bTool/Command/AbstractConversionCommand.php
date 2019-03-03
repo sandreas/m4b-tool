@@ -5,11 +5,15 @@ namespace M4bTool\Command;
 
 
 use M4bTool\Audio\Tag;
+use M4bTool\Tags\StringBuffer;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputOption;
 
 class AbstractConversionCommand extends AbstractCommand
 {
+    const TAG_DESCRIPTION_MAX_LEN = 255;
+    const TAG_DESCRIPTION_SUFFIX = " ...";
+
     const OPTION_AUDIO_FORMAT = "audio-format";
     const OPTION_AUDIO_CHANNELS = "audio-channels";
     const OPTION_AUDIO_BIT_RATE = "audio-bitrate";
@@ -49,7 +53,8 @@ class AbstractConversionCommand extends AbstractCommand
         $tag->year = $this->input->getOption("year");
         $tag->cover = $this->input->getOption("cover");
         $tag->description = $this->input->getOption("description");
-        $tag->longDescription = $this->longDescription;
+        $tag->longDescription = $this->input->getOption("longdesc");
+
 
         $tag->comment = $this->input->getOption("comment");
         $tag->copyright = $this->input->getOption("copyright");
@@ -79,6 +84,7 @@ class AbstractConversionCommand extends AbstractCommand
         $this->addOption("year", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook year, otherwise the existing metadata will be used", "");
         $this->addOption("cover", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook cover, otherwise the existing metadata will be used", null);
         $this->addOption("description", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook short description, otherwise the existing metadata will be used", null);
+        $this->addOption("longdesc", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook long description, otherwise the existing metadata will be used", null);
         $this->addOption("comment", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook comment, otherwise the existing metadata will be used", null);
         $this->addOption("copyright", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook copyright, otherwise the existing metadata will be used", null);
         $this->addOption("encoded-by", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook encoded-by, otherwise the existing metadata will be used", null);
@@ -181,6 +187,8 @@ Codecs:
         if ($this->optAudioFormat === static::AUDIO_FORMAT_MP4) {
             $command = [];
 
+            $this->adjustTagDescriptionForMp4($tag);
+
             $this->appendParameterToCommand($command, "-track", $tag->track);
             $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
             $this->appendParameterToCommand($command, "-song", $tag->title);
@@ -221,6 +229,25 @@ Codecs:
             $this->appendTemplateParameterToCommand($command, '-metadata title="%s"', $tag->title);
         }
     }
+
+    private function adjustTagDescriptionForMp4(Tag $tag)
+    {
+        if (!$tag->description) {
+            return;
+        }
+
+        $stringBuf = new StringBuffer($tag->description);
+        if ($stringBuf->byteLength() <= static::TAG_DESCRIPTION_MAX_LEN) {
+            return;
+        }
+
+        $tag->description = $stringBuf->softTruncateBytesSuffix(static::TAG_DESCRIPTION_MAX_LEN, static::TAG_DESCRIPTION_SUFFIX);
+
+        if (!$tag->longDescription) {
+            $tag->longDescription = (string)$stringBuf;
+        }
+    }
+
 
     protected function bitrateStringToInt()
     {
