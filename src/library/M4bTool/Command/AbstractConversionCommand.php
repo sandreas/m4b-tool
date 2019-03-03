@@ -236,7 +236,16 @@ Codecs:
             return;
         }
 
-        $stringBuf = new StringBuffer($tag->description);
+        $description = $tag->description;
+        $encoding = $this->detectEncoding($description);
+        if ($encoding === "") {
+            $this->output->writeln("could not detect encoding of description, using UTF-8 as default");
+        } else if ($encoding !== "UTF-8") {
+            $description = mb_convert_encoding($tag->description, "UTF-8", $encoding);
+        }
+
+
+        $stringBuf = new StringBuffer($description);
         if ($stringBuf->byteLength() <= static::TAG_DESCRIPTION_MAX_LEN) {
             return;
         }
@@ -248,6 +257,35 @@ Codecs:
         }
     }
 
+    /**
+     * mb_detect_encoding is not reliable on all systems and leads to php errors in some cases
+     *
+     * @param $string
+     * @return string
+     */
+    private function detectEncoding($string)
+    {
+        if (preg_match("//u", $string)) {
+            return "UTF-8";
+        }
+
+        $encodings = [
+            'UTF-8', 'ASCII', 'ISO-8859-1', 'ISO-8859-2', 'ISO-8859-3', 'ISO-8859-4', 'ISO-8859-5',
+            'ISO-8859-6', 'ISO-8859-7', 'ISO-8859-8', 'ISO-8859-9', 'ISO-8859-10', 'ISO-8859-13',
+            'ISO-8859-14', 'ISO-8859-15', 'ISO-8859-16', 'Windows-1251', 'Windows-1252', 'Windows-1254',
+        ];
+
+        // $enclist = mb_list_encodings();
+
+        foreach ($encodings as $encoding) {
+            $sample = mb_convert_encoding($string, $encoding, $encoding);
+            if (md5($sample) === md5($string)) {
+                return $encoding;
+            }
+        }
+
+        return "";
+    }
 
     protected function bitrateStringToInt()
     {
