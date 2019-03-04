@@ -98,6 +98,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->addTrackMarkers();
 
         $this->mergeFiles();
+        $this->deleteTemporaryFiles();
 
         $this->importChapters();
 
@@ -109,10 +110,16 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     private function loadInputFiles()
     {
+        $this->outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
+
+        if ($this->outputFile->isFile() && !$this->optForce) {
+            throw new Exception("Output file  " . $this->outputFile . " already exists - use --force to overwrite");
+        }
+
         $this->debug("== load input files ==");
         $includeExtensions = array_filter(explode(',', $this->input->getOption(static::OPTION_INCLUDE_EXTENSIONS)));
 
-        $this->outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
+
         $this->filesToConvert = [];
         $this->handleInputFile($this->argInputFile, $includeExtensions);
         $inputFiles = $this->input->getArgument(static::ARGUMENT_MORE_INPUT_FILES);
@@ -572,21 +579,38 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             throw new Exception("could not merge to " . $this->outputFile);
         }
 
-
         if (!$this->optDebug) {
             unlink($listFile);
-            foreach ($this->filesToMerge as $file) {
-                unlink($file);
-            }
+        }
+    }
 
-            foreach ($this->otherTmpFiles as $file) {
-                unlink($file);
-            }
 
-            rmdir(dirname($file));
+    private function deleteTemporaryFiles()
+    {
+        if ($this->optDebug) {
+            return;
         }
 
+        if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
+            return;
+        }
 
+        try {
+            $this->deleteFilesAndParentDir($this->filesToMerge);
+            $this->deleteFilesAndParentDir($this->otherTmpFiles);
+        } catch (\Throwable $e) {
+            $this->output->writeln("ERROR: could not delete temporary files (" . $e->getMessage() . ")");
+        }
+
+    }
+
+    private function deleteFilesAndParentDir(array $files)
+    {
+        $file = null;
+        foreach ($files as $file) {
+            unlink($file);
+        }
+        rmdir(dirname($file));
     }
 
     private function importChapters()
