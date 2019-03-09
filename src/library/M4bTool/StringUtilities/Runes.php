@@ -220,6 +220,7 @@ class Runes implements ArrayAccess, SeekableIterator, Countable
     {
         $instance = new static;
         $instance->runes = $runes;
+        $instance->rewind();
         return $instance;
     }
 }

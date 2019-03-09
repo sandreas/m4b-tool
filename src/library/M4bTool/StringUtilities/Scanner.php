@@ -4,13 +4,15 @@
 namespace M4bTool\StringUtilities;
 
 
+use InvalidArgumentException;
+
 class Scanner
 {
+    /** @var Runes */
     protected $runes;
-    protected $position = 0;
-    protected $count = 0;
 
-    protected $lastResult = "";
+    /** @var Runes */
+    protected $lastResult;
 
     public function __construct(Runes $runes = null)
     {
@@ -21,25 +23,40 @@ class Scanner
     public function initialize(Runes $runes = null)
     {
         $this->runes = $runes ?? new Runes();
+        $this->lastResult = new Runes();
+        $this->runes->rewind();
     }
 
+    /**
+     * @return Runes
+     */
     public function getLastResult()
     {
         return $this->lastResult;
     }
 
-    public function scanLine()
+    public function scanLine($escapeChar = null)
     {
-        $this->lastResult = $this->scanRune(Runes::LINE_FEED);
+        $this->scanRune(Runes::LINE_FEED, $escapeChar);
         if ($this->lastResult->last() === Runes::CARRIAGE_RETURN) {
             $this->lastResult = $this->lastResult->slice(0, -1);
         }
+        reset($this->lastResult);
         return (bool)$this->runes->valid();
     }
 
-    private function scanRune($stopRune)
+    public function scanRune($stopRune, $escapeChar = null)
     {
+        if (mb_strlen($stopRune) !== 1) {
+            throw new InvalidArgumentException("Rune invalid, please provide a valid unicode character");
+        }
+
+        if ($escapeChar !== null && mb_strlen($escapeChar) !== 1) {
+            throw new InvalidArgumentException("Escape character invalid, please provide a valid unicode character");
+        }
+
         $offset = $this->runes->key();
+        $length = null;
         while ($this->runes->valid()) {
             $index = $this->runes->key();
             $rune = $this->runes->current();
@@ -49,8 +66,28 @@ class Scanner
                 continue;
             }
 
-            return $this->runes->slice($offset, $index - $offset);
+            if ($index > 0 && $this->runes[$index - 1] === $escapeChar) {
+                continue;
+            }
+
+            $length = $index - $offset;
+            break;
         }
-        return $this->runes->slice($offset);
+        $this->lastResult = $this->runes->slice($offset, $length);
+        $this->lastResult->rewind();
+        return $length !== null;
+    }
+
+    public function scanToEnd()
+    {
+        $offset = $this->runes->key();
+        $this->runes->last();
+        $this->lastResult = $this->runes->slice($offset);
+    }
+
+    public function reset()
+    {
+        $this->runes->first();
+        $this->lastResult = $this->runes->slice(0);
     }
 }
