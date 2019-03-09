@@ -37,16 +37,22 @@ class Scanner
 
     public function scanLine($escapeChar = null)
     {
+        if (!$this->runes->valid()) {
+            return false;
+        }
         $this->scanRune(Runes::LINE_FEED, $escapeChar);
         if ($this->lastResult->last() === Runes::CARRIAGE_RETURN) {
             $this->lastResult = $this->lastResult->slice(0, -1);
         }
-        reset($this->lastResult);
-        return (bool)$this->runes->valid();
+        $this->lastResult->rewind();
+        return true;
     }
 
     public function scanRune($stopRune, $escapeChar = null)
     {
+        if (!$this->runes->valid()) {
+            return false;
+        }
         if (mb_strlen($stopRune) !== 1) {
             throw new InvalidArgumentException("Rune invalid, please provide a valid unicode character");
         }
@@ -80,9 +86,13 @@ class Scanner
 
     public function scanToEnd()
     {
+        if (!$this->runes->valid()) {
+            return false;
+        }
         $offset = $this->runes->key();
         $this->runes->last();
         $this->lastResult = $this->runes->slice($offset);
+        return true;
     }
 
     public function reset()
