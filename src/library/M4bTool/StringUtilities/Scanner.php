@@ -10,23 +10,29 @@ class Scanner
     protected $position = 0;
     protected $count = 0;
 
-    protected $lastScan = "";
+    protected $lastResult = "";
 
-    public function __construct(Runes $runes)
+    public function __construct(Runes $runes = null)
     {
-        $this->runes = $runes;
+        $this->initialize($runes);
     }
 
-    public function getText()
+
+    public function initialize(Runes $runes = null)
     {
-        return $this->lastScan;
+        $this->runes = $runes ?? new Runes();
+    }
+
+    public function getLastResult()
+    {
+        return $this->lastResult;
     }
 
     public function scanLine()
     {
-        $this->lastScan = $this->scanRune(Runes::LINE_FEED);
-        if ($this->lastScan->last() === Runes::CARRIAGE_RETURN) {
-            $this->lastScan = $this->lastScan->slice(0, -1);
+        $this->lastResult = $this->scanRune(Runes::LINE_FEED);
+        if ($this->lastResult->last() === Runes::CARRIAGE_RETURN) {
+            $this->lastResult = $this->lastResult->slice(0, -1);
         }
         return (bool)$this->runes->valid();
     }

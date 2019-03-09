@@ -15,7 +15,7 @@ class Runes implements ArrayAccess, SeekableIterator, Countable
     const LINE_FEED = "\n";
 
     /** @var string[] */
-    protected $runes;
+    protected $runes = [];
 
     public function __construct($string = "")
     {
@@ -23,7 +23,7 @@ class Runes implements ArrayAccess, SeekableIterator, Countable
             throw new \InvalidArgumentException("Runes does only support UTF-8 strings");
         }
 
-        $this->runes = preg_split('//u', $string, -1, PREG_SPLIT_NO_EMPTY);
+        $this->runes += preg_split('//u', $string, -1, PREG_SPLIT_NO_EMPTY);
     }
 
 

@@ -20,11 +20,11 @@ class ScannerTest extends TestCase
     public function testScanLine()
     {
         $this->subject->scanLine();
-        $this->assertEquals("😋 this is a testing", (string)$this->subject->getText());
+        $this->assertEquals("😋 this is a testing", (string)$this->subject->getLastResult());
         $this->subject->scanLine();
-        $this->assertEquals("string with unicode", (string)$this->subject->getText());
+        $this->assertEquals("string with unicode", (string)$this->subject->getLastResult());
         $this->subject->scanLine();
-        $this->assertEquals("äß öü € and emojis", (string)$this->subject->getText());
+        $this->assertEquals("äß öü € and emojis", (string)$this->subject->getLastResult());
     }
 
 
