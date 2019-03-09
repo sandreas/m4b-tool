@@ -25,7 +25,7 @@ ARG PREFIX=/ffmpeg_build
 ARG MAKEFLAGS="-j4"
 
 # FFmpeg build dependencies.
-RUN apk add --update \
+RUN apk add --update --upgrade \
     autoconf \
     automake \
     boost-dev \
@@ -37,7 +37,8 @@ RUN apk add --update \
     gcc \
     git \
     libtool \
-    fdk-aac \
+    #fdk-aac \
+    #fdk-aac-dev \
     freetype \
     freetype-dev \
     lame \
@@ -71,6 +72,7 @@ RUN apk add --update \
     php7-curl \
     php7-mbstring \
     php7-simplexml \
+    php7-phar \
     pkgconf \
     pkgconfig \
     rtmpdump \
@@ -85,7 +87,7 @@ RUN apk add --update \
 
 
 
-RUN echo "date.timezone = UTC" >> /etc/php5/php.ini
+RUN echo "date.timezone = UTC" >> /etc/php7/php.ini
 
 # Get fdk-aac from testing.
 RUN echo http://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories && \
@@ -102,8 +104,8 @@ RUN cd /tmp/ \
 RUN cd /tmp/ \
    && wget https://github.com/nu774/fdkaac/archive/1.0.0.tar.gz \
    && tar xzf 1.0.0.tar.gz \
-   && cd fdkaac* \
-   && ./configure && make && make install
+   && cd fdkaac-1.0.0 \
+   && autoreconf -i && ./configure && make && make install
 #
 # autoreconf -i && ./configure && make && make install
 
