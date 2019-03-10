@@ -195,6 +195,20 @@ class Runes implements ArrayAccess, SeekableIterator, Countable
         next($this->runes);
     }
 
+    public function prev()
+    {
+        prev($this->runes);
+    }
+
+    public function offset($offset)
+    {
+        if ($offset < 0) {
+            $offset = $this->count() + $offset;
+        }
+        $this->seek($offset);
+        return $this->current();
+    }
+
     public function __toString()
     {
         return implode("", $this->runes);

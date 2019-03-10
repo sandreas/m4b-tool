@@ -8,9 +8,12 @@ use InvalidArgumentException;
 
 class Scanner
 {
+    const OFFSET_RUNE_BEFORE_LAST = -2;
+
     /** @var Runes */
     protected $runes;
 
+    protected $lastScan;
     /** @var Runes */
     protected $lastResult;
 
@@ -19,7 +22,6 @@ class Scanner
         $this->initialize($runes);
     }
 
-
     public function initialize(Runes $runes = null)
     {
         $this->runes = $runes ?? new Runes();
@@ -27,60 +29,78 @@ class Scanner
         $this->runes->rewind();
     }
 
+    public function getResult()
+    {
+        return $this->lastResult;
+    }
+
     /**
      * @return Runes
      */
-    public function getLastResult()
+    public function getTrimmedResult()
     {
+        $lastScanLength = mb_strlen($this->lastScan) * -1;
+        $lastResultPart = (string)$this->lastResult->slice($lastScanLength);
+        $lastScanString = (string)$this->lastScan;
+        if ($lastResultPart === $lastScanString) {
+            return $this->lastResult->slice(0, mb_strlen($this->lastScan) * -1);
+        }
         return $this->lastResult;
     }
 
     public function scanLine($escapeChar = null)
     {
-        if (!$this->runes->valid()) {
+        if (!$this->seekFor(Runes::LINE_FEED, $escapeChar, 1) && $this->lastResult === null) {
             return false;
         }
-        $this->scanRune(Runes::LINE_FEED, $escapeChar);
-        if ($this->lastResult->last() === Runes::CARRIAGE_RETURN) {
-            $this->lastResult = $this->lastResult->slice(0, -1);
+        $beforeLastRune = $this->lastResult->offset(static::OFFSET_RUNE_BEFORE_LAST);
+        if ($beforeLastRune === Runes::CARRIAGE_RETURN) {
+            $this->lastScan = Runes::CARRIAGE_RETURN . Runes::LINE_FEED;
         }
         $this->lastResult->rewind();
         return true;
     }
 
-    public function scanRune($stopRune, $escapeChar = null)
+    private function seekFor($seekString, $escapeSequence, $seekOffset)
     {
+        $this->lastResult = null;
         if (!$this->runes->valid()) {
             return false;
         }
-        if (mb_strlen($stopRune) !== 1) {
-            throw new InvalidArgumentException("Rune invalid, please provide a valid unicode character");
-        }
-
-        if ($escapeChar !== null && mb_strlen($escapeChar) !== 1) {
-            throw new InvalidArgumentException("Escape character invalid, please provide a valid unicode character");
-        }
-
-        $offset = $this->runes->key();
+        $this->lastScan = $seekString;
         $length = null;
+        $position = $this->runes->key();
+
+        $stopRuneLength = mb_strlen($seekString);
+        $escapeCharLength = $escapeSequence ? mb_strlen($escapeSequence) : 0;
         while ($this->runes->valid()) {
             $index = $this->runes->key();
             $rune = $this->runes->current();
-            $this->runes->next();
+            $this->runes->seek($index + $seekOffset);
 
-            if ($rune !== $stopRune) {
+            if ($stopRuneLength === 1 && $rune !== $seekString) {
+                continue;
+            } else if ($stopRuneLength > 1 && (string)$this->runes->slice($index, $stopRuneLength) !== $seekString) {
                 continue;
             }
 
-            if ($index > 0 && $this->runes[$index - 1] === $escapeChar) {
+
+            if ($escapeSequence !== null && $index > $escapeCharLength && (string)$this->runes->slice($index - $escapeCharLength, $escapeCharLength) === $escapeSequence) {
                 continue;
             }
 
-            $length = $index - $offset;
+            $length = $index - $position + $stopRuneLength;
+            $this->runes->seek($index + $stopRuneLength);
             break;
         }
-        $this->lastResult = $this->runes->slice($offset, $length);
+
+
+        $this->lastResult = $this->runes->slice($position, $length);
         $this->lastResult->rewind();
+//        if($length !== null && $stopRuneLength > 1) {
+//            $this->runes->seek($this->runes->key() + $stopRuneLength - 1);
+//            return true;
+//        }
         return $length !== null;
     }
 
@@ -94,6 +114,16 @@ class Scanner
         $this->lastResult = $this->runes->slice($offset);
         return true;
     }
+
+    public function scanForward(string $stopWordString, $escapeChar = null)
+    {
+        return $this->seekFor($stopWordString, $escapeChar, 1);
+    }
+
+//    public function scanBackwards($stopWordString, $escapeChar)
+//    {
+//        return $this->seekFor($stopWordString, $escapeChar, -1);
+//    }
 
     public function reset()
     {

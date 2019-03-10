@@ -17,9 +17,11 @@ class FfmetaDataParserTest extends TestCase
     protected $m4bMetaData;
     protected $mp3MetaData;
     protected $m4bComplexMetaData;
+    protected $mp4StreamInfo;
 
     public function setUp()
     {
+
         $this->m4bMetaData = <<<FFMETA
 ;FFMETADATA1
 major_brand=isom
@@ -114,6 +116,80 @@ date=2001
 encoder=Lavf58.20.100
 FFMETA;
 
+
+        // ffmpeg -hide_banner -i data/input.m4b -f null -
+        $this->mp4StreamInfo = <<<FFSTREAMINFO
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x7fdd01800000] stream 0, timescale not set
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'data/_input_m4b/001-Jingle und Ansage.m4b':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2mp41
+    title           : Jingle und Ansage
+    artist          : J.K. Rowling
+    album_artist    : Rufus Beck
+    comment         : test
+    genre           : Hörbuch
+    date            : 2001
+    track           : 1/8
+    encoder         : Lavf58.20.100
+    media_type      : 2
+  Duration: 00:00:22.15, start: 0.000000, bitrate: 134 kb/s
+    Chapter #0:0: start 0.000000, end 22.126000
+    Metadata:
+      title           : Jingle und Ansage
+    Chapter #0:1: start 22.126000, end 22.150000
+    Metadata:
+      title           : Eulenpost (1)_1
+    Stream #0:0(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+    Metadata:
+      handler_name    : SoundHandler
+    Stream #0:1(eng): Data: bin_data (text / 0x74786574), 0 kb/s
+    Metadata:
+      handler_name    : SubtitleHandler
+    Stream #0:2: Video: mjpeg, yuvj420p(pc, bt470bg/unknown/unknown), 240x240 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc
+Stream mapping:
+  Stream #0:2 -> #0:0 (mjpeg (native) -> wrapped_avframe (native))
+  Stream #0:0 -> #0:1 (aac (native) -> pcm_s16le (native))
+Press [q] to stop, [?] for help
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2mp41
+    title           : Jingle und Ansage
+    artist          : J.K. Rowling
+    album_artist    : Rufus Beck
+    comment         : test
+    genre           : Hörbuch
+    date            : 2001
+    track           : 1/8
+    media_type      : 2
+    encoder         : Lavf58.20.100
+    Chapter #0:0: start 0.000000, end 22.126000
+    Metadata:
+      title           : Jingle und Ansage
+    Chapter #0:1: start 22.126000, end 22.150000
+    Metadata:
+      title           : Eulenpost (1)_1
+    Stream #0:0: Video: wrapped_avframe, yuvj420p(progressive), 240x240 [SAR 1:1 DAR 1:1], q=2-31, 200 kb/s, 90k fps, 90k tbn, 90k tbc
+    Metadata:
+      encoder         : Lavc58.35.100 wrapped_avframe
+    Stream #0:1(und): Audio: pcm_s16le, 44100 Hz, stereo, s16, 1411 kb/s (default)
+    Metadata:
+      handler_name    : SoundHandler
+      encoder         : Lavc58.35.100 pcm_s16le
+frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x    
+video:1kB audio:3812kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+FFSTREAMINFO;
+
+
+        // MetaData:
+        // ffmpeg -i data/input.m4b -f ffmetadata test.txt
+
+        // StreamInfo
+        // ffmpeg -hide_banner -i data/input.m4b -f null -
+
         $this->subject = new FfmetaDataParser();
     }
 
@@ -172,4 +248,8 @@ FFMETA;
         $this->assertEquals("Lavf58.20.100", $this->subject->getProperty("encoder"));
         $this->assertCount(0, $this->subject->getChapters());
     }
+
+//    public function testParseMp4StreamInfo() {
+//        $this->subject->parse($this->m4bMetaData, $this->mp4StreamInfo);
+//    }
 }

@@ -21,7 +21,7 @@ class FfmetaDataParser
     const PARSE_CHAPTERS = 2;
 
 
-    const METADATA_MARKER = ";FFMETADATA1";
+    const METADATA_MARKER = ";ffmetadata1";
     const CHAPTER_MARKER = "[chapter]";
 
 
@@ -29,6 +29,7 @@ class FfmetaDataParser
     protected $metaDataProperties = [];
     protected $chapters = [];
     protected $duration;
+    protected $format;
     protected $scanner;
 
 
@@ -38,10 +39,11 @@ class FfmetaDataParser
     }
 
 
-    public function parse($metaData)
+    public function parse($metaData, $streamInfo = "")
     {
         $this->reset();
         $this->parseMetaData($metaData);
+        $this->parseStreamInfo($streamInfo);
     }
 
     private function reset()
@@ -51,6 +53,19 @@ class FfmetaDataParser
 
     }
 
+
+    private function parseStreamInfo($streamInfo)
+    {
+
+        $this->scanner->initialize(new Runes($streamInfo));
+        $this->scanner->scanForward("Stream #");
+        // look for:
+        // #<stream-number>(<language>): <type>: <codec>
+        // Stream #0:0(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+        // frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x
+    }
+
+
     private function parseMetaData($metaData)
     {
         $this->scanner->initialize(new Runes($metaData));
@@ -59,8 +74,10 @@ class FfmetaDataParser
         $currentChapter = null;
         $parsingMode = static::PARSE_SKIP;
         while ($this->scanner->scanLine()) {
-            $line = $this->scanner->getLastResult();
-            if ((string)$line === static::METADATA_MARKER) {
+            $line = $this->scanner->getTrimmedResult();
+            $lineString = mb_strtolower($line);
+
+            if ($lineString === static::METADATA_MARKER) {
                 $parsingMode = static::PARSE_METADATA;
                 continue;
             }
@@ -69,10 +86,10 @@ class FfmetaDataParser
                 continue;
             }
 
-            // handle multiline descriptions
+            // handle multiline properties (e.g. description)
             while (Strings::hasSuffix($line, "\\")) {
                 $this->scanner->scanLine();
-                $line = Strings::trimSuffix($line, "\\") . Runes::LINE_FEED . $this->scanner->getLastResult();
+                $line = Strings::trimSuffix($line, "\\") . Runes::LINE_FEED . $this->scanner->getTrimmedResult();
             }
 
             if (Strings::hasPrefix($line, ";")) {
@@ -80,7 +97,7 @@ class FfmetaDataParser
             }
 
 
-            if (mb_strtolower($line) === static::CHAPTER_MARKER) {
+            if ($lineString === static::CHAPTER_MARKER) {
                 $this->handleChapters();
                 break;
             }
@@ -88,22 +105,12 @@ class FfmetaDataParser
 
             // something fishy in here
             $lineScanner = new Scanner(new Runes((string)$line));
-            if (!$lineScanner->scanRune("=")) {
+            if (!$lineScanner->scanForward("=")) {
                 continue;
             }
-            $propertyName = mb_strtolower((string)$lineScanner->getLastResult());
+            $propertyName = mb_strtolower((string)$lineScanner->getTrimmedResult());
             $lineScanner->scanToEnd();
-            $propertyValue = (string)$lineScanner->getLastResult();
-
-
-//            $lineScanner->scanToEnd();
-//            $tmpPropertyValue = $lineScanner->getLastResult();
-//            $propertyValueScanner = new Scanner($tmpPropertyValue);
-//
-//            do {
-//                $propertyValueScanner->scanLine();
-//                $propertyValue = (string)$propertyValueScanner->getLastResult();
-//            } while($propertyValue->valid());
+            $propertyValue = (string)$lineScanner->getTrimmedResult();
 
 
             if ($propertyName) {
@@ -112,87 +119,16 @@ class FfmetaDataParser
 
         }
 
-        /*
-         if strings.ToLowerline) == "[chapter]" {
-			if currentChapter != nil {
-				meta.AddChapter(currentChapter)
-			}
-			currentChapter = new(types.Item)
-			continue
-		}
-
-		if currentChapter == nil {
-			if !strings.Contains(line, "=") {
-				log.Printf("line %s should be a key-value-pair but does not contain a = separator\n", line)
-				continue
-			}
-			err = meta.SetPair(types.NewKeyValuePairFromString(line, "="))
-			if err != nil {
-				log.Printf("line %s results in an empty or unsupported key-value-pair\n", line)
-				continue
-			}
-		} else {
-			timeBase = handleChapterMetaData(line, timeBase, currentChapter)
-		}
-         */
 
 
-//        $parsingMode = static::NO_PARSING;
-//
-//        foreach ($this->lines as $index => $line) {
-//
-//            $trimmedLine = trim($line);
-//            if ($trimmedLine === ";FFMETADATA1") {
-//                $startParsing = true;
-//                continue;
-//            }
-//
-//            if ($parsingMode) {
-//                continue;
-//            }
-//
-//            if (strtolower($trimmedLine) === "[chapter]") {
-//                $chapterData = [];
-//
-//                $chapterParseStartIndex = $index;
-//                $index++;
-//                while (isset($this->lines[$index]) && strlen($this->lines[$index]) > 0 && $this->lines[$index][0] != "[") {
-//                    $chapterLine = trim($this->lines[$index]);
-//                    $pos = strpos($chapterLine, "=");
-//                    $propertyName = substr($chapterLine, 0, $pos);
-//                    $propertyValue = substr($chapterLine, $pos + 1);
-//                    $chapterData[$propertyName] = $propertyValue;
-//                    $index++;
-//                }
-//
-//                $this->chapters[] = $this->makeChapter($chapterData, $chapterParseStartIndex);
-//                continue;
-//            }
-//            if (preg_match("/Duration:[\s]*([0-9]+:[0-9]+:[0-9]+\.[0-9]+)/", $trimmedLine, $matches) && isset($matches[1])) {
-//                $this->duration = new TimeUnit();
-//                $this->duration->fromFormat($matches[1], "%H:%I:%S.%V");
-//                continue;
-//            }
-//
-//            $pos = strpos($trimmedLine, "=");
-//            if ($pos === false) {
-//                continue;
-//            }
-//
-//            $propertyName = strtolower(substr($trimmedLine, 0, $pos));
-//            $propertyValue = substr($trimmedLine, $pos + 1);
-//
-//            $this->metaDataProperties[$propertyName] = $propertyValue;
-//
-//        }
     }
 
     private function handleChapters()
     {
         $chapterProperties = [];
 
-        while ($this->scanner->scanLine("\\")) {
-            $line = $this->scanner->getLastResult();
+        while ($this->scanner->scanLine()) {
+            $line = $this->scanner->getTrimmedResult();
             $lineString = mb_strtolower($line);
             if ($lineString === static::CHAPTER_MARKER) {
                 $this->createChapter($chapterProperties);
@@ -201,17 +137,17 @@ class FfmetaDataParser
             }
 
             $lineScanner = new Scanner($line);
-            if (!$lineScanner->scanRune("=")) {
+            if (!$lineScanner->scanForward("=")) {
                 continue;
             }
 
-            $propertyName = mb_strtolower((string)$lineScanner->getLastResult());
+            $propertyName = mb_strtolower((string)$lineScanner->getTrimmedResult());
 
             if ($propertyName === "") {
                 continue;
             }
             $lineScanner->scanToEnd();
-            $propertyValue = $lineScanner->getLastResult();
+            $propertyValue = $lineScanner->getTrimmedResult();
 
             $chapterProperties[$propertyName] = $propertyValue;
         }
@@ -227,11 +163,11 @@ class FfmetaDataParser
             return false;
         }
         $timeBaseScanner = new Scanner($chapterProperties["timebase"]);
-        if (!$timeBaseScanner->scanRune("/")) {
+        if (!$timeBaseScanner->scanForward("/")) {
             return false;
         }
         $timeBaseScanner->scanToEnd();
-        $timeBase = (string)$timeBaseScanner->getLastResult();
+        $timeBase = (string)$timeBaseScanner->getTrimmedResult();
         $timeUnit = (int)$timeBase / 1000;
 
         $start = (int)(string)$chapterProperties["start"];
@@ -244,26 +180,6 @@ class FfmetaDataParser
 
         $this->chapters[] = new Chapter($start, $length, (string)$title);
     }
-//
-//    private function makeChapter($chapterData, $chapterParseStartIndex)
-//    {
-//        $chapterDataLowerCase = array_change_key_case($chapterData);
-//        if (!isset($chapterDataLowerCase["start"], $chapterDataLowerCase["end"], $chapterDataLowerCase["timebase"])) {
-//            throw new Exception("Could not parse chapter at line " . $chapterParseStartIndex);
-//        }
-//
-//        if (!isset($chapterDataLowerCase["title"])) {
-//            $chapterDataLowerCase["title"] = "Chapter " . count($this->chapters);
-//        }
-//
-//        $timeBase = (int)substr($chapterDataLowerCase["timebase"], strpos($chapterDataLowerCase["timebase"], "/") + 1);
-//        $timeUnit = $timeBase / 1000;
-//
-//        $start = new TimeUnit($chapterDataLowerCase["start"], $timeUnit);
-//        $end = new TimeUnit($chapterDataLowerCase["end"], $timeUnit);
-//        $length = new TimeUnit($end->milliseconds() - $start->milliseconds());
-//        return new Chapter($start, $length, $chapterDataLowerCase["title"]);
-//    }
 
     public function getChapters()
     {
