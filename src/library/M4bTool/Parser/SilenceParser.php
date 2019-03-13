@@ -5,7 +5,7 @@ namespace M4bTool\Parser;
 
 
 use M4bTool\Audio\Silence;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 
 class SilenceParser
 {
@@ -71,8 +71,7 @@ class SilenceParser
     {
         preg_match('/[\s]*Duration\:[\s]*([0-9\.\:]+)[\s]*.*/i', $trimmedLine, $matches);
         if(count($matches) == 2) {
-            $this->duration = new TimeUnit(0, TimeUnit::MILLISECOND);
-            $this->duration->fromFormat($matches[1], "%H:%I:%S.%v");
+            $this->duration = TimeUnit::fromFormat($matches[1]);
         }
     }
 

@@ -8,7 +8,7 @@ use Exception;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -134,7 +134,7 @@ class ConvertCommand extends AbstractConversionCommand implements MetaReaderInte
 
             $durationSeconds = $this->totalDuration->milliseconds() / 1000;
             $maxSamplingRate = 2147483647 / $durationSeconds;
-            $this->output->writeln("total duration: " . $this->totalDuration->format("%H:%I:%S.%V") . " (" . $durationSeconds . "s)");
+            $this->output->writeln("total duration: " . $this->totalDuration->format() . " (" . $durationSeconds . "s)");
             $this->output->writeln("max possible sampling rate: " . $maxSamplingRate . "Hz");
             $this->output->writeln("desired sampling rate: " . $this->optAudioSampleRate . "Hz");
 

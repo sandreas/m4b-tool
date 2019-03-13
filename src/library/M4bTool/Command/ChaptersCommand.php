@@ -10,7 +10,7 @@ use M4bTool\Marker\ChapterMarker;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use M4bTool\Parser\SilenceParser;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -236,7 +236,7 @@ class ChaptersCommand extends AbstractCommand
 
                     $specialOffsetStart = clone $chapter->getStart();
                     $specialOffsetStart->add($misplacedTolerance);
-                    $specialOffsetChapter = new Chapter($specialOffsetStart, clone $chapter->getLength(), "=> special off. -4s: " . $chapter->getName() . " - pos: " . $specialOffsetStart->format("%H:%I:%S.%V"));
+                    $specialOffsetChapter = new Chapter($specialOffsetStart, clone $chapter->getLength(), "=> special off. -4s: " . $chapter->getName() . " - pos: " . $specialOffsetStart->format());
                     $this->chapters[$specialOffsetChapter->getStart()->milliseconds()] = $specialOffsetChapter;
 
                     $silenceIndex = 1;
@@ -259,7 +259,7 @@ class ChaptersCommand extends AbstractCommand
                         $potentialChapterStart = clone $silenceClone->getStart();
                         $halfLen = (int)round($silenceClone->getLength()->milliseconds() / 2);
                         $potentialChapterStart->add($halfLen);
-                        $potentialChapter = new Chapter($potentialChapterStart, clone $silenceClone->getLength(), $silenceChapterPrefix . $chapter->getName() . " - pos: " . $silenceClone->getStart()->format("%H:%I:%S.%V") . ", len: " . $silenceClone->getLength()->format("%H:%I:%S.%V"));
+                        $potentialChapter = new Chapter($potentialChapterStart, clone $silenceClone->getLength(), $silenceChapterPrefix . $chapter->getName() . " - pos: " . $silenceClone->getStart()->format() . ", len: " . $silenceClone->getLength()->format());
                         $chapterKey = (int)round($potentialChapter->getStart()->milliseconds(), 0);
                         $this->chapters[$chapterKey] = $potentialChapter;
 
@@ -275,7 +275,7 @@ class ChaptersCommand extends AbstractCommand
                 }
 
                 $chapter->setName($chapter->getName() . ' - index: ' . $index);
-                // $chaptersAsLines[] = $chapter->getStart()->format("%H:%I:%S.%V") . " " . $chapter->getName();
+                // $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
             }
             ksort($this->chapters);
         }
@@ -295,18 +295,6 @@ class ChaptersCommand extends AbstractCommand
         }
         return $specialOffsetChapters;
     }
-
-//    private function replaceChapterName($chapter)
-//    {
-//        $chapterName = preg_replace($this->input->getOption('chapter-pattern'), "$1", $chapter);
-//
-//        // utf-8 aware char replacement
-//        $removeCharsParameter = $this->input->getOption('chapter-remove-chars');
-//        $removeChars = preg_split('//u', $removeCharsParameter, null, PREG_SPLIT_NO_EMPTY);
-//        $presentChars = preg_split('//u', $chapterName, null, PREG_SPLIT_NO_EMPTY);
-//        $replacedChars = array_diff($presentChars, $removeChars);
-//        return implode("", $replacedChars);
-//    }
 
     protected function exportChaptersToTxt($chaptersTxtFile = null)
     {
@@ -335,7 +323,7 @@ class ChaptersCommand extends AbstractCommand
     {
         $chaptersAsLines = [];
         foreach ($this->chapters as $chapter) {
-            $chaptersAsLines[] = $chapter->getStart()->format("%H:%I:%S.%V") . " " . $chapter->getName();
+            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
         }
         return $chaptersAsLines;
     }

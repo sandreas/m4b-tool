@@ -3,7 +3,7 @@
 namespace M4bTool\Chapter;
 
 
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 
 interface MetaReaderInterface
 {

@@ -179,7 +179,7 @@ Output #0, null, to 'pipe:':
     Metadata:
       handler_name    : SoundHandler
       encoder         : Lavc58.35.100 pcm_s16le
-frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x    
+frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.08 bitrate=N/A speed= 360x    
 video:1kB audio:3812kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
 FFSTREAMINFO;
 
@@ -249,7 +249,12 @@ FFSTREAMINFO;
         $this->assertCount(0, $this->subject->getChapters());
     }
 
-//    public function testParseMp4StreamInfo() {
-//        $this->subject->parse($this->m4bMetaData, $this->mp4StreamInfo);
-//    }
+    public function testParseMp4StreamInfo()
+    {
+        $this->subject->parse($this->m4bMetaData, $this->mp4StreamInfo);
+
+        $this->assertEquals("00:00:22.080", $this->subject->getDuration()->format());
+        $this->assertEquals(FfmetaDataParser::FORMAT_MP4, $this->subject->getFormat());
+
+    }
 }

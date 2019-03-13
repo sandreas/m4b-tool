@@ -3,8 +3,8 @@
 namespace M4bTool\Parser;
 
 
-use M4bTool\Time\TimeUnit;
 use PHPUnit\Framework\TestCase;
+use Sandreas\Time\TimeUnit;
 
 class SilenceParserTest extends TestCase
 {
@@ -38,7 +38,7 @@ frame=    1 fps=1.0 q=-0.0 size=N/A time=00:07:18.71 bitrate=N/A
         $this->assertEquals(15716, key($silences));
         $this->assertEquals(4275.56, current($silences)->getLength()->milliseconds());
         $this->assertInstanceOf(TimeUnit::class, $this->subject->getDuration());
-        $this->assertEquals(48902034, $this->subject->getDuration()->milliseconds());
+        $this->assertEquals(48902340, $this->subject->getDuration()->milliseconds());
 
     }
 }

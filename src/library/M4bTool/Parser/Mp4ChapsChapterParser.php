@@ -5,7 +5,7 @@ namespace M4bTool\Parser;
 
 
 use M4bTool\Audio\Chapter;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 
 class Mp4ChapsChapterParser
 {
@@ -24,8 +24,7 @@ class Mp4ChapsChapterParser
             if (count($parts) !== 2) {
                 continue;
             }
-            $time = new TimeUnit();
-            $time->fromFormat($parts[0], "%H:%I:%S.%v");
+            $time = TimeUnit::fromFormat($parts[0]);
 
             $name = $parts[1] ?? "";
 

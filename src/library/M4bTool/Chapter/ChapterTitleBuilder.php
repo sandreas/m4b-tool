@@ -6,7 +6,7 @@ namespace M4bTool\Chapter;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Parser\FfmetaDataParser;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
 class ChapterTitleBuilder

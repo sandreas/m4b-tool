@@ -11,7 +11,7 @@ namespace M4bTool\Parser;
 
 use Exception;
 use M4bTool\Audio\Chapter;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
 
 class MusicBrainzChapterParser

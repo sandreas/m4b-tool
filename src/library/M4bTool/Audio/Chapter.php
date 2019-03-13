@@ -9,7 +9,7 @@
 namespace M4bTool\Audio;
 
 
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 
 class Chapter extends AbstractPart
 {

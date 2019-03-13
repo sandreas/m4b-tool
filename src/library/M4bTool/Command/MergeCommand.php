@@ -11,7 +11,7 @@ use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use M4bTool\Marker\ChapterMarker;
 use M4bTool\Parser\MusicBrainzChapterParser;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -295,7 +295,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
             $durationSeconds = $this->totalDuration->milliseconds() / 1000;
             $maxSamplingRate = 2147483647 / $durationSeconds;
-            $this->output->writeln("total duration: " . $this->totalDuration->format("%H:%I:%S.%V") . " (" . $durationSeconds . "s)");
+            $this->output->writeln("total duration: " . $this->totalDuration->format() . " (" . $durationSeconds . "s)");
             $this->output->writeln("max possible sampling rate: " . $maxSamplingRate . "Hz");
             $this->output->writeln("desired sampling rate: " . $this->optAudioSampleRate . "Hz");
 
@@ -636,7 +636,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     {
         $chaptersAsLines = [];
         foreach ($this->chapters as $chapter) {
-            $chaptersAsLines[] = $chapter->getStart()->format("%H:%I:%S.%V") . " " . $chapter->getName();
+            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
         }
         return $chaptersAsLines;
     }

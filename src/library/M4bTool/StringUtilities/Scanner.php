@@ -34,6 +34,13 @@ class Scanner
         return $this->lastResult;
     }
 
+    public function getRemaining()
+    {
+        $remaining = $this->runes->slice($this->runes->key());
+        $remaining->rewind();
+        return $remaining;
+    }
+
     /**
      * @return Runes
      */
@@ -97,10 +104,6 @@ class Scanner
 
         $this->lastResult = $this->runes->slice($position, $length);
         $this->lastResult->rewind();
-//        if($length !== null && $stopRuneLength > 1) {
-//            $this->runes->seek($this->runes->key() + $stopRuneLength - 1);
-//            return true;
-//        }
         return $length !== null;
     }
 
@@ -120,10 +123,10 @@ class Scanner
         return $this->seekFor($stopWordString, $escapeChar, 1);
     }
 
-//    public function scanBackwards($stopWordString, $escapeChar)
-//    {
-//        return $this->seekFor($stopWordString, $escapeChar, -1);
-//    }
+    public function scanBackwards($stopWordString, $escapeChar = null)
+    {
+        return $this->seekFor($stopWordString, $escapeChar, -1);
+    }
 
     public function reset()
     {

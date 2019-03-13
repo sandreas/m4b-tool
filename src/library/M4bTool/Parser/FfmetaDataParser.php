@@ -9,8 +9,7 @@ use M4bTool\Audio\Tag;
 use M4bTool\StringUtilities\Runes;
 use M4bTool\StringUtilities\Scanner;
 use M4bTool\StringUtilities\Strings;
-use M4bTool\Time\TimeUnit;
-use Mockery\Exception;
+use Sandreas\Time\TimeUnit;
 
 
 class FfmetaDataParser
@@ -24,13 +23,43 @@ class FfmetaDataParser
     const METADATA_MARKER = ";ffmetadata1";
     const CHAPTER_MARKER = "[chapter]";
 
+    const CODEC_MP3 = "mp3";
+    const CODEC_AAC = "aac";
+    const CODEC_ALAC = "alac";
 
+
+    const FORMAT_MP4 = "mp4";
+    const FORMAT_MP3 = "mp3";
+
+
+    const CHANNELS_MONO = 1;
+    const CHANNELS_STEREO = 2;
+
+    const CODEC_MAPPING = [
+        "aac" => self::CODEC_AAC,
+        "mp3" => self::CODEC_MP3,
+        "alac" => self::CODEC_ALAC,
+    ];
+    const FORMAT_MAPPING = [
+        "mp4a" => self::FORMAT_MP4,
+        "mp3" => self::FORMAT_MP3,
+    ];
+
+    const CHANNEL_MAPPING = [
+        "mono" => self::CHANNELS_MONO,
+        "stereo" => self::CHANNELS_STEREO,
+    ];
+
+
+    protected $scanner;
     protected $lines = [];
     protected $metaDataProperties = [];
     protected $chapters = [];
+
     protected $duration;
     protected $format;
-    protected $scanner;
+    protected $codec;
+    protected $channels;
 
 
     public function __construct(Scanner $scanner = null)
@@ -58,11 +87,66 @@ class FfmetaDataParser
     {
 
         $this->scanner->initialize(new Runes($streamInfo));
-        $this->scanner->scanForward("Stream #");
+
+        while ($this->scanner->scanLine()) {
+            $line = $this->scanner->getResult();
+            if (stripos($line, "Stream #") !== false && stripos($line, "Audio: ") !== false) {
+                $this->parseAudioStream($line);
+                continue;
+            }
+
+            if (stripos($line, "frame=") !== false && stripos($line, "time=") !== false) {
+                $this->parseDuration($line);
+                continue;
+            }
+        }
+
         // look for:
         // #<stream-number>(<language>): <type>: <codec>
         // Stream #0:0(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
         // frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x
+    }
+
+    private function parseAudioStream($lineWithStream)
+    {
+        // Stream #0:0(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+        // Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 128 kb/s
+
+        $parts = explode("Audio: ", $lineWithStream);
+        if (count($parts) != 2) {
+            return;
+        }
+
+        $stream = $parts[1];
+        $streamParts = explode(", ", $stream);
+
+        $this->applyAudioStreamMapping(static::CODEC_MAPPING, $streamParts[0], $this->codec);
+        $this->applyAudioStreamMapping(static::FORMAT_MAPPING, $streamParts[0], $this->format);
+        $this->applyAudioStreamMapping(static::CHANNEL_MAPPING, $streamParts[2], $this->channels);
+
+
+    }
+
+    private function applyAudioStreamMapping($mapping, &$haystack, &$property)
+    {
+        foreach ($mapping as $needle => $result) {
+            if (stripos($haystack, $needle) !== false) {
+                $property = $result;
+                break;
+            }
+        }
+    }
+
+    private function parseDuration($lineWithDuration)
+    {
+        // frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x
+        preg_match("/time=([^\s]+)/", $lineWithDuration, $matches);
+
+        if (!isset($matches[1])) {
+            return;
+        }
+
+        $this->duration = TimeUnit::fromFormat($matches[1], TimeUnit::FORMAT_DEFAULT);
     }
 
 
@@ -194,6 +278,14 @@ class FfmetaDataParser
         return $this->duration;
     }
 
+    /**
+     * @return string
+     */
+    public function getFormat()
+    {
+        return $this->format;
+    }
+
     public function toTag()
     {
         $tag = new Tag();
@@ -214,35 +306,5 @@ class FfmetaDataParser
             return null;
         }
         return $this->metaDataProperties[$propertyName];
-    }
-
-    private function handleChapter()
-    {
-        /*
-         *
-func handleChapterMetaData(line string, timeBase time.Duration, currentChapter *types.Item) time.Duration {
-	pair := types.NewKeyValuePairFromString(line, "=")
-	lowerKey := strings.ToLower(pair.Key)
-	switch lowerKey {
-	case "timebase":
-		timeBasePair := types.NewIndexTotalItemFromString(pair.Value, "/")
-		if timeBasePair.Index > 0 && timeBasePair.Total > 0 {
-			timeBase = time.Duration(timeBasePair.Index) * time.Second / time.Duration(timeBasePair.Total) * time.Second
-		}
-	case "start":
-		if startInt, err := strconv.Atoi(pair.Value); err == nil {
-			currentChapter.Start = time.Duration(startInt) * timeBase
-		}
-	case "end":
-		if endInt, err := strconv.Atoi(pair.Value); err == nil {
-			currentChapter.End = time.Duration(endInt) * timeBase
-		}
-	case "title":
-		currentChapter.Title = pair.Value
-	}
-	return timeBase
-}
-         */
-
     }
 }

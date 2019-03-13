@@ -212,7 +212,7 @@ class SplitCommand extends AbstractConversionCommand
     private function extractChapter(Chapter $chapter, SplFileInfo $outputFile, Tag $tag)
     {
         // mp3 has to be splitted via tempfile
-        if ($this->optAudioFormat !== "mp4") {
+        if ($this->optAudioFormat !== static::AUDIO_FORMAT_MP4) {
             return $this->extractChapterNonMp4($chapter, $outputFile, $tag);
         }
         return $this->extractChapterMp4($chapter, $outputFile, $tag);
@@ -232,12 +232,12 @@ class SplitCommand extends AbstractConversionCommand
             $command = [
                 "-i", $this->argInputFile,
                 "-vn",
-                "-ss", $chapter->getStart()->format("%H:%I:%S.%V"),
+                "-ss", $chapter->getStart()->format(),
             ];
 
             if ($chapter->getLength()->milliseconds() > 0) {
                 $command[] = "-t";
-                $command[] = $chapter->getLength()->format("%H:%I:%S.%V");
+                $command[] = $chapter->getLength()->format();
             }
 //            $command[] = "-map_metadata";
             $command[] = "-map_metadata";
@@ -300,12 +300,12 @@ class SplitCommand extends AbstractConversionCommand
             "-i", $this->argInputFile,
             "-vn",
             "-f", $this->optAudioFormat,
-            "-ss", $chapter->getStart()->format("%H:%I:%S.%V"),
+            "-ss", $chapter->getStart()->format(),
         ];
 
         if ($chapter->getLength()->milliseconds() > 0) {
             $command[] = "-t";
-            $command[] = $chapter->getLength()->format("%H:%I:%S.%V");
+            $command[] = $chapter->getLength()->format();
         }
 
         $command[] = "-map";

@@ -66,12 +66,13 @@ FFMETA;
         $subject->scanForward("this");
         $this->assertEquals(" another ", (string)$subject->getTrimmedResult());
     }
-////
-//
+
+
 //    public function testScanBackwardSingleRune() {
 //        $subject = new Scanner(new Runes(static::UNICODE_STRING_CRLF));
 //        $subject->scanLine();
-//        $this->assertEquals("😋 this is a testing", (string)$subject->getTrimmedResult());
+//        $subject->scanBackwards("is");
+//        $this->assertEquals(" a testing\r\nstring= with unicode\näß öü € and emojis", (string)$subject->getTrimmedResult());
 //    }
 
 

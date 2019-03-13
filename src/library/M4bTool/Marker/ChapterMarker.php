@@ -6,7 +6,7 @@ namespace M4bTool\Marker;
 
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 
 class ChapterMarker
 {
@@ -34,7 +34,7 @@ class ChapterMarker
          */
         foreach ($mbChapters as $chapter) {
 
-            $this->debug("chapter: " . $chapter->getStart()->format("%H:%I:%S.%V"));
+            $this->debug("chapter: " . $chapter->getStart()->format());
 
             $chapterStart = $chapter->getStart()->milliseconds();
             if ($chapterStart == 0) {
@@ -96,9 +96,9 @@ class ChapterMarker
                     $marker = "+";
                 }
                 if ($index++ == 0) {
-                    $this->debug(", silence: " . $marker . $silence->getStart()->format("%H:%I:%S.%V") . ", duration: " . $silence->getLength()->format("%H:%I:%S.%V") . PHP_EOL);
+                    $this->debug(", silence: " . $marker . $silence->getStart()->format() . ", duration: " . $silence->getLength()->format() . PHP_EOL);
                 } else {
-                    $this->debug("                                " . $marker . $silence->getStart()->format("%H:%I:%S.%V") . ", duration: " . $silence->getLength()->format("%H:%I:%S.%V") . PHP_EOL);
+                    $this->debug("                                " . $marker . $silence->getStart()->format() . ", duration: " . $silence->getLength()->format() . PHP_EOL);
                 }
             }
 
@@ -114,12 +114,9 @@ class ChapterMarker
 
             $guessedChapters[$chapterMark->milliseconds()] = new Chapter($chapterMark, new TimeUnit(), $chapter->getName());
 
-            $this->debug($chapter->getName() . " - chapter-offset: " . $chapterOffset->format("%H:%I:%S.%V") . PHP_EOL);
-            $this->debug("chapter-mark: " . $chapterMark->format("%H:%I:%S.%V") . PHP_EOL);
+            $this->debug($chapter->getName() . " - chapter-offset: " . $chapterOffset->format() . PHP_EOL);
+            $this->debug("chapter-mark: " . $chapterMark->format() . PHP_EOL);
             $this->debug("=======================================================================" . PHP_EOL);
-
-//            file_put_contents("../data/src-import.chapters.txt", $chapterMark->format("%H:%I:%S.%V") . " ".$chapter->getName().PHP_EOL, FILE_APPEND);
-
         }
 
 
@@ -198,7 +195,7 @@ class ChapterMarker
         foreach ($trackChapters as $key => $trackChapter) {
             $chapter = clone $trackChapter;
 
-            $this->debug("track " . ($index) . ": " . $chapter->getStart()->format("%H:%I:%S.%V") . " - " . $chapter->getEnd()->format("%H:%I:%S.%V") . " (" . $chapter->getStart()->milliseconds() . "-" . $chapter->getEnd()->milliseconds() . ", " . $chapter->getName() . ")");
+            $this->debug("track " . ($index) . ": " . $chapter->getStart()->format() . " - " . $chapter->getEnd()->format() . " (" . $chapter->getStart()->milliseconds() . "-" . $chapter->getEnd()->milliseconds() . ", " . $chapter->getName() . ")");
 
             reset($mbChapters);
             $bestMatchChapter = current($mbChapters);
@@ -215,10 +212,10 @@ class ChapterMarker
                 $bestMatchOverlap = $bestMatchEnd - $bestMatchStart;
 
                 if ($mbChapter === $bestMatchChapter || $mbOverlap > $bestMatchOverlap) {
-                    $this->debug("   +" . $mbChapter->getStart()->format("%H:%I:%S.%V") . " - " . $mbChapter->getEnd()->format("%H:%I:%S.%V") . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
+                    $this->debug("   +" . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
                     $bestMatchChapter = $mbChapter;
                 } else {
-                    $this->debug("   -" . $mbChapter->getStart()->format("%H:%I:%S.%V") . " - " . $mbChapter->getEnd()->format("%H:%I:%S.%V") . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
+                    $this->debug("   -" . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
                 }
             }
 

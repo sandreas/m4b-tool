@@ -4,7 +4,7 @@ namespace M4bTool\Marker;
 
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 use PHPUnit\Framework\TestCase;
 
 class ChapterMarkerTest extends TestCase

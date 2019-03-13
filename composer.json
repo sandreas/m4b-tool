@@ -1,10 +1,13 @@
 {
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "require": {
     "monolog/monolog": "^1.22",
     "symfony/console": "^3.2",
     "symfony/process": "^3.2",
     "symfony/cache": "^3.2",
-    "twig/twig": "^2.0"
+    "twig/twig": "^2.0",
+    "sandreas/php-time": "dev-master"
   },
   "autoload": {
     "psr-4": {

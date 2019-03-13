@@ -5,7 +5,7 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Parser\FfmetaDataParser;
-use M4bTool\Time\TimeUnit;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -97,7 +97,8 @@ class AbstractCommand extends Command
 
     public function readDuration(SplFileInfo $file)
     {
-        if ($file->getExtension() == "mp4" || $file->getExtension() == "m4b") {
+        $meta = $this->readFileMetaData($file);
+        if ($meta->getFormat() === FfmetaDataParser::FORMAT_MP4 || $file->getExtension() == "mp4" || $file->getExtension() == "m4b") {
 
             $cacheItem = $this->cache->getItem("duration." . hash('sha256', $file->getRealPath()));
             if ($cacheItem->isHit()) {
@@ -119,7 +120,7 @@ class AbstractCommand extends Command
             return new TimeUnit($seconds, TimeUnit::SECOND);
         }
 
-        $meta = $this->readFileMetaData($file);
+
         if (!$meta) {
             return null;
         }
@@ -225,24 +226,42 @@ class AbstractCommand extends Command
         }
 
         $metaData = new FfmetaDataParser();
-        $metaData->parse($this->readFileMetaDataOutput($file));
+        $metaData->parse($this->readFileMetaDataOutput($file), $this->readFileMetaDataStreamInfo($file));
         return $metaData;
     }
 
     private function readFileMetaDataOutput(SplFileInfo $file)
     {
-        $cacheItem = $this->cache->getItem("metadata." . hash('sha256', $file->getRealPath()));
+        $cacheKey = "metadata." . hash('sha256', $file->getRealPath());
+        return $this->runCachedFfmpeg([
+            "-hide_banner",
+            "-i", $file,
+            "-f", "ffmetadata",
+            "-"
+        ], $cacheKey, "reading metadata for file " . $file);
+    }
+
+    private function readFileMetaDataStreamInfo(SplFileInfo $file)
+    {
+        $cacheKey = "streaminfo." . hash('sha256', $file->getRealPath());
+        return $this->runCachedFfmpeg([
+            "-hide_banner",
+            "-i", $file,
+            "-f", "null",
+            "-"
+        ], $cacheKey, "reading streaminfo for file " . $file);
+    }
+
+    private function runCachedFfmpeg(array $command, $cacheKey, $message)
+    {
+
+        $cacheItem = $this->cache->getItem($cacheKey);
         $cacheItem->expiresAt(new \DateTime("+12 hours"));
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
 
-        $command = [
-            "-i", $file,
-            "-f", "ffmetadata",
-            "-"
-        ];
-        $process = $this->ffmpeg($command, "reading metadata for file " . $file);
+        $process = $this->ffmpeg($command, $message);
         $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
 
         $this->debug($metaDataOutput);
@@ -250,7 +269,6 @@ class AbstractCommand extends Command
         $cacheItem->set($metaDataOutput);
         $this->cache->save($cacheItem);
         return $metaDataOutput;
-
     }
 
     protected function ffmpeg($command, $introductionMessage = null)
