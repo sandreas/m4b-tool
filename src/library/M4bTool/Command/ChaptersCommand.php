@@ -23,7 +23,7 @@ class ChaptersCommand extends AbstractCommand
     const OPTION_SILENCE_MIN_LENGTH = "silence-min-length";
     const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
     const OPTION_MERGE_SIMILAR = "merge-similar";
-    const OPTION_OUTPUT_FILE = "output-file";
+
     const OPTION_FIND_MISPLACED_CHAPTERS = "find-misplaced-chapters";
     const OPTION_FIND_MISPLACED_OFFSET = "find-misplaced-offset";
     const OPTION_FIND_MISPLACED_TOLERANCE = "find-misplaced-tolerance";
@@ -71,7 +71,7 @@ class ChaptersCommand extends AbstractCommand
         $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "a", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", 1750);
         $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "b", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
         $this->addOption(static::OPTION_MERGE_SIMILAR, "s", InputOption::VALUE_NONE, "merge similar chapter names");
-        $this->addOption(static::OPTION_OUTPUT_FILE, "o", InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
+        $this->addOption(static::OPTION_OUTPUT_FILE, static::OPTION_OUTPUT_FILE_SHORTCUT, InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
         $this->addOption(static::OPTION_ADJUST_BY_SILENCE, null, InputOption::VALUE_NONE, "will try to adjust chapters of a file by silence detection and existing chapter marks");
 
         $this->addOption(static::OPTION_FIND_MISPLACED_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "mark silence around chapter numbers that where not detected correctly, e.g. 8,15,18", "");

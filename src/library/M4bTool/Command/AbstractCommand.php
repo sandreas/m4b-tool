@@ -54,6 +54,9 @@ class AbstractCommand extends Command
     const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
     const OPTION_CONVERT_CHARSET = "convert-charset";
 
+    const OPTION_OUTPUT_FILE = "output-file";
+    const OPTION_OUTPUT_FILE_SHORTCUT = "o";
+
     /**
      * @var AbstractAdapter
      */
@@ -339,6 +342,14 @@ class AbstractCommand extends Command
             throw new Exception("Input is not a file");
         }
     }
+
+    protected function ensureOutputFileIsNotEmpty()
+    {
+        if (!$this->input->getParameterOption(static::OPTION_OUTPUT_FILE)) {
+            throw new Exception("You must provide a valid value for parameter --" . static::OPTION_OUTPUT_FILE);
+        }
+    }
+
 
     protected function chaptersFileToAudioFile(SplFileInfo $chaptersFile, $audioExtension = "m4b")
     {

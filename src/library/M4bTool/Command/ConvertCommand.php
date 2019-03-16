@@ -17,7 +17,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 class ConvertCommand extends AbstractConversionCommand implements MetaReaderInterface
 {
 
-    const OPTION_OUTPUT_FILE = "output-file";
     const OPTION_INCLUDE_EXTENSIONS = "include-extensions";
     const OPTION_MARK_TRACKS = "mark-tracks";
     const OPTION_AUTO_SPLIT_SECONDS = "auto-split-seconds";
@@ -55,11 +54,11 @@ class ConvertCommand extends AbstractConversionCommand implements MetaReaderInte
     {
         parent::configure();
 
-        $this->setDescription('Transcodeds a file to same format but different quality');
-        $this->setHelp('Transcodeds a file to same format but different quality');
+        $this->setDescription('Transcodes or re-encodes a file with another format or codec');
+        $this->setHelp('Transcodes or re-encodes a file with another format or codec');
 
         // configure an argument
-        $this->addOption(static::OPTION_OUTPUT_FILE, null, InputOption::VALUE_REQUIRED, "output file");
+        $this->addOption(static::OPTION_OUTPUT_FILE, static::OPTION_OUTPUT_FILE_SHORTCUT, InputOption::VALUE_REQUIRED, "output file");
 
     }
 
