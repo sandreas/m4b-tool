@@ -70,7 +70,7 @@ To use docker with `m4b-tool`, you first have to build a custom image located in
 
 ```
 # build docker image this will take a while
-docker build docker
+docker build docker -t m4b-tool
 
 # create an alias for m4b-tool running docker
 alias m4b-tool='docker run -w="/mnt" -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
