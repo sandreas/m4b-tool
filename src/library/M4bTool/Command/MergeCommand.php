@@ -598,7 +598,18 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         foreach ($files as $file) {
             unlink($file);
         }
-        rmdir(dirname($file));
+        if ($file === null) {
+            return true;
+        }
+        $parentDir = dirname($file);
+        $recIt = new \RecursiveDirectoryIterator($parentDir, \FilesystemIterator::SKIP_DOTS);
+        $it = new \IteratorIterator($recIt);
+
+        foreach ($it as $file) {
+            return false;
+        }
+        rmdir($parentDir);
+        return true;
     }
 
     private function importChapters()

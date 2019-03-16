@@ -61,7 +61,7 @@ sudo wget https://github.com/sandreas/m4b-tool/releases/download/v.0.3.3/m4b-too
 m4b-tool --version
 ```
 
-> Note: If you would like to get the [best possible audio quality](#about-audio-quality), you have to compile `ffmpeg` with the high quality encoder `fdk-aac` - see https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu for a step-by-step guide to compile `ffmpeg`.
+> Note: If you would like to get the [best possible audio quality](#about-audio-quality), you have to compile `ffmpeg` with the high quality encoder `fdk-aac` (`--enable-libfdk_aac`) - see https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu for a step-by-step guide to compile `ffmpeg`.
 
 
 ### Docker (experimental)
@@ -69,11 +69,17 @@ m4b-tool --version
 To use docker with `m4b-tool`, you first have to build a custom image located in the `docker` directory. Since this image is compiling every third party library from scratch to get the best possible audio quality, it can take a long time for the first build.
 
 ```
+# clone m4b-tool repository
+git clone https://github.com/sandreas/m4b-tool.git
+
+# change directory
+cd m4b-tool
+
 # build docker image this will take a while
 docker build docker -t m4b-tool
 
 # create an alias for m4b-tool running docker
-alias m4b-tool='docker run -w="/mnt" -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
+alias dm4b-tool='docker run -w="/mnt" -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
 
 # testing the command
 m4b-tool --version
