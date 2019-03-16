@@ -90,7 +90,7 @@ m4b-tool --version
 
 ### Manual installation (only recommended on Windows systems)
 
-`m4b-tool` is written in `PHP and uses `ffmpeg`, `mp4v2` and optionally `fdkaac` for high efficiency codecs to perform conversions. Therefore you will need the following tools in your %PATH%:
+`m4b-tool` is written in `PHP` and uses `ffmpeg`, `mp4v2` and optionally `fdkaac` for high efficiency codecs to perform conversions. Therefore you will need the following tools in your %PATH%:
 
 - `php` >= 7.0 with `mbstring` extension enabled (https://php.net)
 - `ffmpeg` (https://www.ffmpeg.org)
