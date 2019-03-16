@@ -75,11 +75,11 @@ git clone https://github.com/sandreas/m4b-tool.git
 # change directory
 cd m4b-tool
 
-# build docker image this will take a while
+# build docker image - this will take a while
 docker build docker -t m4b-tool
 
 # create an alias for m4b-tool running docker
-alias dm4b-tool='docker run -w="/mnt" -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
+alias m4b-tool='docker run -w="/mnt" -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
 
 # testing the command
 m4b-tool --version
