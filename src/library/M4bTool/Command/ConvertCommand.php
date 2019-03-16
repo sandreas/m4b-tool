@@ -71,8 +71,6 @@ class ConvertCommand extends AbstractConversionCommand implements MetaReaderInte
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-
-
         $this->initExecution($input, $output);
         $this->overrideDefaultInputOptions();
         $this->loadInputFiles();

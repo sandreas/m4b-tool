@@ -124,11 +124,11 @@ If you would like to use the latest source code with all new features and fixes,
 
 ## About audio quality
 
-In `m4b-tool` all audio conversions are performed with `ffmpeg` resulting in pretty descent audio quality using its free encoders. However, best quality takes some extra effort, so if you are using the free encoders, `m4b-tool` will show the following hint:
+In `m4b-tool` all audio conversions are performed with `ffmpeg` resulting in pretty descent audio quality using its free encoders. However, best quality takes some extra effort, so if you are using the free encoders, `m4b-tool` might show the following hint:
 
 > Your ffmpeg version cannot produce top quality aac using encoder aac instead of libfdk_aac
 
-To overcome this hint and get the best possible audio quality, you have to use a non-free encoder, that is not integrated in `ffmpeg` by default (licensing reasons). 
+That's not really a problem, because the difference between the `aac` and `libfdk_aac` encoder is hardly noticeable in most cases. But to overcome the hint and get the best audio quality possible, you have to use a non-free encoder, that is not integrated in `ffmpeg` by default (licensing reasons). 
 Depending on the operating system you are using, installing the non-free encoder may require a little extra skills, effort and time (see the notes for your operating system above).
 You have to decide, if it is worth the additional effort for getting the slightly better quality. If you are using the docker image, you should get the best quality by default.
 
@@ -141,9 +141,9 @@ More Details:
 
 
 
-# Submitting new issues
+# Submitting issues
 
-You think there is an issue with `m4b-tool`? First head over to the [Known Issues](#known-issues), if this does not help, please provide the following information when adding an issue:
+You think there is an issue with `m4b-tool`? First take a look at the [Known Issues](#known-issues) below. If this does not help, please provide the following information when adding an issue:
 
 - the operating system you use
 - the exact command, that you tried, e.g. `m4b-tool merge my-audio-book/ --output-file merged.m4b`
@@ -163,7 +163,43 @@ Error: Cannot embed cover, cover is not a valid image file
 Attached files: cover.png
 ```
 
+## Known Issues
+
+If you are getting PHP Exceptions, it is a configuration issue with PHP in most cases. If are not familiar with PHP configuration, 
+you could follow these instructions, to fix a few known issues:
+
+### Exception Charset not supported
+
+```
+[Exception]
+  charset windows-1252 is not supported - use one of these instead: utf-8
+```
+
+This mostly happens on windows, because the `mbstring`-Extension is used to internally convert charsets, so that special chars like german umlauts 
+are supported on every platform. To fix this, you need to enable the mbstring-extension:
+
+Run `php --ini` on the command line:
+```
+C:\>php --ini
+...
+Loaded Configuration File:         C:\Program Files\php\php.ini
+```
+
+Open the configuration file (e.g. `C:\Program Files\php\php.ini`) in a text editor and search for `extension=`. On Windows there should be an item like this:
+```
+;extension=php_mbstring.dll
+```
+remove the `;` to enable the extension:
+```
+extension=php_mbstring.dll
+```
+
+Now everything should work as expected. 
+
+
 # m4b-tool commands
+
+The following list contains all possible commands including [`merge`](#merge), [`split`](#split) and [`chapters`](#chapters) accompanied by the reference of parameters available in every command.
 
 ## merge
 
@@ -478,42 +514,6 @@ Options:
 Help:
   Can add Chapters to m4b files via different types of inputs
 ```
-
-
-# Known Issues
-
-## PHP Exceptions
-
-If you are getting PHP Exceptions, it is a configuration issue with PHP in most cases. If are not familiar with PHP configuration, 
-you could follow these instructions, to fix a few known issues:
-
-### Exception Charset not supported
-
-```
-[Exception]
-  charset windows-1252 is not supported - use one of these instead: utf-8
-```
-
-This mostly happens on windows, because the `mbstring`-Extension is used to internally convert charsets, so that special chars like german umlauts 
-are supported on every platform. To fix this, you need to enable the mbstring-extension:
-
-Run `php --ini` on the command line:
-```
-C:\>php --ini
-...
-Loaded Configuration File:         C:\Program Files\php\php.ini
-```
-
-Open the configuration file (e.g. `C:\Program Files\php\php.ini`) in a text editor and search for `extension=`. On Windows there should be an item like this:
-```
-;extension=php_mbstring.dll
-```
-remove the `;` to enable the extension:
-```
-extension=php_mbstring.dll
-```
-
-Now everything should work as expected.
 
 
 
