@@ -120,8 +120,7 @@ class SplitCommand extends AbstractConversionCommand
      */
     private function splitChapters()
     {
-//        $this->outputDirectory = $this->chaptersFile->getPath() . DIRECTORY_SEPARATOR . $this->argInputFile->getBasename("." . $this->argInputFile->getExtension()) . "_splitted";
-        if (!is_dir($this->outputDirectory) && !mkdir($this->outputDirectory, 0777, true)) {
+        if (!is_dir($this->outputDirectory) && !mkdir($this->outputDirectory, 0755, true)) {
             throw new Exception("Could not create output directory: " . $this->outputDirectory);
         }
         $metaDataTag = new Tag();
@@ -132,12 +131,13 @@ class SplitCommand extends AbstractConversionCommand
             $this->output->writeln("Could not read extended metadata for Tag: " . $t->getMessage());
         }
 
+        $this->extractDescription($metaDataTag, new SplFileInfo($this->outputDirectory . "/description.txt"));
+        $extractedCoverFile = $this->extractCover($this->argInputFile, new SplFileInfo($this->outputDirectory . "/cover.jpg"), $this->optForce);
 
-        $extractedCoverFile = $this->extractCover();
         $index = 0;
         foreach ($this->chapters as $chapter) {
             $tag = $this->inputOptionsToTag();
-            $tag->cover = $this->input->getOption('cover') === null ? $extractedCoverFile : $this->input->getOption('cover');
+            $tag->cover = $this->input->getOption(static::OPTION_COVER) === null ? $extractedCoverFile : $this->input->getOption('cover');
             $tag->title = $chapter->getName();
             $tag->track = $index + 1;
             $tag->tracks = count($this->chapters);
@@ -155,40 +155,6 @@ class SplitCommand extends AbstractConversionCommand
             }
             $index++;
         }
-    }
-
-    /**
-     * @return SplFileInfo|null
-     */
-    public function extractCover()
-    {
-        if ($this->input->getOption("skip-cover") || $this->input->getOption("cover") !== null) {
-            return null;
-        }
-
-        $coverFile = new SplFileInfo($this->outputDirectory . DIRECTORY_SEPARATOR . "cover.jpg");
-        if (file_exists($coverFile) && !$this->optForce) {
-            $this->output->writeln("skip cover extraction, file " . $coverFile . " already exists - use --force to overwrite");
-            return $coverFile;
-        }
-
-        // mp4art --extract data/src.m4b --art-index 0
-        $this->mp4art([
-            "--art-index", "0",
-            "--extract", $this->argInputFile
-        ]);
-
-        $extractedCoverFile = $this->audioFileToExtractedCoverFile($this->argInputFile);
-        if (!$extractedCoverFile->isFile()) {
-            $this->output->writeln("extracting cover to " . $extractedCoverFile . " failed");
-            return null;
-        }
-
-        if (!rename($extractedCoverFile, $coverFile)) {
-            $this->output->writeln("renaming cover " . $extractedCoverFile . " => " . $coverFile . " failed");
-            return null;
-        }
-        return $coverFile;
     }
 
     /**

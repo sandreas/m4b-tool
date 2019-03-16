@@ -23,6 +23,7 @@
         "vendor/myclabs",
         "vendor/phar-io",
         "vendor/psr",
+        "vendor/sandreas",
         "vendor/symfony",
         "vendor/twig",
         "vendor/theseer"

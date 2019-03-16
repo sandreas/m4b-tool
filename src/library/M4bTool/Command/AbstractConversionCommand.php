@@ -22,6 +22,7 @@ class AbstractConversionCommand extends AbstractCommand
     const OPTION_AUDIO_PROFILE = "audio-profile";
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
     const OPTION_SKIP_COVER = "skip-cover";
+    const OPTION_COVER = "cover";
     const OPTION_FIX_MIME_TYPE = "fix-mime-type";
 
     protected $optAudioFormat;
@@ -377,5 +378,53 @@ Codecs:
             $command[] = '-metadata';
             $command[] = 'encoded_by=' . $tag->encodedBy;
         }
+    }
+
+    protected function extractCover(SplFileInfo $file, SplFileInfo $coverTargetFile, $force = false)
+    {
+        if (!$file->isFile()) {
+            $this->output->writeln("skip cover extraction, source file " . $file . " does not exist");
+            return null;
+        }
+
+        if ($coverTargetFile->isFile() && !$force) {
+            $this->output->writeln("skip cover extraction, file " . $coverTargetFile . " already exists - use --force to overwrite");
+            return null;
+        }
+        if ($this->input->getOption(static::OPTION_SKIP_COVER)) {
+            return null;
+        }
+
+        if ($this->input->getOption(static::OPTION_COVER)) {
+            return null;
+        }
+
+        $this->ffmpeg(["-i", $file, "-an", "-vcodec", "copy", $coverTargetFile], "try to extract cover from " . $file);
+        if (!$coverTargetFile->isFile()) {
+            $this->output->writeln("extracting cover to " . $coverTargetFile . " failed");
+            return null;
+        }
+
+        return $coverTargetFile;
+    }
+
+    protected function extractDescription(Tag $tag, SplFileInfo $descriptionTargetFile)
+    {
+        if ($descriptionTargetFile->isFile() && !$this->optForce) {
+            $this->output->writeln("skip description extraction, file " . $descriptionTargetFile . " already exists - use --force to overwrite");
+            return null;
+        }
+
+        if (!$tag->description && !$tag->longDescription) {
+            $this->output->writeln("skip description extraction, tag does not contain a description");
+            return null;
+        }
+
+        $description = $tag->description ? $tag->description : $tag->longDescription;
+        if (file_put_contents($descriptionTargetFile, $description) === false) {
+            $this->output->writeln("extracting description to " . $descriptionTargetFile . " failed");
+            return null;
+        };
+        return $descriptionTargetFile;
     }
 }

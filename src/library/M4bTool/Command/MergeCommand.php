@@ -66,7 +66,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         // configure an argument
         $this->addArgument(static::ARGUMENT_MORE_INPUT_FILES, InputArgument::IS_ARRAY, 'Other Input files or folders');
-        $this->addOption(static::OPTION_OUTPUT_FILE, null, InputOption::VALUE_REQUIRED, "output file");
+        $this->addOption(static::OPTION_OUTPUT_FILE, "o", InputOption::VALUE_REQUIRED, "output file");
         $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", "aac,alac,flac,m4a,m4b,mp3,oga,ogg,wav,wma,mp4");
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
         $this->addOption(static::OPTION_MARK_TRACKS, null, InputOption::VALUE_NONE, "add chapter marks for each track");
@@ -210,14 +210,16 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     private function lookupAndAddCover()
     {
-        if ($this->argInputFile->isDir() && !$this->input->getOption("skip-cover") && !$this->input->getOption("cover")) {
-            $this->output->writeln("searching for cover in " . $this->argInputFile);
-            $autoCoverFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "cover.jpg");
+        $coverDir = $this->argInputFile->isDir() ? $this->argInputFile : new SplFileInfo($this->argInputFile->getPath());
+
+        if (!$this->input->getOption(static::OPTION_SKIP_COVER) && !$this->input->getOption(static::OPTION_COVER)) {
+            $this->output->writeln("searching for cover in " . $coverDir);
+            $autoCoverFile = new SplFileInfo($coverDir . DIRECTORY_SEPARATOR . "cover.jpg");
             if ($autoCoverFile->isFile()) {
-                $this->setOptionIfUndefined("cover", $autoCoverFile);
+                $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
             } else {
                 $autoCoverFile = null;
-                $iterator = new \DirectoryIterator($this->argInputFile);
+                $iterator = new \DirectoryIterator($coverDir);
                 foreach ($iterator as $potentialCoverFile) {
                     if ($potentialCoverFile->isDot() || $potentialCoverFile->isDir()) {
                         continue;
@@ -233,12 +235,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 }
 
                 if ($autoCoverFile && $autoCoverFile->isFile()) {
-                    $this->setOptionIfUndefined("cover", $autoCoverFile);
+                    $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
                 }
             }
 
         }
-        if ($this->input->getOption("cover")) {
+        if ($this->input->getOption(static::OPTION_COVER)) {
             $this->output->writeln("using cover " . $this->input->getOption("cover"));
         } else {
             $this->output->writeln("cover not found or specified");
@@ -247,16 +249,18 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     private function lookupAndAddDescription()
     {
-        if ($this->argInputFile->isDir() && !$this->input->getOption("description")) {
-            $this->output->writeln("searching for description.txt in " . $this->argInputFile);
+        $descriptionDir = $this->argInputFile->isDir() ? $this->argInputFile : new SplFileInfo($this->argInputFile->getPath());
 
-            $autoDescriptionFile = new SplFileInfo($this->argInputFile . DIRECTORY_SEPARATOR . "description.txt");
+        if (!$this->input->getOption("description")) {
+            $this->output->writeln("searching for description.txt in " . $descriptionDir);
+
+            $autoDescriptionFile = new SplFileInfo($descriptionDir . DIRECTORY_SEPARATOR . "description.txt");
             if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < 1024 * 1024) {
                 $this->output->writeln("using description file " . $autoDescriptionFile);
                 $description = file_get_contents($autoDescriptionFile);
                 $this->setOptionIfUndefined("description", $description);
             } else {
-                $this->output->writeln("description file " . $autoDescriptionFile . " not found or too big (max 255 chars)");
+                $this->output->writeln("description file " . $autoDescriptionFile . " not found or too big");
             }
         }
     }
@@ -329,11 +333,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $baseFdkAacCommand = $this->buildFdkaacCommand();
 
 
+        $forceExtractCover = $this->optForce;
         foreach ($this->filesToConvert as $index => $file) {
 
-            if ($this->shouldExtractCoverFromInputFiles($coverTargetFile)) {
-                $this->extractCover($file, $coverTargetFile);
-            }
+            // use "force" flag only once
+            $this->extractCover($file, $coverTargetFile, $forceExtractCover);
+            $forceExtractCover = false;
 
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
             $outputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
@@ -466,23 +471,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         return $profileCmd;
     }
 
-    private function shouldExtractCoverFromInputFiles(SplFileInfo $coverTargetFile)
-    {
-        if (!$this->argInputFile->isDir()) {
-            return false;
-        }
-        if ($coverTargetFile->isFile()) {
-            return false;
-        }
-        if ($this->input->getOption("skip-cover")) {
-            return false;
-        }
-
-        if ($this->input->getOption("cover")) {
-            return false;
-        }
-        return true;
-    }
 
     private function buildChaptersFromConvertedFileDurations()
     {
@@ -653,10 +641,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         $this->filesToMerge = $this->filesToConvert;
         $extensions = [];
+        $forceExtractCover = $this->optForce;
         foreach ($this->filesToMerge as $file) {
-            if ($this->shouldExtractCoverFromInputFiles($coverTargetFile)) {
-                $this->extractCover($file, $coverTargetFile);
-            }
+            $this->extractCover($file, $coverTargetFile, $forceExtractCover);
+            $forceExtractCover = false;
 
             if (!in_array($file->getExtension(), $extensions, true)) {
                 $extensions[] = $file->getExtension();
@@ -677,8 +665,5 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
     }
 
-    private function extractCover($file, $coverTargetFile)
-    {
-        $this->ffmpeg(["-i", $file, "-an", "-vcodec", "copy", $coverTargetFile], "try to extract cover from " . $file);
-    }
+
 }

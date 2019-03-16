@@ -1,15 +1,15 @@
 # m4b-tool
-m4b-tool is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manipulate audiobook files with chapters. Although `m4b-tool` is designed to handle m4b files, nearly all audio formats should be supported, e.g. mp3, aac, ogg, alac and flac.
+`m4b-tool` is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manipulate audiobook files with chapters. Although `m4b-tool` is designed to handle m4b files, nearly all audio formats should be supported, e.g. mp3, aac, ogg, alac and flac.
 
 ## Features
 
 - `merge` a set of audio files (e.g. MP3 or AAC) into a single m4b file
 - `split` a single m4b file into several output files by chapters
-- Adding or adjusting `chapters` for an existing m4b file via silence detection or musicbrainz
+- Add or adjust `chapters` for an existing m4b file via silence detection or musicbrainz
 
 ## TL;DR - examples for the most common tasks
 
-> `merge` all audio files in directory `data/my-audio-book` into file `data/merged.m4b` (tags are retained and `data/my-audio-book/cover.jpg` is embedded, if available)
+> `merge` all audio files in directory `data/my-audio-book` into file `data/merged.m4b` (tags are retained and `data/my-audio-book/cover.jpg`  and `data/my-audio-book/description.txt` are embedded, if available)
 ```
 m4b-tool merge "data/my-audio-book/" --output-file="data/merged.m4b"
 ```
@@ -64,31 +64,51 @@ m4b-tool --version
 > Note: If you would like to get the [best possible audio quality](#about-audio-quality), you have to compile `ffmpeg` with the high quality encoder `fdk-aac` - see https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu for a step-by-step guide to compile `ffmpeg`.
 
 
+### Docker (experimental)
+
+To use docker with `m4b-tool`, you first have to build a custom image located in the `docker` directory. Since this image is compiling every third party library from scratch to get the best possible audio quality, it can take a long time for the first build.
+
+```
+# build docker image this will take a while
+docker build docker
+
+# create an alias for m4b-tool running docker
+alias m4b-tool='docker run -w="/mnt" -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
+
+# testing the command
+m4b-tool --version
+```
+
+> Note: If you use the alias above, keep in mind that you cannot use absolute paths (e.g. /tmp/data/audiobooks/harry potter 1) or symlinks. You must change in the directory and use relative paths (e.g. cd /tmp/data && m4b-tool merge "audiobooks/harry potter 1" --output-file harry.m4b)
+
+
 ### Manual installation (only recommended on Windows systems)
 
-m4b-tool is written in PHP and uses `ffmpeg`, `mp4v2` and optionally `fdkaac` for high efficiency codecs to perform conversions. Therefore you will need the following tools in your $PATH:
+`m4b-tool` is written in `PHP and uses `ffmpeg`, `mp4v2` and optionally `fdkaac` for high efficiency codecs to perform conversions. Therefore you will need the following tools in your %PATH%:
 
-- `php` >= 7.0 with `mbstring` extension enabled
-- `ffmpeg`
-- `mp4v2` (`mp4chaps`, `mp4art`, etc.)
-- `fdkaac` (optional, only if you need high efficiency for low bitrates <= 32k)
+- `php` >= 7.0 with `mbstring` extension enabled (https://php.net)
+- `ffmpeg` (https://www.ffmpeg.org)
+- `mp4v2` (`mp4chaps`, `mp4art`, etc. https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip)
+- `fdkaac` (optional, only if you need high efficiency for low bitrates <= 32k, http://wlc.io/2015/06/20/fdk-aac/ - caution: not official!)
 
-If these are all installed, `m4b-tool` should work like expected. To install `m4b-tool` and its dependencies manually:
+To check the dependencies, running following commands via command line should show similar output:
 
-- Ensure that the required tools are installed, placed in your `%PATH%` and available via command line
-    - `ffmpeg` (https://www.ffmpeg.org)
-    - `mp4v2` (https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip, sources at https://github.com/TechSmith/mp4v2)
-    - `fdkaac` (http://wlc.io/2015/06/20/fdk-aac/ - caution: not official!), sources at https://github.com/nu774/fdkaac
-    - `php` (https://php.net)
-- And download the latest release from https://github.com/sandreas/m4b-tool/releases, call e.g. `php m4b-tool.phar --version` or `m4b-tool --version`, you could also [build from source](#building-from-source).
+```
+$ php -v
+Copyright (c) 1997-2018 The PHP Group [...]
 
+$ ffmpeg -version
+ffmpeg version 4.1.1 Copyright (c) 2000-2019 the FFmpeg developers [...]
 
-You think there is an issue with `m4b-tool`? First head over to the [Known Issues](#known-issues), if this does not help, please provide the following information when adding an issue:
+$ mp4chaps --version
+mp4chaps - MP4v2 2.0.0
 
-- the operating system you use
-- the exact command, that you tried, e.g. `m4b-tool merge my-audio-book/ -o merged.m4b`
-- the error message, that occured or the circumstances, e.g. `the resulting file merged.m4b is only 5kb`
-- other relevant information, e.g. sample files if needed
+$ fdkaac
+fdkaac 1.0.0 [...]
+
+```
+
+Now download the latest release from https://github.com/sandreas/m4b-tool/releases, call e.g. `php m4b-tool.phar --version` or `m4b-tool --version`, you could also [build from source](#building-from-source)
 
 ## About audio quality
 
@@ -98,7 +118,7 @@ In `m4b-tool` all audio conversions are performed with `ffmpeg` resulting in pre
 
 To overcome this hint and get the best possible audio quality, you have to use a non-free encoder, that is not integrated in `ffmpeg` by default (licensing reasons). 
 Depending on the operating system you are using, installing the non-free encoder may require a little extra skills, effort and time (see the notes for your operating system above).
-You have to decide, if it is worth the additional effort for getting the slightly better quality.
+You have to decide, if it is worth the additional effort for getting the slightly better quality. If you are using the docker image, you should get the best quality by default.
 
 If you are using very low bitrates (<= 32k), you could also use high efficiency profiles to further improve audio quality (e.g. `--audio-profile=aac_he` for mono). Unfortunately, `ffmpeg`'s high efficiency implementation produces audio files, that are incompatible with many players (including iTunes). To produce high efficiency files, that are compatible with at least most common players, you will need to install `fdkaac` for now.
 
@@ -108,11 +128,34 @@ More Details:
 - https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio 
 
 
+
+# Submitting new issues
+
+You think there is an issue with `m4b-tool`? First head over to the [Known Issues](#known-issues), if this does not help, please provide the following information when adding an issue:
+
+- the operating system you use
+- the exact command, that you tried, e.g. `m4b-tool merge my-audio-book/ --output-file merged.m4b`
+- the error message, that occured or the circumstances, e.g. `the resulting file merged.m4b is only 5kb`
+- other relevant information, e.g. sample files if needed
+
+> Example:
+```
+Title: m4b-tool does not embed covers
+
+If i run m4b-tool with a folder containing a cover.png, it does not embed the cover and shows an error message.
+
+OS: Ubuntu 16.04 LTS
+Command: `m4b-tool merge my-audio-book/ ---output-file merged.m4b`
+Error: Cannot embed cover, cover is not a valid image file
+
+Attached files: cover.png
+```
+
 # m4b-tool commands
 
 ## merge
 
-With m4b-tool you can merge a set of audio files to one single m4b audiobook file. 
+With `m4b-tool` you can merge a set of audio files to one single m4b audiobook file. 
 
 ### Example:
 ```
@@ -186,7 +229,7 @@ Help:
 
 ## split
 
-m4b-tool can be used to split a single m4b into a file per chapter.
+`m4b-tool` can be used to split a single m4b into a file per chapter.
 
 ### Example:
 ```
@@ -300,10 +343,10 @@ It won't work, if the shift is to large or if the chapters are strongly misplace
 If you have a well known audiobook, like ***Harry Potter and the Philosopher’s Stone***, 
 you might be lucky that it is on musicbrainz.
  
-In this case m4b-tool can try to correct the chapter information using silence 
+In this case `m4b-tool` can try to correct the chapter information using silence 
 detection and the musicbrainz data.
 
-Since this is not a trivial task and prone to error, m4b-tool offers some parameters to correct 
+Since this is not a trivial task and prone to error, `m4b-tool` offers some parameters to correct 
 misplaced chapter positions manually. 
 
 ### A typical workflow
@@ -348,7 +391,7 @@ m4b-tool chapter --find-misplaced-chapters 5,8  --merge-similar --first-chapter-
 Explanation:
 `--find-misplaced-chapters`: Comma separated list of chapter numbers, that were not detected correctly.
 
-Now m4b-tool will generate a ***potential chapter*** for every silence around the used chapter mark to find the right chapter position.
+Now `m4b-tool` will generate a ***potential chapter*** for every silence around the used chapter mark to find the right chapter position.
 
 Listen to the audiobook again and find the right chapter position. Note them down.
 
@@ -432,25 +475,6 @@ Help:
 If you are getting PHP Exceptions, it is a configuration issue with PHP in most cases. If are not familiar with PHP configuration, 
 you could follow these instructions, to fix a few known issues:
 
-
-### Exception with DateTime::__construct
-
-
-```
-  [Exception]
-  DateTime::__construct(): It is not safe to rely on the system's timezone settings. You are *required* to use the date.time
-  zone setting or the date_default_timezone_set() function. In case you used any of those methods and you are still getting
-  this warning, you most likely misspelled the timezone identifier. We selected the timezone 'UTC' for now, but please set d
-  ate.timezone to select your timezone.
-```
-
-This happens, because PHP needs a preconfigured timezone to work correctly. There are two ways to fix this:
-
-1. Recommended: Set the value for date.timezone in your php.ini once, e.g. `date.timezone=Europe/Berlin`
-2. Set the configuration value for date.timezone inline everytime you use m4b-tool.phar, e.g. `php -d "date.timezone=UTC" m4b-tool.phar merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"`
-
-**This issue should be fixed in v0.2 and later.**
-
 ### Exception Charset not supported
 
 ```
@@ -458,7 +482,7 @@ This happens, because PHP needs a preconfigured timezone to work correctly. Ther
   charset windows-1252 is not supported - use one of these instead: utf-8
 ```
 
-This mostly happens on windows, because the mbstring-Extension is used to internally convert charsets, so that special chars like german umlauts 
+This mostly happens on windows, because the `mbstring`-Extension is used to internally convert charsets, so that special chars like german umlauts 
 are supported on every platform. To fix this, you need to enable the mbstring-extension:
 
 Run `php --ini` on the command line:
@@ -479,9 +503,12 @@ extension=php_mbstring.dll
 
 Now everything should work as expected.
 
+
+
+
 # Building from source
 
-m4b-tool contains a `build` script, which will create an executable m4b-tool.phar in the dist folder. Composer for PHP 
+`m4b-tool` contains a `build` script, which will create an executable m4b-tool.phar in the dist folder. Composer for PHP 
 is required, so after installing composer, run following commands in project root folder:
 
 ## Linux / Unix
