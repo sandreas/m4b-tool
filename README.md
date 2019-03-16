@@ -114,7 +114,13 @@ fdkaac 1.0.0 [...]
 
 ```
 
-Now download the latest release from https://github.com/sandreas/m4b-tool/releases, call e.g. `php m4b-tool.phar --version` or `m4b-tool --version`, you could also [build from source](#building-from-source)
+If you are sure, all dependencies are installed, the next step is to download the latest release of `m4b-tool` from
+
+https://github.com/sandreas/m4b-tool/releases
+
+Depending on the operating system, you can rename `m4b-tool.phar` to `m4b-tool` and run `m4b-tool --version` directly from the command line. If you are not sure, you can always use the command `php m4b-tool.phar --version` to check if the installation was successful. This should work on every system.
+
+If you would like to use the latest source code with all new features and fixes, you could also [build from source](#building-from-source). The current build might be in  unstable and should only be used for testing purposes or if you need a specific feature that has not been released.
 
 ## About audio quality
 
