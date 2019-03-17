@@ -11,7 +11,6 @@ use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use M4bTool\Marker\ChapterMarker;
 use M4bTool\Parser\MusicBrainzChapterParser;
-use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -26,6 +25,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     const OPTION_MARK_TRACKS = "mark-tracks";
     const OPTION_AUTO_SPLIT_SECONDS = "auto-split-seconds";
     const OPTION_NO_CONVERSION = "no-conversion";
+
 
     protected $outputDirectory;
 
@@ -48,8 +48,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      * @var Chapter[]
      */
     protected $chapters = [];
-
-    protected $totalDuration;
 
     /**
      * @var Silence[]
@@ -275,64 +273,11 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             throw new Exception("Could not create temp directory " . $dir);
         }
 
-        if ($this->optAdjustBitrateForIpod) {
-            $this->output->writeln("ipod auto adjust active, getting track durations");
-            $this->totalDuration = new TimeUnit();
-            foreach ($this->filesToConvert as $index => $file) {
-                $duration = $this->readDuration($file);
-                if (!$duration) {
-                    throw new Exception("could not get duration for file " . $file . " - needed for " . static::OPTION_ADJUST_FOR_IPOD);
-                }
-                $this->totalDuration->add($duration->milliseconds());
-            }
+        $this->adjustBitrateForIpod($this->filesToConvert);
 
-            $samplingRateToBitrateMapping = [
-                8000 => "24k",
-                11025 => "32k",
-                12000 => "32k",
-                16000 => "48k",
-                22050 => "64k",
-                32000 => "96k",
-                44100 => "128k",
-            ];
-
-            $durationSeconds = $this->totalDuration->milliseconds() / 1000;
-            $maxSamplingRate = 2147483647 / $durationSeconds;
-            $this->output->writeln("total duration: " . $this->totalDuration->format() . " (" . $durationSeconds . "s)");
-            $this->output->writeln("max possible sampling rate: " . $maxSamplingRate . "Hz");
-            $this->output->writeln("desired sampling rate: " . $this->optAudioSampleRate . "Hz");
-
-            if ($this->samplingRateToInt() > $maxSamplingRate) {
-                $this->output->writeln("desired sampling rate " . $this->optAudioSampleRate . " is greater than max sampling rate " . $maxSamplingRate . "Hz, trying to adjust");
-                $resultSamplingRate = 0;
-                $resultBitrate = "";
-                foreach ($samplingRateToBitrateMapping as $samplingRate => $bitrate) {
-                    if ($samplingRate <= $maxSamplingRate) {
-                        $resultSamplingRate = $samplingRate;
-                        $resultBitrate = $bitrate;
-                    } else {
-                        break;
-                    }
-                }
-
-                if ($resultSamplingRate === 0) {
-                    throw new Exception("Could not find an according setting for " . static::OPTION_AUDIO_BIT_RATE . " / " . static::OPTION_AUDIO_SAMPLE_RATE . " for option " . static::OPTION_ADJUST_FOR_IPOD);
-                }
-
-                $this->optAudioSampleRate = $resultSamplingRate;
-                $this->optAudioBitRate = $resultBitrate;
-                $this->output->writeln("adjusted to " . $resultBitrate . "/" . $resultSamplingRate);
-            } else {
-                $this->output->writeln("desired sampling rate is ok, nothing to change");
-            }
-        }
         $coverTargetFile = new SPLFileInfo($this->argInputFile . "/cover.jpg");
-
-
-        $baseFdkAacCommand = $this->buildFdkaacCommand();
-
-
         $forceExtractCover = $this->optForce;
+        $baseFdkAacCommand = $this->buildFdkaacCommand();
         foreach ($this->filesToConvert as $index => $file) {
 
             // use "force" flag only once
@@ -356,62 +301,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
 
             if ($baseFdkAacCommand) {
-                $fdkAacCommand = $baseFdkAacCommand;
-                $tmpOutputFile = (string)$outputFile . ".fdkaac-input";
-                $this->otherTmpFiles[] = $tmpOutputFile;
-                $command = ["-i", $file, "-vn", "-ac", $this->optAudioChannels, "-ar", $this->optAudioSampleRate, "-f", "caf", $tmpOutputFile];
-                $this->ffmpeg($command);
-
-                $fdkAacCommand[] = "-o";
-                $fdkAacCommand[] = $outputFile;
-                $fdkAacCommand[] = $tmpOutputFile;
-                $this->fdkaac($fdkAacCommand);
+                $this->otherTmpFiles[] = $this->executeFdkaacCommand($baseFdkAacCommand, $file, $outputFile);
             } else {
-                $command = [
-                    "-i", $file,
-                    "-max_muxing_queue_size", "9999",
-                    "-map_metadata", "0",
-                ];
-
-
-                // backwards compatibility: ffmpeg needed experimental flag in earlier versions
-                if ($this->optAudioCodec == "aac") {
-                    $command[] = "-strict";
-                    $command[] = "experimental";
-                }
-
-                /*
-                // If you require a low audio bitrate, such as ≤ 32kbs/channel, then HE-AAC would be worth considering
-                // if your player or device can support HE-AAC decoding. Anything higher may benefit more from AAC-LC due
-                // to less processing. If in doubt use AAC-LC. All players supporting HE-AAC also support AAC-LC.
-                // These HE-AAC-Files are not iTunes compatible, although iTunes should support it
-                if ($this->optAudioCodec == "libfdk_aac" && $this->bitrateStringToInt() <= 32000) {
-                    $command[] = "-profile:a";
-                    $command[] = "aac_he";
-                }
-                */
-
-                // Relocating moov atom to the beginning of the file can facilitate playback before the file is completely downloaded by the client.
-                $command[] = "-movflags";
-                $command[] = "+faststart";
-
-                // no video for files is required because chapters will not work if video is embedded and shorter than audio length
-                $command[] = "-vn";
-
-                $this->appendParameterToCommand($command, "-y", $this->optForce);
-                $this->appendParameterToCommand($command, "-ab", $this->optAudioBitRate);
-                $this->appendParameterToCommand($command, "-ar", $this->optAudioSampleRate);
-                $this->appendParameterToCommand($command, "-ac", $this->optAudioChannels);
-                $this->appendParameterToCommand($command, "-acodec", $this->optAudioCodec);
-
-                // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
-                if ($this->optAudioFormat && $this->optAudioCodec !== "alac") {
-                    $this->appendParameterToCommand($command, "-f", $this->optAudioFormat);
-                }
-
-                $command[] = $outputFile;
-
-                $this->ffmpeg($command, "ffmpeg: converting " . $file . " to " . $outputFile . "");
+                $this->executeFfmpegCommand($file, $outputFile);
             }
 
 
@@ -428,47 +320,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
     }
 
-    private function buildFdkaacCommand()
-    {
-        $profileCmd = [];
-        $profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
-        if ($profile !== "") {
-            $process = $this->fdkaac([]);
-            if (stripos($process->getOutput(), 'Usage: fdkaac') === false) {
-                throw new Exception('You need fdkaac to be installed for using audio profiles');
-            }
-            switch ($profile) {
-                case "aac_he":
-                    $this->optAudioChannels = 1;
-                    $fdkaacProfile = 5;
-                    break;
-                case "aac_he_v2":
-                    $this->optAudioChannels = 2;
-                    $fdkaacProfile = 29;
-                    break;
-                default:
-                    throw new Exception("--audio-profile has only two valid values: aac_he (for mono) and aac_he_v2 (for stereo)");
-            }
-
-            $profileCmd = ["--raw-channels", $this->optAudioChannels];
-
-            if ($this->optAudioSampleRate) {
-                $profileCmd[] = "--raw-rate";
-                $profileCmd[] = $this->optAudioSampleRate;
-            }
-
-            $profileCmd[] = "-p";
-            $profileCmd[] = $fdkaacProfile;
-
-
-            if (!$this->optAudioBitRate) {
-                throw new Exception("--audio-profile only works with --audio-bitrate=...");
-            }
-            $profileCmd[] = "-b";
-            $profileCmd[] = $this->optAudioBitRate;
-        }
-        return $profileCmd;
-    }
 
 
     private function buildChaptersFromConvertedFileDurations()

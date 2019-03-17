@@ -45,6 +45,12 @@ class Tag implements \ArrayAccess
     //-e, -encodedby   STR  Set the name of the person or company who encoded the file
     public $encodedBy;
 
+    // MP3 Specific
+    public $performer; // TPE3
+    public $language; // TLAN
+    public $publisher; // TPUB
+    public $lyrics; // TSLT
+
 
     public function merge(Tag $tag)
     {

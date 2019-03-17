@@ -233,7 +233,7 @@ class AbstractCommand extends Command
         return $metaData;
     }
 
-    private function readFileMetaDataOutput(SplFileInfo $file)
+    protected function readFileMetaDataOutput(SplFileInfo $file)
     {
         $cacheKey = "metadata." . hash('sha256', $file->getRealPath());
         return $this->runCachedFfmpeg([
@@ -244,7 +244,7 @@ class AbstractCommand extends Command
         ], $cacheKey, "reading metadata for file " . $file);
     }
 
-    private function readFileMetaDataStreamInfo(SplFileInfo $file)
+    protected function readFileMetaDataStreamInfo(SplFileInfo $file)
     {
         $cacheKey = "streaminfo." . hash('sha256', $file->getRealPath());
         return $this->runCachedFfmpeg([
@@ -410,18 +410,13 @@ class AbstractCommand extends Command
         }
     }
 
-    protected function appendTemplateParameterToCommand(&$command, $parameterTemplate, $parameterValue = null, $escapeChars = ['"' => '\\"'])
+    protected function appendKeyValueParameterToCommand(&$command, $key, $value, $preParam)
     {
-
-        if (is_bool($parameterValue)) {
-            $command[] = $parameterTemplate;
+        if ($value === null || $value === "") {
             return;
         }
-
-        if ($parameterValue) {
-            $escapedValue = strtr($parameterValue, $escapeChars);
-            $command[] = sprintf($parameterTemplate, $escapedValue);
-        }
+        $command[] = $preParam;
+        $command[] = $key . '=' . $value;
     }
 
     protected function splitLines($chapterString)

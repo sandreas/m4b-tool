@@ -290,13 +290,24 @@ class FfmetaDataParser
     {
         $tag = new Tag();
         $tag->album = $this->getProperty("album");
+        $tag->writer = $this->getProperty("writer") ?? $this->getProperty("composer");
+        $tag->genre = $this->getProperty("genre");
+        $tag->copyright = $this->getProperty("copyright");
+        $tag->encodedBy = $this->getProperty("encoded_by");
+        $tag->title = $this->getProperty("title");
+        $tag->language = $this->getProperty("language");
         $tag->artist = $this->getProperty("artist");
         $tag->albumArtist = $this->getProperty("album_artist");
+        $tag->performer = $this->getProperty("performer");
+        $tag->disk = $this->getProperty("disc");
+        $tag->publisher = $this->getProperty("publisher");
+        $tag->track = $this->getProperty("track");
+        $tag->encoder = $this->getProperty("encoder");
+        $tag->lyrics = $this->getProperty("lyrics");
         $tag->year = $this->getProperty("date");
-        $tag->genre = $this->getProperty("genre");
-        $tag->writer = $this->getProperty("writer");
         $tag->description = $this->getProperty("description");
         $tag->longDescription = $this->getProperty("longdesc");
+
         return $tag;
     }
 

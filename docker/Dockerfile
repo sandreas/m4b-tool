@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.9.2
 
 ARG M4B_TOOL_VERSION=0.3.3
 ARG FFMPEG_VERSION=4.1
