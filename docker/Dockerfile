@@ -20,8 +20,6 @@ RUN apk add --update --upgrade \
     freetype-dev \
     lame \
     lame-dev \
-#    libass \
-#    libass-dev \
     libogg \
     libvpx \
     libogg-dev \
@@ -29,12 +27,8 @@ RUN apk add --update --upgrade \
     libogg-dev \
     libtheora \
     libtheora-dev \
-#    libvpx \
-#    libvpx-dev \
     libvorbis \
     libvorbis-dev \
-#    libwebp \
-#    libwebp-dev \
     nasm \
     openssl \
     openssl-dev \
@@ -52,12 +46,8 @@ RUN apk add --update --upgrade \
     php7-phar \
     pkgconf \
     pkgconfig \
-#    rtmpdump \
-#    rtmpdump-dev \
     tar \
     wget \
-#    x264-dev \
-#    x265-dev \
     yasm \
     yasm-dev \
     zlib-dev \
@@ -76,31 +66,11 @@ RUN cd /tmp/ \
   --enable-gpl \
   --enable-nonfree \
   --enable-small \
-# audio: mp3 codec
   --enable-libmp3lame \
-# video: h264 codec
-#  --enable-libx264 \
-# video: h265 codec
-#  --enable-libx265 \
-# video: vp9 codec
-#  --enable-libvpx \
   --enable-libtheora \
-# audio: ogg vorbis codec
   --enable-libvorbis \
-# audio: opus codec
   --enable-libopus \
-# audio: aac codec (high quality, nonfree)
   --enable-libfdk_aac \
-#  video: subtitle renderer
-#  --enable-libass \
-# image: webp format support
-#  --enable-libwebp \
-# streaming: RTPM streaming protocol
-#  --enable-librtmp \
-# video: postprocessing
-#  --enable-postproc \
-
-# audio: resampling
   --enable-avresample \
   --enable-libfreetype \
   --enable-openssl \
