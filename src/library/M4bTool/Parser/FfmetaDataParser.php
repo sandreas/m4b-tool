@@ -306,7 +306,7 @@ class FfmetaDataParser
         $tag->lyrics = $this->getProperty("lyrics");
         $tag->year = $this->getProperty("date");
         $tag->description = $this->getProperty("description");
-        $tag->longDescription = $this->getProperty("longdesc");
+        $tag->longDescription = $this->getProperty("longdesc") ?? $this->getProperty("synopsis");
 
         return $tag;
     }

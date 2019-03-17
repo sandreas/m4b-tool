@@ -75,9 +75,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->initExecution($input, $output);
-        $this->ensureOutputFileIsNotEmpty();
 
         $this->loadInputFiles();
+
+        $this->ensureOutputFileIsNotEmpty($this->outputFile);
 
         $this->loadInputMetadataFromFirstFile();
         $this->lookupAndAddCover();

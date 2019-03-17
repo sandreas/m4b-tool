@@ -6,6 +6,7 @@ namespace M4bTool\Command;
 
 use M4bTool\Audio\Tag;
 use M4bTool\Parser\FfmetaDataParser;
+use M4bTool\StringUtilities\Strings;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -487,7 +488,16 @@ Codecs:
             return null;
         }
 
-        $description = $tag->description ? $tag->description : $tag->longDescription;
+
+        $description = $tag->description;
+        if ($tag->description && $tag->longDescription && Strings::hasPrefix($tag->longDescription, $tag->description)) {
+            $description = $tag->longDescription;
+        }
+
+        if (!$description) {
+            return null;
+        }
+
         if (file_put_contents($descriptionTargetFile, $description) === false) {
             $this->output->writeln("extracting description to " . $descriptionTargetFile . " failed");
             return null;

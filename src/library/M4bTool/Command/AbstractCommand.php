@@ -343,9 +343,9 @@ class AbstractCommand extends Command
         }
     }
 
-    protected function ensureOutputFileIsNotEmpty()
+    protected function ensureOutputFileIsNotEmpty($outputFile)
     {
-        if (!$this->input->getParameterOption(static::OPTION_OUTPUT_FILE)) {
+        if (!$outputFile) {
             throw new Exception("You must provide a valid value for parameter --" . static::OPTION_OUTPUT_FILE);
         }
     }
