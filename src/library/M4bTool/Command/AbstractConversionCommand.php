@@ -472,6 +472,8 @@ Codecs:
             $this->output->writeln("extracting cover to " . $coverTargetFile . " failed");
             return null;
         }
+        $this->output->writeln("extracted cover to " . $coverTargetFile . "");
+
 
         return $coverTargetFile;
     }
@@ -490,8 +492,13 @@ Codecs:
 
 
         $description = $tag->description;
-        if ($tag->description && $tag->longDescription && Strings::hasPrefix($tag->longDescription, $tag->description)) {
-            $description = $tag->longDescription;
+
+        if ($tag->description && $tag->longDescription) {
+
+            $buf = new StringBuffer($tag->longDescription);
+            if ($buf->softTruncateBytesSuffix(static::TAG_DESCRIPTION_MAX_LEN, static::TAG_DESCRIPTION_SUFFIX) === $tag->description) {
+                $description = $tag->longDescription;
+            }
         }
 
         if (!$description) {
@@ -502,6 +509,7 @@ Codecs:
             $this->output->writeln("extracting description to " . $descriptionTargetFile . " failed");
             return null;
         };
+        $this->output->writeln("extracted description to " . $descriptionTargetFile . "");
         return $descriptionTargetFile;
     }
 
