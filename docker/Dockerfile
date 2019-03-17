@@ -20,8 +20,8 @@ RUN apk add --update --upgrade \
     freetype-dev \
     lame \
     lame-dev \
-    libass \
-    libass-dev \
+#    libass \
+#    libass-dev \
     libogg \
     libvpx \
     libogg-dev \
@@ -29,12 +29,12 @@ RUN apk add --update --upgrade \
     libogg-dev \
     libtheora \
     libtheora-dev \
-    libvpx \
-    libvpx-dev \
+#    libvpx \
+#    libvpx-dev \
     libvorbis \
     libvorbis-dev \
-    libwebp \
-    libwebp-dev \
+#    libwebp \
+#    libwebp-dev \
     nasm \
     openssl \
     openssl-dev \
@@ -52,12 +52,12 @@ RUN apk add --update --upgrade \
     php7-phar \
     pkgconf \
     pkgconfig \
-    rtmpdump \
-    rtmpdump-dev \
+#    rtmpdump \
+#    rtmpdump-dev \
     tar \
     wget \
-    x264-dev \
-    x265-dev \
+#    x264-dev \
+#    x265-dev \
     yasm \
     yasm-dev \
     zlib-dev \
@@ -76,18 +76,31 @@ RUN cd /tmp/ \
   --enable-gpl \
   --enable-nonfree \
   --enable-small \
+# audio: mp3 codec
   --enable-libmp3lame \
-  --enable-libx264 \
-  --enable-libx265 \
-  --enable-libvpx \
+# video: h264 codec
+#  --enable-libx264 \
+# video: h265 codec
+#  --enable-libx265 \
+# video: vp9 codec
+#  --enable-libvpx \
   --enable-libtheora \
+# audio: ogg vorbis codec
   --enable-libvorbis \
+# audio: opus codec
   --enable-libopus \
+# audio: aac codec (high quality, nonfree)
   --enable-libfdk_aac \
-  --enable-libass \
-  --enable-libwebp \
-  --enable-librtmp \
-  --enable-postproc \
+#  video: subtitle renderer
+#  --enable-libass \
+# image: webp format support
+#  --enable-libwebp \
+# streaming: RTPM streaming protocol
+#  --enable-librtmp \
+# video: postprocessing
+#  --enable-postproc \
+
+# audio: resampling
   --enable-avresample \
   --enable-libfreetype \
   --enable-openssl \
@@ -104,15 +117,18 @@ RUN cd /tmp/ \
 RUN cd /tmp/ \
    && wget https://github.com/nkari82/mp4v2/archive/master.zip \
    && unzip master.zip \
+   && rm master.zip \
    && cd mp4v2-master \
    && ./configure && make && make install && make distclean && rm -rf /tmp/*
 
 RUN cd /tmp/ \
    && wget https://github.com/nu774/fdkaac/archive/1.0.0.tar.gz \
    && tar xzf 1.0.0.tar.gz \
+   && rm 1.0.0.tar.gz \
    && cd fdkaac-1.0.0 \
    && autoreconf -i && ./configure && make && make install && rm -rf /tmp/*
 
-RUN wget https://github.com/sandreas/m4b-tool/releases/download/v.${M4B_TOOL_VERSION}/m4b-tool.phar -O /usr/local/bin/m4b-tool && chmod +x /usr/local/bin/m4b-tool
+RUN wget https://github.com/sandreas/m4b-tool/releases/download/v.${M4B_TOOL_VERSION}/m4b-tool.phar -O /usr/local/bin/m4b-tool \
+    && chmod +x /usr/local/bin/m4b-tool
 
 CMD ["/bin/sh"]
