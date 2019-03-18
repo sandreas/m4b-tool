@@ -11,6 +11,7 @@ RUN apk add --update --upgrade \
     build-base \
     bzip2 \
     ca-certificates \
+    coreutils \
     curl \
     file \
     gcc \
