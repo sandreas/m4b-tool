@@ -1,10 +1,11 @@
 FROM alpine:3.9.2
 
+ENV WORKDIR /mnt
 ARG M4B_TOOL_VERSION=0.3.3
 ARG FFMPEG_VERSION=4.1
 ARG PREFIX=/ffmpeg_build
 
-RUN apk add --update --upgrade \
+RUN apk add --no-cache --update --upgrade \
     autoconf \
     automake \
     boost-dev \
@@ -54,7 +55,6 @@ RUN apk add --update --upgrade \
     zlib-dev \
     && echo http://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories \
     && apk add --update fdk-aac-dev \
-    && rm -rf /var/cache/apk/* \
     && echo "date.timezone = UTC" >> /etc/php7/php.ini
 
 RUN cd /tmp/ \
@@ -102,4 +102,8 @@ RUN cd /tmp/ \
 RUN wget https://github.com/sandreas/m4b-tool/releases/download/v.${M4B_TOOL_VERSION}/m4b-tool.phar -O /usr/local/bin/m4b-tool \
     && chmod +x /usr/local/bin/m4b-tool
 
-CMD ["/bin/sh"]
+
+WORKDIR ${WORKDIR}
+CMD ["--help"]
+ENTRYPOINT ["m4b-tool"]
+
