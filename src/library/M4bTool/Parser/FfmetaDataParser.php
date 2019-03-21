@@ -140,7 +140,10 @@ class FfmetaDataParser
     private function parseDuration($lineWithDuration)
     {
         // frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x
-        preg_match("/time=([^\s]+)/", $lineWithDuration, $matches);
+        $lastPos = strripos($lineWithDuration, "time=");
+        $lastPart = substr($lineWithDuration, $lastPos);
+
+        preg_match("/time=([^\s]+)/", $lastPart, $matches);
 
         if (!isset($matches[1])) {
             return;

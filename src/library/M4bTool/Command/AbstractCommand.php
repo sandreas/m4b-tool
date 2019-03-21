@@ -228,6 +228,7 @@ class AbstractCommand extends Command
             throw new Exception("cannot read metadata, file " . $file . " does not exist");
         }
 
+        $this->output->writeln("reading metadata and streaminfo for file " . $file);
         $metaData = new FfmetaDataParser();
         $metaData->parse($this->readFileMetaDataOutput($file), $this->readFileMetaDataStreamInfo($file));
         return $metaData;
@@ -241,7 +242,7 @@ class AbstractCommand extends Command
             "-i", $file,
             "-f", "ffmetadata",
             "-"
-        ], $cacheKey, "reading metadata for file " . $file);
+        ], $cacheKey);
     }
 
     protected function readFileMetaDataStreamInfo(SplFileInfo $file)
@@ -252,10 +253,10 @@ class AbstractCommand extends Command
             "-i", $file,
             "-f", "null",
             "-"
-        ], $cacheKey, "reading streaminfo for file " . $file);
+        ], $cacheKey);
     }
 
-    private function runCachedFfmpeg(array $command, $cacheKey, $message)
+    private function runCachedFfmpeg(array $command, $cacheKey, $message = null)
     {
 
         $cacheItem = $this->cache->getItem($cacheKey);
