@@ -79,13 +79,13 @@ cd m4b-tool
 docker build docker -t m4b-tool
 
 # create an alias for m4b-tool running docker
-alias m4b-tool='docker run -w="/mnt" -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
+alias m4b-tool='docker run -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
 
 # testing the command
 m4b-tool --version
 ```
 
-> Note: If you use the alias above, keep in mind that you cannot use absolute paths (e.g. /tmp/data/audiobooks/harry potter 1) or symlinks. You must change in the directory and use relative paths (e.g. cd /tmp/data && m4b-tool merge "audiobooks/harry potter 1" --output-file harry.m4b)
+> Note: If you use the alias above, keep in mind that you cannot use absolute paths (e.g. `/tmp/data/audiobooks/harry potter 1`) or symlinks. You must change into the directory and use relative paths (e.g. `cd /tmp/data && m4b-tool merge "audiobooks/harry potter 1" --output-file harry.m4b`)
 
 
 ### Manual installation (only recommended on Windows systems)
