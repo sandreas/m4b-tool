@@ -49,6 +49,9 @@ class AbstractConversionCommand extends AbstractCommand
 
     protected $longDescription;
 
+    /** @var SplFileInfo[] */
+    protected $extractFilesAlreadyTried = [];
+
     public function inputOptionsToTag()
     {
         $tag = new Tag;
@@ -428,6 +431,10 @@ Codecs:
 
     protected function extractCover(SplFileInfo $file, SplFileInfo $coverTargetFile, $force = false)
     {
+        if ($this->extractAlreadyTried($coverTargetFile)) {
+            return null;
+        }
+
         if (!$file->isFile()) {
             $this->output->writeln("skip cover extraction, source file " . $file . " does not exist");
             return null;
@@ -480,6 +487,10 @@ Codecs:
 
     protected function extractDescription(Tag $tag, SplFileInfo $descriptionTargetFile)
     {
+        if ($this->extractAlreadyTried($descriptionTargetFile)) {
+            return null;
+        }
+
         if ($descriptionTargetFile->isFile() && !$this->optForce) {
             $this->output->writeln("skip description extraction, file " . $descriptionTargetFile . " already exists - use --force to overwrite");
             return null;
@@ -660,6 +671,16 @@ Codecs:
         $command[] = $outputFile;
 
         $this->ffmpeg($command, "ffmpeg: converting " . $file . " to " . $outputFile . "");
+    }
+
+    private function extractAlreadyTried(SplFileInfo $extractTargetFile)
+    {
+        $realPath = $extractTargetFile->getRealPath();
+        if (in_array($realPath, $this->extractFilesAlreadyTried, true)) {
+            return true;
+        }
+        $this->extractFilesAlreadyTried[] = $realPath;
+        return false;
     }
 
 }
