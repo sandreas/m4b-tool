@@ -86,7 +86,7 @@ RUN cd /tmp/ \
   && make && make install && make distclean && hash -r && rm -rf /tmp/*
 
 RUN cd /tmp/ \
-   && wget https://github.com/nkari82/mp4v2/archive/master.zip \
+   && wget https://github.com/sandreas/mp4v2/archive/master.zip \
    && unzip master.zip \
    && rm master.zip \
    && cd mp4v2-master \
@@ -105,5 +105,5 @@ RUN wget https://github.com/sandreas/m4b-tool/releases/download/v.${M4B_TOOL_VER
 
 WORKDIR ${WORKDIR}
 CMD ["--help"]
-ENTRYPOINT ["m4b-tool"]
+ENTRYPOINT ["/bin/bash"]
 
