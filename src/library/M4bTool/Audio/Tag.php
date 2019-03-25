@@ -16,14 +16,18 @@ class Tag implements \ArrayAccess
     public $encoder = "m4b-tool";
     //-s, -song        STR  Set the title of the song, movie, tv show,...
     public $title;
+    public $sortTitle; // -sortname on mp4tags (means sort chapter title in itunes)
+
     //-a, -artist      STR  Set the artist information
     public $artist;
+    public $sortArtist; // -sortartist on mp4tags (means sort author in itunes)
     //-g, -genre       STR  Set the genre name
     public $genre;
     //-w, -writer      STR  Set the composer information
     public $writer;
     //-A, -album       STR  Set the album title
     public $album;
+    public $sortAlbum; // -sortalbum on mp4tags (means sort title in itunes)
     public $disk;
     public $disks;
     //-R, -albumartist STR  Set the album artist
@@ -50,6 +54,10 @@ class Tag implements \ArrayAccess
     public $language; // TLAN
     public $publisher; // TPUB
     public $lyrics; // TSLT
+
+    // pseudo tags that are used to auto generate others
+    public $series;
+    public $seriesPart;
 
 
     public function merge(Tag $tag)

@@ -4,9 +4,9 @@
 namespace M4bTool\Command;
 
 
+use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Parser\FfmetaDataParser;
-use M4bTool\StringUtilities\Strings;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -28,6 +28,26 @@ class AbstractConversionCommand extends AbstractCommand
     const OPTION_COVER = "cover";
     const OPTION_FIX_MIME_TYPE = "fix-mime-type";
 
+    const OPTION_TAG_NAME = "name";
+    const OPTION_TAG_SORT_NAME = "sortname";
+    const OPTION_TAG_ALBUM = "album";
+    const OPTION_TAG_SORT_ALBUM = "sortalbum";
+    const OPTION_TAG_ARTIST = "artist";
+    const OPTION_TAG_SORT_ARTIST = "sortartist";
+    const OPTION_TAG_GENRE = "genre";
+    const OPTION_TAG_WRITER = "writer";
+    const OPTION_TAG_ALBUM_ARTIST = "albumartist";
+    const OPTION_TAG_YEAR = "year";
+    const OPTION_TAG_COVER = "cover";
+    const OPTION_TAG_DESCRIPTION = "description";
+    const OPTION_TAG_LONG_DESCRIPTION = "longdesc";
+    const OPTION_TAG_COMMENT = "comment";
+    const OPTION_TAG_COPYRIGHT = "copyright";
+    const OPTION_TAG_ENCODED_BY = "encoded-by";
+
+    const OPTION_TAG_SERIES = "series";
+    const OPTION_TAG_SERIES_PART = "series-part";
+
 
     const MAX_IPOD_SAMPLES = 2147483647;
     const SAMPLING_RATE_TO_BITRATE_MAPPING = [
@@ -39,6 +59,7 @@ class AbstractConversionCommand extends AbstractCommand
         32000 => "96k",
         44100 => "128k",
     ];
+
     protected $optAudioFormat;
     protected $optAudioExtension;
     protected $optAudioChannels;
@@ -56,28 +77,38 @@ class AbstractConversionCommand extends AbstractCommand
     {
         $tag = new Tag;
 
-        $tag->title = $this->input->getOption("name");
-        $tag->album = $this->input->getOption("album");
+        $tag->title = $this->input->getOption(static::OPTION_TAG_NAME);
+        $tag->sortTitle = $this->input->getOption(static::OPTION_TAG_SORT_NAME);
+
+        $tag->album = $this->input->getOption(static::OPTION_TAG_ALBUM);
+        $tag->sortAlbum = $this->input->getOption(static::OPTION_TAG_SORT_ALBUM);
 
         // on ipods / itunes, album is for title of the audio book
-        if ($this->optAdjustBitrateForIpod && $tag->title && !$tag->album) {
-            $tag->album = $tag->title;
+        if ($this->optAdjustBitrateForIpod) {
+            if ($tag->title && !$tag->album) {
+                $tag->album = $tag->title;
+            }
+
+            if ($tag->sortTitle && !$tag->sortAlbum) {
+                $tag->sortAlbum = $tag->sortTitle;
+            }
         }
 
-        $tag->artist = $this->input->getOption("artist");
-        $tag->genre = $this->input->getOption("genre");
-        $tag->writer = $this->input->getOption("writer");
-        $tag->albumArtist = $this->input->getOption("albumartist");
-        $tag->year = $this->input->getOption("year");
-        $tag->cover = $this->input->getOption("cover");
-        $tag->description = $this->input->getOption("description");
-        $tag->longDescription = $this->input->getOption("longdesc");
+        $tag->artist = $this->input->getOption(static::OPTION_TAG_ARTIST);
+        $tag->sortArtist = $this->input->getOption(static::OPTION_TAG_SORT_ARTIST);
+        $tag->genre = $this->input->getOption(static::OPTION_TAG_GENRE);
+        $tag->writer = $this->input->getOption(static::OPTION_TAG_WRITER);
+        $tag->albumArtist = $this->input->getOption(static::OPTION_TAG_ALBUM_ARTIST);
+        $tag->year = $this->input->getOption(static::OPTION_TAG_YEAR);
+        $tag->cover = $this->input->getOption(static::OPTION_COVER);
+        $tag->description = $this->input->getOption(static::OPTION_TAG_DESCRIPTION);
+        $tag->longDescription = $this->input->getOption(static::OPTION_TAG_LONG_DESCRIPTION);
+        $tag->comment = $this->input->getOption(static::OPTION_TAG_COMMENT);
+        $tag->copyright = $this->input->getOption(static::OPTION_TAG_COPYRIGHT);
+        $tag->encodedBy = $this->input->getOption(static::OPTION_TAG_ENCODED_BY);
 
-
-        $tag->comment = $this->input->getOption("comment");
-        $tag->copyright = $this->input->getOption("copyright");
-        $tag->encodedBy = $this->input->getOption("encoded-by");
-
+        $tag->series = $this->input->getOption(static::OPTION_TAG_SERIES);
+        $tag->seriesPart = $this->input->getOption(static::OPTION_TAG_SERIES_PART);
 
         return $tag;
     }
@@ -93,20 +124,25 @@ class AbstractConversionCommand extends AbstractCommand
         $this->addOption(static::OPTION_AUDIO_PROFILE, null, InputOption::VALUE_OPTIONAL, "audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2 ", "");
         $this->addOption(static::OPTION_ADJUST_FOR_IPOD, null, InputOption::VALUE_NONE, "auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)");
 
-        $this->addOption("name", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook name, otherwise the existing metadata will be used", "");
-        $this->addOption("album", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook album, otherwise the existing metadata for name will be used", "");
-        $this->addOption("artist", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook artist, otherwise the existing metadata will be used", "");
-        $this->addOption("genre", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook genre, otherwise the existing metadata will be used", "");
-        $this->addOption("writer", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook writer, otherwise the existing metadata will be used", "");
-        $this->addOption("albumartist", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook albumartist, otherwise the existing metadata will be used", "");
-        $this->addOption("year", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook year, otherwise the existing metadata will be used", "");
-        $this->addOption("cover", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook cover, otherwise the existing metadata will be used", null);
-        $this->addOption("description", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook short description, otherwise the existing metadata will be used", null);
-        $this->addOption("longdesc", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook long description, otherwise the existing metadata will be used", null);
-        $this->addOption("comment", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook comment, otherwise the existing metadata will be used", null);
-        $this->addOption("copyright", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook copyright, otherwise the existing metadata will be used", null);
-        $this->addOption("encoded-by", null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook encoded-by, otherwise the existing metadata will be used", null);
+        $this->addOption(static::OPTION_TAG_NAME, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook name, otherwise the existing metadata will be used", "");
+        $this->addOption(static::OPTION_TAG_SORT_NAME, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook name, that is used only for sorting purposes", "");
+        $this->addOption(static::OPTION_TAG_ALBUM, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook album, otherwise the existing metadata for name will be used", "");
+        $this->addOption(static::OPTION_TAG_SORT_ALBUM, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook album, that is used only for sorting purposes", "");
+        $this->addOption(static::OPTION_TAG_ARTIST, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook artist, otherwise the existing metadata will be used", "");
+        $this->addOption(static::OPTION_TAG_SORT_ARTIST, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook artist, that is used only for sorting purposes", "");
+        $this->addOption(static::OPTION_TAG_GENRE, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook genre, otherwise the existing metadata will be used", "");
+        $this->addOption(static::OPTION_TAG_WRITER, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook writer, otherwise the existing metadata will be used", "");
+        $this->addOption(static::OPTION_TAG_ALBUM_ARTIST, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook albumartist, otherwise the existing metadata will be used", "");
+        $this->addOption(static::OPTION_TAG_YEAR, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook year, otherwise the existing metadata will be used", "");
+        $this->addOption(static::OPTION_TAG_COVER, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook cover, otherwise the existing metadata will be used", null);
+        $this->addOption(static::OPTION_TAG_DESCRIPTION, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook short description, otherwise the existing metadata will be used", null);
+        $this->addOption(static::OPTION_TAG_LONG_DESCRIPTION, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook long description, otherwise the existing metadata will be used", null);
+        $this->addOption(static::OPTION_TAG_COMMENT, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook comment, otherwise the existing metadata will be used", null);
+        $this->addOption(static::OPTION_TAG_COPYRIGHT, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook copyright, otherwise the existing metadata will be used", null);
+        $this->addOption(static::OPTION_TAG_ENCODED_BY, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook encoded-by, otherwise the existing metadata will be used", null);
 
+        $this->addOption(static::OPTION_TAG_SERIES, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook series, this pseudo tag will be used to auto create sort order (e.g. Harry Potter or The Kingkiller Chronicles)", null);
+        $this->addOption(static::OPTION_TAG_SERIES_PART, null, InputOption::VALUE_OPTIONAL, "provide a custom audiobook series part, this pseudo tag will be used to auto create sort order (e.g. 1 or 2.5)", null);
         $this->addOption(static::OPTION_SKIP_COVER, null, InputOption::VALUE_NONE, "skip extracting and embedding covers", null);
         $this->addOption(static::OPTION_FIX_MIME_TYPE, null, InputOption::VALUE_NONE, "try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent video window", null);
     }
@@ -196,6 +232,11 @@ Codecs:
         return $returnValue;
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @param Tag $tag
+     * @throws \Exception
+     */
     protected function tagFile(SplFileInfo $file, Tag $tag)
     {
         if ($this->input->getOption(static::OPTION_FIX_MIME_TYPE)) {
@@ -226,6 +267,20 @@ Codecs:
             $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy);
             $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
             $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
+
+            if ($this->doesMp4tagsSupportSorting()) {
+                if (!$tag->sortTitle && $tag->series) {
+                    $tag->sortTitle = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
+                }
+
+                if (!$tag->sortAlbum && $tag->series) {
+                    $tag->sortAlbum = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
+                }
+
+                $this->appendParameterToCommand($command, "-sortname", $tag->sortTitle);
+                $this->appendParameterToCommand($command, "-sortalbum", $tag->sortAlbum);
+                $this->appendParameterToCommand($command, "-sortartist", $tag->sortArtist);
+            }
 
 
             if (count($command) > 1) {
@@ -342,6 +397,28 @@ Codecs:
         return "";
     }
 
+    private function doesMp4tagsSupportSorting()
+    {
+
+        $command = ["-help"];
+        $process = $this->mp4tags($command, "checking for sorting support in mp4tags");
+        $result = $process->getOutput() . $process->getErrorOutput();
+        $this->output->writeln($result);
+        $searchStrings = ["-sortname", "-sortartist", "-sortalbum"];
+        foreach ($searchStrings as $searchString) {
+            if (strpos($result, $searchString) === false) {
+                $this->output->writeln("mp4tags does not support sorting options - get a release from https://github.com/sandreas/mp4v2 for sorting support");
+                return false;
+            }
+        }
+        $this->output->writeln("sorting is supported, proceeding...");
+        return true;
+    }
+
+    /**
+     * @return float|int
+     * @throws Exception
+     */
     protected function bitrateStringToInt()
     {
         $multipliers = [
@@ -353,7 +430,7 @@ Codecs:
         preg_match("/^([0-9]+)[\s]*(" . implode("|", array_keys($multipliers)) . ")[\s]*$/U", $this->optAudioBitRate, $matches);
 
         if (count($matches) !== 3) {
-            throw new \Exception("Invalid audio-bitrate: " . $this->optAudioBitRate);
+            throw new Exception("Invalid audio-bitrate: " . $this->optAudioBitRate);
         }
         $value = $matches[1];
         $multiplier = $multipliers[$matches[2]];
@@ -485,6 +562,16 @@ Codecs:
         return $coverTargetFile;
     }
 
+    private function extractAlreadyTried(SplFileInfo $extractTargetFile)
+    {
+        $realPath = $extractTargetFile->getRealPath();
+        if (in_array($realPath, $this->extractFilesAlreadyTried, true)) {
+            return true;
+        }
+        $this->extractFilesAlreadyTried[] = $realPath;
+        return false;
+    }
+
     protected function extractDescription(Tag $tag, SplFileInfo $descriptionTargetFile)
     {
         if ($this->extractAlreadyTried($descriptionTargetFile)) {
@@ -524,6 +611,10 @@ Codecs:
         return $descriptionTargetFile;
     }
 
+    /**
+     * @param $filesToConvert
+     * @throws \Exception
+     */
     protected function adjustBitrateForIpod($filesToConvert)
     {
         if (!$this->optAdjustBitrateForIpod) {
@@ -577,6 +668,10 @@ Codecs:
         return (int)str_ireplace("hz", "", $this->optAudioSampleRate);
     }
 
+    /**
+     * @return array
+     * @throws Exception
+     */
     protected function buildFdkaacCommand()
     {
         $profileCmd = [];
@@ -671,16 +766,6 @@ Codecs:
         $command[] = $outputFile;
 
         $this->ffmpeg($command, "ffmpeg: converting " . $file . " to " . $outputFile . "");
-    }
-
-    private function extractAlreadyTried(SplFileInfo $extractTargetFile)
-    {
-        $realPath = $extractTargetFile->getRealPath();
-        if (in_array($realPath, $this->extractFilesAlreadyTried, true)) {
-            return true;
-        }
-        $this->extractFilesAlreadyTried[] = $realPath;
-        return false;
     }
 
 }

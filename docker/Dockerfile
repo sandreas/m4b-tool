@@ -105,5 +105,5 @@ RUN wget https://github.com/sandreas/m4b-tool/releases/download/v.${M4B_TOOL_VER
 
 WORKDIR ${WORKDIR}
 CMD ["--help"]
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["m4b-tool"]
 
