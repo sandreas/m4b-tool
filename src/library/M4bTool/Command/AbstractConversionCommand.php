@@ -68,8 +68,6 @@ class AbstractConversionCommand extends AbstractCommand
     protected $optAudioCodec;
     protected $optAdjustBitrateForIpod;
 
-    protected $longDescription;
-
     /** @var SplFileInfo[] */
     protected $extractFilesAlreadyTried = [];
 
@@ -147,6 +145,9 @@ class AbstractConversionCommand extends AbstractCommand
         $this->addOption(static::OPTION_FIX_MIME_TYPE, null, InputOption::VALUE_NONE, "try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent video window", null);
     }
 
+    /**
+     * @throws Exception
+     */
     protected function loadArguments()
     {
         parent::loadArguments();
@@ -177,6 +178,10 @@ class AbstractConversionCommand extends AbstractCommand
 
     }
 
+    /**
+     * @return mixed|string
+     * @throws Exception
+     */
     protected function loadHighestAvailableQualityAacCodec()
     {
         // libfdk_aac (best quality)
@@ -236,6 +241,7 @@ Codecs:
      * @param SplFileInfo $file
      * @param Tag $tag
      * @throws \Exception
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function tagFile(SplFileInfo $file, Tag $tag)
     {
@@ -397,21 +403,24 @@ Codecs:
         return "";
     }
 
+    /**
+     * @return bool
+     * @throws Exception
+     */
     private function doesMp4tagsSupportSorting()
     {
 
         $command = ["-help"];
-        $process = $this->mp4tags($command, "checking for sorting support in mp4tags");
+        $process = $this->mp4tags($command, "check for sorting support in mp4tags");
         $result = $process->getOutput() . $process->getErrorOutput();
-        $this->output->writeln($result);
         $searchStrings = ["-sortname", "-sortartist", "-sortalbum"];
         foreach ($searchStrings as $searchString) {
             if (strpos($result, $searchString) === false) {
-                $this->output->writeln("mp4tags does not support sorting options - get a release from https://github.com/sandreas/mp4v2 for sorting support");
+                $this->output->writeln("not supported - get a release from https://github.com/sandreas/mp4v2 for sorting support");
                 return false;
             }
         }
-        $this->output->writeln("sorting is supported, proceeding...");
+        $this->output->writeln("supported, proceeding...");
         return true;
     }
 
@@ -506,6 +515,14 @@ Codecs:
         }
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @param SplFileInfo $coverTargetFile
+     * @param bool $force
+     * @return SplFileInfo|null
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws Exception
+     */
     protected function extractCover(SplFileInfo $file, SplFileInfo $coverTargetFile, $force = false)
     {
         if ($this->extractAlreadyTried($coverTargetFile)) {
@@ -614,6 +631,7 @@ Codecs:
     /**
      * @param $filesToConvert
      * @throws \Exception
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     protected function adjustBitrateForIpod($filesToConvert)
     {
@@ -635,10 +653,14 @@ Codecs:
         $durationSeconds = $totalDuration->milliseconds() / 1000;
         $maxSamplingRate = static::MAX_IPOD_SAMPLES / $durationSeconds;
         $this->output->writeln("total duration: " . $totalDuration->format() . " (" . $durationSeconds . "s)");
-        $this->output->writeln("max possible sampling rate: " . $maxSamplingRate . "Hz");
-        $this->output->writeln("desired sampling rate: " . $this->optAudioSampleRate . "Hz");
+        $this->output->writeln("max possible sampling rate: " . round($maxSamplingRate) . "Hz");
 
-        if ($this->samplingRateToInt() > $maxSamplingRate) {
+        if ($this->optAudioSampleRate) {
+            $this->output->writeln("desired sampling rate: " . $this->samplingRateToInt() . "Hz");
+        }
+
+
+        if (!$this->optAudioSampleRate || $this->samplingRateToInt() > $maxSamplingRate) {
             $this->output->writeln("desired sampling rate " . $this->optAudioSampleRate . " is greater than max sampling rate " . $maxSamplingRate . "Hz, trying to adjust");
             $resultSamplingRate = 0;
             $resultBitrate = "";
@@ -714,6 +736,13 @@ Codecs:
         return $profileCmd;
     }
 
+    /**
+     * @param $baseFdkAacCommand
+     * @param SplFileInfo $file
+     * @param SplFileInfo $outputFile
+     * @return string
+     * @throws Exception
+     */
     protected function executeFdkaacCommand($baseFdkAacCommand, SplFileInfo $file, SplFileInfo $outputFile)
     {
         $fdkAacCommand = $baseFdkAacCommand;
@@ -728,6 +757,11 @@ Codecs:
         return $tmpOutputFile;
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @param SplFileInfo $outputFile
+     * @throws Exception
+     */
     protected function executeFfmpegCommand(SplFileInfo $file, SplFileInfo $outputFile)
     {
 

@@ -7,7 +7,8 @@
     "symfony/process": "^3.2",
     "symfony/cache": "^3.2",
     "twig/twig": "^2.0",
-    "sandreas/php-time": "dev-master"
+    "sandreas/php-time": "dev-master",
+    "sandreas/php-strings": "dev-master"
   },
   "autoload": {
     "psr-4": {
@@ -19,6 +20,7 @@
   },
   "require-dev": {
     "phpunit/phpunit": "^6.1",
-    "mockery/mockery": "^0.9.9"
+    "mockery/mockery": "^0.9.9",
+    "mikey179/vfsstream": "^1.6"
   }
 }

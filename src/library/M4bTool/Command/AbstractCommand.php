@@ -3,6 +3,7 @@
 
 namespace M4bTool\Command;
 
+use DateTime;
 use Exception;
 use M4bTool\Parser\FfmetaDataParser;
 use Sandreas\Time\TimeUnit;
@@ -98,6 +99,12 @@ class AbstractCommand extends Command
      */
     protected $optDebugFile;
 
+    /**
+     * @param SplFileInfo $file
+     * @return TimeUnit|null
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws Exception
+     */
     public function readDuration(SplFileInfo $file)
     {
         $meta = $this->readFileMetaData($file);
@@ -132,6 +139,12 @@ class AbstractCommand extends Command
 
     }
 
+    /**
+     * @param array $command
+     * @param null $introductionMessage
+     * @return \Symfony\Component\Process\Process
+     * @throws Exception
+     */
     protected function shell(array $command, $introductionMessage = null)
     {
         $this->debug($this->formatShellCommand($command));
@@ -183,6 +196,10 @@ class AbstractCommand extends Command
         return $process;
     }
 
+    /**
+     * @param $message
+     * @throws Exception
+     */
     protected function debug($message)
     {
         if (!$this->optDebug) {
@@ -222,6 +239,12 @@ class AbstractCommand extends Command
         }
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @return FfmetaDataParser
+     * @throws Exception
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
     public function readFileMetaData(SplFileInfo $file)
     {
         if (!$file->isFile()) {
@@ -234,6 +257,11 @@ class AbstractCommand extends Command
         return $metaData;
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @return mixed|string
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
     protected function readFileMetaDataOutput(SplFileInfo $file)
     {
         $cacheKey = "metadata." . hash('sha256', $file->getRealPath());
@@ -245,6 +273,11 @@ class AbstractCommand extends Command
         ], $cacheKey);
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @return mixed|string
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
     protected function readFileMetaDataStreamInfo(SplFileInfo $file)
     {
         $cacheKey = "streaminfo." . hash('sha256', $file->getRealPath());
@@ -256,11 +289,19 @@ class AbstractCommand extends Command
         ], $cacheKey);
     }
 
+    /**
+     * @param array $command
+     * @param $cacheKey
+     * @param null $message
+     * @return mixed|string
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws Exception
+     */
     private function runCachedFfmpeg(array $command, $cacheKey, $message = null)
     {
 
         $cacheItem = $this->cache->getItem($cacheKey);
-        $cacheItem->expiresAt(new \DateTime("+12 hours"));
+        $cacheItem->expiresAt(new DateTime("+12 hours"));
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
@@ -275,6 +316,12 @@ class AbstractCommand extends Command
         return $metaDataOutput;
     }
 
+    /**
+     * @param $command
+     * @param null $introductionMessage
+     * @return \Symfony\Component\Process\Process
+     * @throws Exception
+     */
     protected function ffmpeg($command, $introductionMessage = null)
     {
         // if($this->)
@@ -337,6 +384,9 @@ class AbstractCommand extends Command
         $this->optDebugFile = new SplFileInfo($this->input->getOption(static::OPTION_DEBUG_FILENAME));
     }
 
+    /**
+     * @throws Exception
+     */
     protected function ensureInputFileIsFile()
     {
         if (!$this->argInputFile->isFile()) {
@@ -344,6 +394,10 @@ class AbstractCommand extends Command
         }
     }
 
+    /**
+     * @param $outputFile
+     * @throws Exception
+     */
     protected function ensureOutputFileIsNotEmpty($outputFile)
     {
         if (!$outputFile) {
@@ -425,6 +479,11 @@ class AbstractCommand extends Command
         return preg_split("/\r\n|\n|\r/", $chapterString);
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @return SplFileInfo
+     * @throws Exception
+     */
     protected function exportChaptersForFile(SplFileInfo $file)
     {
 
@@ -454,18 +513,36 @@ class AbstractCommand extends Command
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".chapters.txt");
     }
 
+    /**
+     * @param $command
+     * @param null $introductionMessage
+     * @return \Symfony\Component\Process\Process
+     * @throws Exception
+     */
     protected function mp4chaps($command, $introductionMessage = null)
     {
         array_unshift($command, "mp4chaps");
         return $this->shell($command, $introductionMessage);
     }
 
+    /**
+     * @param $command
+     * @param null $introductionMessage
+     * @return \Symfony\Component\Process\Process
+     * @throws Exception
+     */
     protected function fdkaac($command, $introductionMessage = null)
     {
         array_unshift($command, "fdkaac");
         return $this->shell($command, $introductionMessage);
     }
 
+    /**
+     * @param $command
+     * @param null $introductionMessage
+     * @return \Symfony\Component\Process\Process
+     * @throws Exception
+     */
     protected function mp4art($command, $introductionMessage = null)
     {
         array_unshift($command, "mp4art");
@@ -473,12 +550,22 @@ class AbstractCommand extends Command
     }
 
 
+    /**
+     * @param $command
+     * @param null $introductionMessage
+     * @return \Symfony\Component\Process\Process
+     * @throws Exception
+     */
     protected function mp4tags($command, $introductionMessage = null)
     {
         array_unshift($command, "mp4tags");
         return $this->shell($command, $introductionMessage);
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @throws Exception
+     */
     protected function fixMimeType(SplFileInfo $file)
     {
         $fixedFile = new SplFileInfo((string)$file . "-tmp." . $file->getExtension());
