@@ -123,9 +123,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             }
 
             foreach ($batchPatterns as $batchPattern) {
-                $this->processBatchDirectory($batchPattern, clone $input, clone $output);
-
-                $this->resetToDefaults();
+                $this->processBatchDirectory($batchPattern, clone $this, clone $input, clone $output);
             }
         } else {
             $this->processFiles($input, $output);
@@ -136,13 +134,15 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     /**
      * @param string $batchPattern
+     * @param MergeCommand $command
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @throws Exception
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws Exception
      */
-    private function processBatchDirectory($batchPattern, InputInterface $input, OutputInterface $output)
+    private function processBatchDirectory($batchPattern, MergeCommand $command, InputInterface $input, OutputInterface $output)
     {
+
         $this->initExecution($input, $output);
         $outputFile = new SplFileInfo($input->getOption(static::OPTION_OUTPUT_FILE));
         $this->ensureOutputFileIsNotEmpty($outputFile);
@@ -174,15 +174,17 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         foreach ($verifiedDirectories as $baseDir => $formatParser) {
             // clone input to work with current directory instead of existing data from an old directory
             $clonedInput = clone $input;
-
+            $clonedOutput = clone $output;
+            $clonedCommand = clone $command;
             $trimmedBatchPattern = $formatParser->trimSeparatorPrefix($batchPattern);
             $fileNamePart = rtrim($formatParser->format($trimmedBatchPattern), "\\/") . ".m4b";
-
+            $batchOutputFile = $outputFile . "/" . $fileNamePart;
             $clonedInput->setArgument(static::ARGUMENT_INPUT, $baseDir);
-            $clonedInput->setOption(static::OPTION_OUTPUT_FILE, $outputFile . "/" . $fileNamePart);
+            $clonedInput->setOption(static::OPTION_OUTPUT_FILE, $batchOutputFile);
+            $clonedInput->setOption(static::OPTION_BATCH_PATTERN, []);
 
             $output->writeln(sprintf("merge %s", $baseDir));
-            $output->writeln(sprintf("  =>  %s", $outputFile));
+            $output->writeln(sprintf("  =>  %s", $batchOutputFile));
             foreach (static::MAPPING_OPTIONS_PLACEHOLDERS as $optionName => $placeHolderName) {
                 $placeHolderValue = $formatParser->getPlaceHolderValue($placeHolderName);
                 if ($placeHolderValue) {
@@ -196,8 +198,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             if ($clonedInput->getOption(static::OPTION_BATCH_DRY_RUN)) {
                 continue;
             }
+
             try {
-                $this->processFiles($clonedInput, $output, true);
+                $clonedCommand->execute($clonedInput, $clonedOutput);
             } catch (Exception $e) {
                 $output->writeln(sprintf("ERROR processing %s: %s", $baseDir, $e->getMessage()));
                 $this->debug(sprintf("error on %s: %s", $baseDir, $e->getTraceAsString()));
@@ -238,8 +241,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @throws Exception
+     * @param bool $batchProcessing
      * @throws \Psr\Cache\InvalidArgumentException
+     * @throws Exception
+     * @throws Exception
      */
     private function processFiles(InputInterface $input, OutputInterface $output, $batchProcessing = false)
     {
@@ -747,35 +752,35 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->tagFile($this->outputFile, $tag);
     }
 
-    private function resetToDefaults()
-    {
-        $this->cache = null;
-        $this->input = null;
-        $this->output = null;
-        $this->optForce = false;
-
-        $this->optForce = false;
-        $this->optNoCache = false;
-        $this->optDebug = false;
-        $this->optDebugFile = null;
-
-        $this->optAudioFormat = null;
-        $this->optAudioExtension = null;
-        $this->optAudioChannels = null;
-        $this->optAudioBitRate = null;
-        $this->optAudioSampleRate = null;
-        $this->optAudioCodec = null;
-        $this->optAdjustBitrateForIpod = null;
-        $this->outputFile = null;
-        $this->sameFormatFileDirectory = null;
-
-        $this->meta = [];
-        $this->filesToConvert = [];
-        $this->filesToMerge = [];
-        $this->otherTmpFiles = [];
-        $this->sameFormatFiles = [];
-        $this->chapters = [];
-        $this->trackMarkerSilences = [];
-    }
+//    private function resetToDefaults()
+//    {
+//        $this->cache = null;
+//        $this->input = null;
+//        $this->output = null;
+//        $this->optForce = false;
+//
+//        $this->optForce = false;
+//        $this->optNoCache = false;
+//        $this->optDebug = false;
+//        $this->optDebugFile = null;
+//
+//        $this->optAudioFormat = null;
+//        $this->optAudioExtension = null;
+//        $this->optAudioChannels = null;
+//        $this->optAudioBitRate = null;
+//        $this->optAudioSampleRate = null;
+//        $this->optAudioCodec = null;
+//        $this->optAdjustBitrateForIpod = null;
+//        $this->outputFile = null;
+//        $this->sameFormatFileDirectory = null;
+//
+//        $this->meta = [];
+//        $this->filesToConvert = [];
+//        $this->filesToMerge = [];
+//        $this->otherTmpFiles = [];
+//        $this->sameFormatFiles = [];
+//        $this->chapters = [];
+//        $this->trackMarkerSilences = [];
+//    }
 
 }
