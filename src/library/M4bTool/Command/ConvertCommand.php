@@ -66,6 +66,7 @@ class ConvertCommand extends AbstractConversionCommand implements MetaReaderInte
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int|void|null
+     * @throws \Psr\Cache\InvalidArgumentException
      * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -103,6 +104,7 @@ class ConvertCommand extends AbstractConversionCommand implements MetaReaderInte
 
 
     /**
+     * @throws \Psr\Cache\InvalidArgumentException
      * @throws Exception
      */
     private function convertInputFiles()

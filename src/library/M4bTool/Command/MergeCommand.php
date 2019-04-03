@@ -14,6 +14,7 @@ use M4bTool\Audio\Silence;
 use M4bTool\Filesystem\DirectoryLoader;
 use M4bTool\Marker\ChapterMarker;
 use M4bTool\Parser\FfmetaDataParser;
+use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use RecursiveDirectoryIterator;
 use Sandreas\Strings\Format\FormatParser;
@@ -123,6 +124,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
             foreach ($batchPatterns as $batchPattern) {
                 $this->processBatchDirectory($batchPattern, clone $input, clone $output);
+
                 $this->resetToDefaults();
             }
         } else {
@@ -130,53 +132,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
 
 
-    }
-
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @throws Exception
-     * @throws \Psr\Cache\InvalidArgumentException
-     */
-    private function processFiles(InputInterface $input, OutputInterface $output)
-    {
-        $this->initExecution($input, $output);
-        $this->loadOutputFile();
-        $this->loadInputFiles();
-        $this->ensureOutputFileIsNotEmpty($this->outputFile);
-        $this->processInputFiles();
-    }
-
-
-    private function resetToDefaults()
-    {
-        $this->cache = null;
-        $this->input = null;
-        $this->output = null;
-        $this->optForce = false;
-
-        $this->optForce = false;
-        $this->optNoCache = false;
-        $this->optDebug = false;
-        $this->optDebugFile = null;
-
-        $this->optAudioFormat = null;
-        $this->optAudioExtension = null;
-        $this->optAudioChannels = null;
-        $this->optAudioBitRate = null;
-        $this->optAudioSampleRate = null;
-        $this->optAudioCodec = null;
-        $this->optAdjustBitrateForIpod = null;
-        $this->outputFile = null;
-        $this->sameFormatFileDirectory = null;
-
-        $this->meta = [];
-        $this->filesToConvert = [];
-        $this->filesToMerge = [];
-        $this->otherTmpFiles = [];
-        $this->sameFormatFiles = [];
-        $this->chapters = [];
-        $this->trackMarkerSilences = [];
     }
 
     /**
@@ -241,24 +196,15 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             if ($clonedInput->getOption(static::OPTION_BATCH_DRY_RUN)) {
                 continue;
             }
-
-            $this->processFiles($clonedInput, $output);
+            try {
+                $this->processFiles($clonedInput, $output, true);
+            } catch (Exception $e) {
+                $output->writeln(sprintf("ERROR processing %s: %s", $baseDir, $e->getMessage()));
+                $this->debug(sprintf("error on %s: %s", $baseDir, $e->getTraceAsString()));
+            }
         }
 
     }
-
-    /**
-     * @return PlaceHolder[]
-     */
-    private static function createPlaceHoldersForOptions()
-    {
-        $placeHolders = [];
-        foreach (static::MAPPING_OPTIONS_PLACEHOLDERS as $optionName => $placeHolder) {
-            $placeHolders[] = new PlaceHolder($placeHolder);
-        }
-        return $placeHolders;
-    }
-
 
     private function parseIncludeExtensions($extraExtensions = [])
     {
@@ -277,6 +223,38 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         ]), "/");
     }
 
+    /**
+     * @return PlaceHolder[]
+     */
+    private static function createPlaceHoldersForOptions()
+    {
+        $placeHolders = [];
+        foreach (static::MAPPING_OPTIONS_PLACEHOLDERS as $optionName => $placeHolder) {
+            $placeHolders[] = new PlaceHolder($placeHolder);
+        }
+        return $placeHolders;
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @throws Exception
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    private function processFiles(InputInterface $input, OutputInterface $output, $batchProcessing = false)
+    {
+        $this->initExecution($input, $output);
+        $this->loadOutputFile();
+
+
+        if (!$this->optForce && $batchProcessing && $this->outputFile->isFile()) {
+            $this->output->writeln(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
+            return;
+        }
+        $this->loadInputFiles();
+        $this->ensureOutputFileIsNotEmpty($this->outputFile);
+        $this->processInputFiles();
+    }
 
     private function loadOutputFile()
     {
@@ -375,10 +353,17 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $this->convertInputFiles();
         }
         $this->lookupAndAddCover();
-        $this->buildChaptersFromConvertedFileDurations();
 
-        $this->replaceChaptersWithMusicBrainz();
-        $this->addTrackMarkers();
+        $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
+        if ($chaptersFileContent !== null) {
+            $chapterParser = new Mp4ChapsChapterParser();
+            $this->chapters = $chapterParser->parse($chaptersFileContent);
+        } else {
+            $this->buildChaptersFromConvertedFileDurations();
+            $this->replaceChaptersWithMusicBrainz();
+            $this->addTrackMarkers();
+        }
+
 
         $this->mergeFiles();
         $this->deleteTemporaryFiles();
@@ -407,17 +392,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->setOptionIfUndefined("writer", $metaData->getProperty("writer"));
         $this->setOptionIfUndefined("description", $metaData->getProperty("description"));
         $this->setOptionIfUndefined("longdesc", $metaData->getProperty("longdesc"));
-    }
-
-    private function setOptionIfUndefined($optionName, $optionValue, $input = null)
-    {
-
-        if ($input === null) {
-            $input = $this->input;
-        }
-        if (!$input->getOption($optionName) && $optionValue) {
-            $input->setOption($optionName, $optionValue);
-        }
     }
 
     private function lookupAndAddCover()
@@ -461,20 +435,28 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     private function lookupAndAddDescription()
     {
-        $descriptionDir = $this->argInputFile->isDir() ? $this->argInputFile : new SplFileInfo($this->argInputFile->getPath());
-
-        if (!$this->input->getOption("description")) {
-            $this->output->writeln("searching for description.txt in " . $descriptionDir);
-
-            $autoDescriptionFile = new SplFileInfo($descriptionDir . DIRECTORY_SEPARATOR . "description.txt");
-            if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < 1024 * 1024) {
-                $this->output->writeln("using description file " . $autoDescriptionFile);
-                $description = file_get_contents($autoDescriptionFile);
-                $this->setOptionIfUndefined("description", $description);
-            } else {
-                $this->output->writeln("description file " . $autoDescriptionFile . " not found or too big");
-            }
+        $descriptionFileContents = $this->lookupFileContents($this->argInputFile, "description.txt");
+        if ($descriptionFileContents !== null) {
+            $this->setOptionIfUndefined(static::OPTION_TAG_DESCRIPTION, $descriptionFileContents);
         }
+    }
+
+    private function lookupFileContents(SplFileInfo $referenceFile, $nameOfFile, $maxSize = 1024 * 1024)
+    {
+        $nameOfFileDir = $referenceFile->isDir() ? $referenceFile : new SplFileInfo($referenceFile->getPath());
+        $this->output->writeln(sprintf("searching for %s in %s", $nameOfFile, $nameOfFileDir));
+        $autoDescriptionFile = new SplFileInfo($nameOfFileDir . DIRECTORY_SEPARATOR . $nameOfFile);
+
+        if ($this->optDebug) {
+            $this->output->writeln(sprintf("checking file %s, realpath: %s", $autoDescriptionFile, $autoDescriptionFile->getRealPath()));
+        }
+        if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < $maxSize) {
+            $this->output->writeln(sprintf("success: found %s for import", $nameOfFile));
+            return file_get_contents($autoDescriptionFile);
+        } else {
+            $this->output->writeln(sprintf("file %s not found or too big", $nameOfFile));
+        }
+        return null;
     }
 
     /**
@@ -713,8 +695,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $parentDir = dirname($file);
         $recIt = new RecursiveDirectoryIterator($parentDir, FilesystemIterator::SKIP_DOTS);
         $it = new IteratorIterator($recIt);
-
-        foreach ($it as $file) {
+        $filesToDelete = iterator_to_array($it);
+        if (count($filesToDelete) > 0) {
             return false;
         }
         rmdir($parentDir);
@@ -765,5 +747,35 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->tagFile($this->outputFile, $tag);
     }
 
+    private function resetToDefaults()
+    {
+        $this->cache = null;
+        $this->input = null;
+        $this->output = null;
+        $this->optForce = false;
+
+        $this->optForce = false;
+        $this->optNoCache = false;
+        $this->optDebug = false;
+        $this->optDebugFile = null;
+
+        $this->optAudioFormat = null;
+        $this->optAudioExtension = null;
+        $this->optAudioChannels = null;
+        $this->optAudioBitRate = null;
+        $this->optAudioSampleRate = null;
+        $this->optAudioCodec = null;
+        $this->optAdjustBitrateForIpod = null;
+        $this->outputFile = null;
+        $this->sameFormatFileDirectory = null;
+
+        $this->meta = [];
+        $this->filesToConvert = [];
+        $this->filesToMerge = [];
+        $this->otherTmpFiles = [];
+        $this->sameFormatFiles = [];
+        $this->chapters = [];
+        $this->trackMarkerSilences = [];
+    }
 
 }

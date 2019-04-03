@@ -68,6 +68,11 @@ class FfmetaDataParser
     }
 
 
+    /**
+     * @param $metaData
+     * @param string $streamInfo
+     * @throws \Exception
+     */
     public function parse($metaData, $streamInfo = "")
     {
         $this->reset();
@@ -83,6 +88,10 @@ class FfmetaDataParser
     }
 
 
+    /**
+     * @param $streamInfo
+     * @throws \Exception
+     */
     private function parseStreamInfo($streamInfo)
     {
 
@@ -95,8 +104,14 @@ class FfmetaDataParser
                 continue;
             }
 
-            if (stripos($line, "frame=") !== false && stripos($line, "time=") !== false) {
+            if (stripos($line, "frame=") !== false && stripos($line, "time=") !== false && $this->duration !== null) {
                 $this->parseDuration($line);
+                continue;
+            }
+
+            // Metadata duration (less exact but sometimes the only information available)
+            if (preg_match("/^[\s]+Duration:[\s]+([0-9:\.]+)/", $line, $matches)) {
+                $this->parseDurationMatches($matches);
                 continue;
             }
         }
@@ -137,6 +152,10 @@ class FfmetaDataParser
         }
     }
 
+    /**
+     * @param $lineWithDuration
+     * @throws \Exception
+     */
     private function parseDuration($lineWithDuration)
     {
         // frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x
@@ -144,7 +163,15 @@ class FfmetaDataParser
         $lastPart = substr($lineWithDuration, $lastPos);
 
         preg_match("/time=([^\s]+)/", $lastPart, $matches);
+        $this->parseDurationMatches($matches);
+    }
 
+    /**
+     * @param $matches
+     * @throws \Exception
+     */
+    private function parseDurationMatches($matches)
+    {
         if (!isset($matches[1])) {
             return;
         }
@@ -244,6 +271,10 @@ class FfmetaDataParser
         }
     }
 
+    /**
+     * @param $chapterProperties
+     * @return bool
+     */
     private function createChapter($chapterProperties)
     {
         if (!isset($chapterProperties["start"], $chapterProperties["end"], $chapterProperties["timebase"])) {
@@ -266,6 +297,7 @@ class FfmetaDataParser
 
 
         $this->chapters[] = new Chapter($start, $length, (string)$title);
+        return true;
     }
 
     public function getChapters()

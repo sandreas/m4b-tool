@@ -50,6 +50,8 @@ class AbstractConversionCommand extends AbstractCommand
 
 
     const MAX_IPOD_SAMPLES = 2147483647;
+    const IPOD_DEFAULT_SAMPLING_RATE = 22050;
+
     const SAMPLING_RATE_TO_BITRATE_MAPPING = [
         8000 => "24k",
         11025 => "32k",
@@ -153,6 +155,10 @@ class AbstractConversionCommand extends AbstractCommand
         parent::loadArguments();
 
         $this->optAdjustBitrateForIpod = $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD);
+        if ($this->optAdjustBitrateForIpod) {
+            $this->setOptionIfUndefined(static::OPTION_AUDIO_SAMPLE_RATE, static::IPOD_DEFAULT_SAMPLING_RATE);
+            $this->setOptionIfUndefined(static::OPTION_AUDIO_BIT_RATE, static::SAMPLING_RATE_TO_BITRATE_MAPPING[static::IPOD_DEFAULT_SAMPLING_RATE] ?? null);
+        }
         $this->optAudioCodec = $this->input->getOption(static::OPTION_AUDIO_CODEC);
         $this->optAudioFormat = $this->input->getOption(static::OPTION_AUDIO_FORMAT);
         $this->optAudioExtension = $this->optAudioFormat;
@@ -628,6 +634,17 @@ Codecs:
         return $descriptionTargetFile;
     }
 
+    protected function setOptionIfUndefined($optionName, $optionValue, $input = null)
+    {
+
+        if ($input === null) {
+            $input = $this->input;
+        }
+        if (!$input->getOption($optionName) && $optionValue) {
+            $input->setOption($optionName, $optionValue);
+        }
+    }
+
     /**
      * @param $filesToConvert
      * @throws \Exception
@@ -638,7 +655,6 @@ Codecs:
         if (!$this->optAdjustBitrateForIpod) {
             return;
         }
-
         $this->output->writeln("ipod auto adjust active, getting track durations");
         $totalDuration = new TimeUnit();
         foreach ($filesToConvert as $index => $file) {
@@ -648,7 +664,6 @@ Codecs:
             }
             $totalDuration->add($duration->milliseconds());
         }
-
 
         $durationSeconds = $totalDuration->milliseconds() / 1000;
         $maxSamplingRate = static::MAX_IPOD_SAMPLES / $durationSeconds;
@@ -660,7 +675,7 @@ Codecs:
         }
 
 
-        if (!$this->optAudioSampleRate || $this->samplingRateToInt() > $maxSamplingRate) {
+        if ($this->optAudioSampleRate && $this->samplingRateToInt() > $maxSamplingRate) {
             $this->output->writeln("desired sampling rate " . $this->optAudioSampleRate . " is greater than max sampling rate " . $maxSamplingRate . "Hz, trying to adjust");
             $resultSamplingRate = 0;
             $resultBitrate = "";
