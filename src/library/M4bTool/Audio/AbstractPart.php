@@ -16,7 +16,8 @@ abstract class AbstractPart
      */
     protected $length;
 
-    public function __construct(TimeUnit $start, TimeUnit $length) {
+    public function __construct(TimeUnit $start, TimeUnit $length)
+    {
         $this->start = $start;
         $this->length = $length;
     }
@@ -24,35 +25,45 @@ abstract class AbstractPart
     /**
      * @return TimeUnit
      */
-    public function getStart() {
+    public function getStart()
+    {
         return $this->start;
     }
 
     /**
      * @param TimeUnit $start
      */
-    public function setStart(TimeUnit $start) {
+    public function setStart(TimeUnit $start)
+    {
         $this->start = $start;
     }
 
     /**
      * @return TimeUnit
      */
-    public function getLength() {
+    public function getLength()
+    {
         return $this->length;
     }
 
     /**
      * @param TimeUnit $length
      */
-    public function setLength(TimeUnit $length) {
+    public function setLength(TimeUnit $length)
+    {
         $this->length = $length;
+    }
+
+    public function setEnd(TimeUnit $end)
+    {
+        $this->length = new TimeUnit($end->milliseconds() - $this->start->milliseconds());
     }
 
     /**
      * @return TimeUnit
      */
-    public function getEnd() {
-        return new TimeUnit($this->start->milliseconds()+$this->length->milliseconds(), TimeUnit::MILLISECOND);
+    public function getEnd()
+    {
+        return new TimeUnit($this->start->milliseconds() + $this->length->milliseconds(), TimeUnit::MILLISECOND);
     }
 }

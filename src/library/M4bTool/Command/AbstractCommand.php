@@ -324,7 +324,9 @@ class AbstractCommand extends Command
      */
     protected function ffmpeg($command, $introductionMessage = null)
     {
-        // if($this->)
+        if (!in_array("-hide_banner", $command)) {
+            array_unshift($command, "-hide_banner");
+        }
         $threads = (int)$this->input->getOption(static::OPTION_FFMPEG_THREADS);
         if ($threads > 0) {
             array_unshift($command, $threads);

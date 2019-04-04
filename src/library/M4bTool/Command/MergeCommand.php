@@ -749,38 +749,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     private function tagMergedFile()
     {
         $tag = $this->inputOptionsToTag();
+        $tag->chapters = $this->chapters;
         $this->tagFile($this->outputFile, $tag);
     }
-
-//    private function resetToDefaults()
-//    {
-//        $this->cache = null;
-//        $this->input = null;
-//        $this->output = null;
-//        $this->optForce = false;
-//
-//        $this->optForce = false;
-//        $this->optNoCache = false;
-//        $this->optDebug = false;
-//        $this->optDebugFile = null;
-//
-//        $this->optAudioFormat = null;
-//        $this->optAudioExtension = null;
-//        $this->optAudioChannels = null;
-//        $this->optAudioBitRate = null;
-//        $this->optAudioSampleRate = null;
-//        $this->optAudioCodec = null;
-//        $this->optAdjustBitrateForIpod = null;
-//        $this->outputFile = null;
-//        $this->sameFormatFileDirectory = null;
-//
-//        $this->meta = [];
-//        $this->filesToConvert = [];
-//        $this->filesToMerge = [];
-//        $this->otherTmpFiles = [];
-//        $this->sameFormatFiles = [];
-//        $this->chapters = [];
-//        $this->trackMarkerSilences = [];
-//    }
-
 }

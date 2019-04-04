@@ -6,6 +6,7 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\TagBuilder;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
@@ -184,6 +185,17 @@ class AbstractConversionCommand extends AbstractCommand
 
     }
 
+    protected function setOptionIfUndefined($optionName, $optionValue, $input = null)
+    {
+
+        if ($input === null) {
+            $input = $this->input;
+        }
+        if (!$input->getOption($optionName) && $optionValue) {
+            $input->setOption($optionName, $optionValue);
+        }
+    }
+
     /**
      * @return mixed|string
      * @throws Exception
@@ -252,6 +264,8 @@ Codecs:
     protected function tagFile(SplFileInfo $file, Tag $tag)
     {
         if ($this->input->getOption(static::OPTION_FIX_MIME_TYPE)) {
+            // todo: https://dbojan.github.io/howto_pc/media,%20How%20to%20add%20chapter%20marks%20to%20audio%20books,%20using%20opus%20codec.htm
+            // -> see mimetype options and do this in one command when using ffmpeg below
             $this->fixMimeType($file);
         }
 
@@ -277,6 +291,7 @@ Codecs:
             $this->appendParameterToCommand($command, "-comment", $tag->comment);
             $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
             $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy);
+            $this->appendParameterToCommand($command, "-encoder", $tag->encoder);
             $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
             $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
 
@@ -318,28 +333,59 @@ Codecs:
         if ($this->optAudioFormat === static::AUDIO_FORMAT_MP3) {
             $outputFile = new SplFileInfo((string)$file . uniqid("", true) . ".mp3");
             $command = ["-i", $file];
+
+            $commandAddition = [];
+            $metaDataFileIndex = 1;
             if ($tag->cover) {
-                $command = array_merge($command, ["-i", $tag->cover, "-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"]);
+                $command = array_merge($command, ["-i", $tag->cover]);
+                $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
+                $metaDataFileIndex++;
             }
 
-            $this->appendKeyValueParameterToCommand($command, 'album', $tag->album, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'composer', $tag->writer, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'genre', $tag->genre, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'copyright', $tag->copyright, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'encoded_by', $tag->encodedBy, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'title', $tag->title, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'language', $tag->language, '-mÇetadata');
-            $this->appendKeyValueParameterToCommand($command, 'artist', $tag->artist, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'album_artist', $tag->albumArtist, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'performer', $tag->performer, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'disc', $tag->disk, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'publisher', $tag->publisher, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'track', $tag->track, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'encoder', $tag->encoder, '-metadata');
-            $this->appendKeyValueParameterToCommand($command, 'lyrics', $tag->lyrics, '-metadata');
+            $tagBuilder = new TagBuilder();
+            $ffmetadata = $tagBuilder->buildFfmetadata($tag);
+            $fpPath = tempnam(sys_get_temp_dir(), "");
+            if (file_put_contents($fpPath, $ffmetadata) === false) {
+                $this->debug(sprintf("failed to create %s", $fpPath));
+                $fpPath = null;
+            }
+
+            if ($fpPath) {
+                $this->debug(sprintf("created tempfile for metadata %s", $fpPath));
+                $command = array_merge($command, ["-i", $fpPath, "-map_metadata", (string)$metaDataFileIndex]);
+            }
+
+            if (count($commandAddition) > 0) {
+                $command = array_merge($command, $commandAddition);
+
+            }
+
+            if (!$fpPath) {
+                $this->debug("did not create ffmpeg metadata file, appending parameters");
+                $this->appendKeyValueParameterToCommand($command, 'album', $tag->album, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'composer', $tag->writer, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'genre', $tag->genre, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'copyright', $tag->copyright, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'encoded_by', $tag->encodedBy, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'title', $tag->title, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'language', $tag->language, '-mÇetadata');
+                $this->appendKeyValueParameterToCommand($command, 'artist', $tag->artist, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'album_artist', $tag->albumArtist, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'performer', $tag->performer, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'disc', $tag->disk, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'publisher', $tag->publisher, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'track', $tag->track, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'encoder', $tag->encoder, '-metadata');
+                $this->appendKeyValueParameterToCommand($command, 'lyrics', $tag->lyrics, '-metadata');
+            }
 
             $command[] = $outputFile;
             $this->ffmpeg($command, "tagging file " . $file);
+
+            if ($fpPath && file_exists($fpPath) && !$this->optDebug) {
+                $this->debug("deleting ffmetadata file");
+                unlink($fpPath);
+            }
 
             if (!$outputFile->isFile()) {
                 $this->output->writeln("tagging file " . $file . " failed, could not write temp output file " . $outputFile);
@@ -632,17 +678,6 @@ Codecs:
         };
         $this->output->writeln("extracted description to " . $descriptionTargetFile . "");
         return $descriptionTargetFile;
-    }
-
-    protected function setOptionIfUndefined($optionName, $optionValue, $input = null)
-    {
-
-        if ($input === null) {
-            $input = $this->input;
-        }
-        if (!$input->getOption($optionName) && $optionValue) {
-            $input->setOption($optionName, $optionValue);
-        }
     }
 
     /**
