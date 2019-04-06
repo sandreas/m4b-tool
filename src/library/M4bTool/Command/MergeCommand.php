@@ -264,6 +264,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     private function loadOutputFile()
     {
         $this->outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
+        $ext = $this->outputFile->getExtension();
+        if (isset(static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext]) && $this->input->getOption(static::OPTION_AUDIO_FORMAT) === static::AUDIO_EXTENSION_M4B) {
+            $this->optAudioExtension = $ext;
+            $this->optAudioFormat = static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext];
+            $this->optAudioCodec = static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat];
+        }
     }
 
     /**

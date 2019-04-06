@@ -117,7 +117,7 @@ class AbstractConversionCommand extends AbstractCommand
     protected function configure()
     {
         parent::configure();
-        $this->addOption(static::OPTION_AUDIO_FORMAT, null, InputOption::VALUE_OPTIONAL, "output format, that ffmpeg will use to create files", "m4b");
+        $this->addOption(static::OPTION_AUDIO_FORMAT, null, InputOption::VALUE_OPTIONAL, "output format, that ffmpeg will use to create files", static::AUDIO_EXTENSION_M4B);
         $this->addOption(static::OPTION_AUDIO_CHANNELS, null, InputOption::VALUE_OPTIONAL, "audio channels, e.g. 1, 2", ""); // -ac 1
         $this->addOption(static::OPTION_AUDIO_BIT_RATE, null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...", ""); // -ab 128k
         $this->addOption(static::OPTION_AUDIO_SAMPLE_RATE, null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...", ""); // -ar 44100
@@ -269,65 +269,6 @@ Codecs:
             $this->fixMimeType($file);
         }
 
-        $metaData = $this->readFileMetaData($file);
-
-
-        if ($metaData->getFormat() === FfmetaDataParser::FORMAT_MP4) {
-            $command = [];
-
-            $this->adjustTagDescriptionForMp4($tag);
-
-            $this->appendParameterToCommand($command, "-track", $tag->track);
-            $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
-            $this->appendParameterToCommand($command, "-song", $tag->title);
-            $this->appendParameterToCommand($command, "-artist", $tag->artist);
-            $this->appendParameterToCommand($command, "-genre", $tag->genre);
-            $this->appendParameterToCommand($command, "-writer", $tag->writer);
-            $this->appendParameterToCommand($command, "-description", $tag->description);
-            $this->appendParameterToCommand($command, "-longdesc", $tag->longDescription);
-            $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
-            $this->appendParameterToCommand($command, "-year", $tag->year);
-            $this->appendParameterToCommand($command, "-album", $tag->album);
-            $this->appendParameterToCommand($command, "-comment", $tag->comment);
-            $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
-            $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy);
-            $this->appendParameterToCommand($command, "-encoder", $tag->encoder);
-            $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
-            $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
-
-            if ($this->doesMp4tagsSupportSorting()) {
-                if (!$tag->sortTitle && $tag->series) {
-                    $tag->sortTitle = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
-                }
-
-                if (!$tag->sortAlbum && $tag->series) {
-                    $tag->sortAlbum = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
-                }
-
-                $this->appendParameterToCommand($command, "-sortname", $tag->sortTitle);
-                $this->appendParameterToCommand($command, "-sortalbum", $tag->sortAlbum);
-                $this->appendParameterToCommand($command, "-sortartist", $tag->sortArtist);
-            }
-
-
-            if (count($command) > 1) {
-                $command[] = $file;
-                $this->mp4tags($command, "tagging file " . $file);
-            }
-
-            if ($tag->cover && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
-                if (!file_exists($tag->cover)) {
-                    $this->output->writeln("cover file " . $tag->cover . " does not exist");
-                    return;
-                }
-                $command = ["--add", $tag->cover, $file];
-                $this->appendParameterToCommand($command, "-f", $this->optForce);
-                $process = $this->mp4art($command, "adding cover " . $tag->cover . " to " . $file);
-                $this->debug($process->getOutput() . $process->getErrorOutput());
-            }
-
-            return;
-        }
 
         // see https://wiki.multimedia.cx/index.php/FFmpeg_Metadata#MP3
         if ($this->optAudioFormat === static::AUDIO_FORMAT_MP3) {
@@ -395,7 +336,69 @@ Codecs:
             if (!unlink($file) || !rename($outputFile, $file)) {
                 $this->output->writeln("tagging file " . $file . " failed, could not rename temp output file " . $outputFile . " to " . $file);
             }
+            return;
         }
+
+        $metaData = $this->readFileMetaData($file);
+
+
+        if ($metaData->getFormat() === FfmetaDataParser::FORMAT_MP4) {
+            $command = [];
+
+            $this->adjustTagDescriptionForMp4($tag);
+
+            $this->appendParameterToCommand($command, "-track", $tag->track);
+            $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
+            $this->appendParameterToCommand($command, "-song", $tag->title);
+            $this->appendParameterToCommand($command, "-artist", $tag->artist);
+            $this->appendParameterToCommand($command, "-genre", $tag->genre);
+            $this->appendParameterToCommand($command, "-writer", $tag->writer);
+            $this->appendParameterToCommand($command, "-description", $tag->description);
+            $this->appendParameterToCommand($command, "-longdesc", $tag->longDescription);
+            $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
+            $this->appendParameterToCommand($command, "-year", $tag->year);
+            $this->appendParameterToCommand($command, "-album", $tag->album);
+            $this->appendParameterToCommand($command, "-comment", $tag->comment);
+            $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
+            $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy ?? $tag->encoder);
+            $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
+            $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
+
+            if ($this->doesMp4tagsSupportSorting()) {
+                if (!$tag->sortTitle && $tag->series) {
+                    $tag->sortTitle = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
+                }
+
+                if (!$tag->sortAlbum && $tag->series) {
+                    $tag->sortAlbum = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
+                }
+
+                $this->appendParameterToCommand($command, "-sortname", $tag->sortTitle);
+                $this->appendParameterToCommand($command, "-sortalbum", $tag->sortAlbum);
+                $this->appendParameterToCommand($command, "-sortartist", $tag->sortArtist);
+            }
+
+
+            if (count($command) > 1) {
+                $command[] = $file;
+                $this->mp4tags($command, "tagging file " . $file);
+            }
+
+            if ($tag->cover && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
+                if (!file_exists($tag->cover)) {
+                    $this->output->writeln("cover file " . $tag->cover . " does not exist");
+                    return;
+                }
+                $command = ["--add", $tag->cover, $file];
+                $this->appendParameterToCommand($command, "-f", $this->optForce);
+                $process = $this->mp4art($command, "adding cover " . $tag->cover . " to " . $file);
+                $this->debug($process->getOutput() . $process->getErrorOutput());
+            }
+
+            return;
+        }
+
+
     }
 
     private function adjustTagDescriptionForMp4(Tag $tag)
