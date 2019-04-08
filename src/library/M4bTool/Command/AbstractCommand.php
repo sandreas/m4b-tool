@@ -15,7 +15,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Process\ProcessBuilder;
+use Symfony\Component\Process\Process;
 
 class AbstractCommand extends Command
 {
@@ -173,8 +173,8 @@ class AbstractCommand extends Command
             }
         }
 
-        $builder = new ProcessBuilder($command);
-        $process = $builder->getProcess();
+        $process = new Process($command);
+        $process->setTimeout(null);
         $process->start();
 
 
@@ -183,7 +183,6 @@ class AbstractCommand extends Command
         while ($process->isRunning()) {
             $shouldShowEmptyLine = true;
             $this->updateProgress();
-
         }
         if ($shouldShowEmptyLine) {
             $this->output->writeln('');

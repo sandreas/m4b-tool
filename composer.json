@@ -3,9 +3,9 @@
   "prefer-stable": true,
   "require": {
     "monolog/monolog": "^1.22",
-    "symfony/console": "^3.2",
-    "symfony/process": "^3.2",
-    "symfony/cache": "^3.2",
+    "symfony/console": "^4.0",
+    "symfony/process": "^4.0",
+    "symfony/cache": "^4.0",
     "twig/twig": "^2.0",
     "sandreas/php-time": "dev-master",
     "sandreas/php-strings": "dev-master"
@@ -22,5 +22,15 @@
     "phpunit/phpunit": "^6.1",
     "mockery/mockery": "^0.9.9",
     "mikey179/vfsstream": "^1.6"
-  }
+  },
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/sandreas/php-strings"
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/sandreas/php-time"
+    }
+  ]
 }
