@@ -4,6 +4,8 @@
 namespace M4bTool\Command;
 
 
+use CallbackFilterIterator;
+use DirectoryIterator;
 use Exception;
 use FilesystemIterator;
 use IteratorIterator;
@@ -16,7 +18,9 @@ use M4bTool\Marker\ChapterMarker;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
+use Psr\Cache\InvalidArgumentException;
 use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Sandreas\Strings\Format\FormatParser;
 use Sandreas\Strings\Format\PlaceHolder;
 use SplFileInfo;
@@ -24,6 +28,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
 
 class MergeCommand extends AbstractConversionCommand implements MetaReaderInterface
 {
@@ -109,7 +114,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      * @param OutputInterface $output
      * @return int|void|null
      * @throws Exception
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
@@ -137,7 +142,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      * @param MergeCommand $command
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      * @throws Exception
      */
     private function processBatchDirectory($batchPattern, MergeCommand $command, InputInterface $input, OutputInterface $output)
@@ -242,7 +247,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      * @param InputInterface $input
      * @param OutputInterface $output
      * @param bool $batchProcessing
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      * @throws Exception
      * @throws Exception
      */
@@ -329,8 +334,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         if ($f->isDir()) {
             $dir = new RecursiveDirectoryIterator($f, FilesystemIterator::SKIP_DOTS);
-            $it = new \RecursiveIteratorIterator($dir, \RecursiveIteratorIterator::CHILD_FIRST);
-            $filtered = new \CallbackFilterIterator($it, function (SplFileInfo $current /*, $key, $iterator*/) use ($includeExtensions) {
+            $it = new RecursiveIteratorIterator($dir, RecursiveIteratorIterator::CHILD_FIRST);
+            $filtered = new CallbackFilterIterator($it, function (SplFileInfo $current /*, $key, $iterator*/) use ($includeExtensions) {
                 return in_array(mb_strtolower($current->getExtension()), $includeExtensions, true);
             });
             foreach ($filtered as $itFile) {
@@ -349,7 +354,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     /**
      * @throws Exception
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     private function processInputFiles()
     {
@@ -416,7 +421,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
             } else {
                 $autoCoverFile = null;
-                $iterator = new \DirectoryIterator($coverDir);
+                $iterator = new DirectoryIterator($coverDir);
                 foreach ($iterator as $potentialCoverFile) {
                     if ($potentialCoverFile->isDot() || $potentialCoverFile->isDir()) {
                         continue;
@@ -472,7 +477,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     /**
      * @throws Exception
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     private function prepareMergeWithoutConversion()
     {
@@ -505,7 +510,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      * @throws Exception
      */
     private function convertInputFiles()
@@ -656,7 +661,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
 
         // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
-        if ($this->optAudioFormat && $this->optAudioCodec !== "alac") {
+        if ($this->optAudioFormat && $this->optAudioCodec !== static::AUDIO_CODEC_ALAC) {
             $command[] = "-f";
             $command[] = $this->optAudioFormat;
         }
@@ -688,7 +693,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         try {
             $this->deleteFilesAndParentDir($this->filesToMerge);
             $this->deleteFilesAndParentDir($this->otherTmpFiles);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->output->writeln("ERROR: could not delete temporary files (" . $e->getMessage() . ")");
         }
 
@@ -750,7 +755,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     private function tagMergedFile()
     {
