@@ -39,7 +39,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     const OPTION_AUTO_SPLIT_SECONDS = "auto-split-seconds";
     const OPTION_NO_CONVERSION = "no-conversion";
     const OPTION_BATCH_PATTERN = "batch-pattern";
-    const OPTION_BATCH_DRY_RUN = "batch-dry-run";
+    const OPTION_TAG_ONLY = "tag-only";
+    const OPTION_DRY_RUN = "dry-run";
 
 
     const MAPPING_OPTIONS_PLACEHOLDERS = [
@@ -105,7 +106,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->addOption(static::OPTION_NO_CONVERSION, null, InputOption::VALUE_NONE, "skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)");
 
         $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title)", []);
-        $this->addOption(static::OPTION_BATCH_DRY_RUN, null, InputOption::VALUE_NONE, "perform a dry run without converting all the files in batch mode (requires --" . static::OPTION_BATCH_PATTERN . ")");
+        $this->addOption(static::OPTION_DRY_RUN, null, InputOption::VALUE_NONE, "perform a dry run without converting all the files in batch mode (requires --" . static::OPTION_BATCH_PATTERN . ")");
+        $this->addOption(static::OPTION_TAG_ONLY, null, InputOption::VALUE_NONE, "perform batch operations, but only tag the result files with new information (requires --" . static::OPTION_BATCH_PATTERN . ")");
 
     }
 
@@ -200,7 +202,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $output->writeln("");
             $output->writeln("================================");
 
-            if ($clonedInput->getOption(static::OPTION_BATCH_DRY_RUN)) {
+            if ($clonedInput->getOption(static::OPTION_DRY_RUN)) {
                 continue;
             }
 
@@ -299,7 +301,45 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
         // natsort($this->filesToConvert);
 
-        usort($this->filesToConvert, function (SplFileInfo $a, SplFileInfo $b) {
+
+    }
+
+    protected function handleInputFile($f, $includeExtensions)
+    {
+        if (!($f instanceof SplFileInfo)) {
+            $f = new SplFileInfo($f);
+            if (!$f->isReadable()) {
+                $this->output->writeln("skipping " . $f . " (does not exist)");
+                return;
+            }
+        }
+
+        if ($f->isDir()) {
+            $files = [];
+            $dir = new RecursiveDirectoryIterator($f, FilesystemIterator::SKIP_DOTS);
+            $it = new RecursiveIteratorIterator($dir, RecursiveIteratorIterator::CHILD_FIRST);
+            $filtered = new CallbackFilterIterator($it, function (SplFileInfo $current /*, $key, $iterator*/) use ($includeExtensions) {
+                return in_array(mb_strtolower($current->getExtension()), $includeExtensions, true);
+            });
+            foreach ($filtered as $itFile) {
+                if ($itFile->isDir()) {
+                    continue;
+                }
+                if (!$itFile->isReadable() || $itFile->isLink()) {
+                    continue;
+                }
+                $files[] = new SplFileInfo($itFile->getRealPath());
+            }
+
+            $this->filesToConvert = array_merge($this->filesToConvert, $this->sortFilesByName($files));
+        } else {
+            $this->filesToConvert[] = new SplFileInfo($f->getRealPath());
+        }
+    }
+
+    private function sortFilesByName($files)
+    {
+        usort($files, function (SplFileInfo $a, SplFileInfo $b) {
             if ($a->getPath() == $b->getPath()) {
                 return strnatcmp($a->getBasename(), $b->getBasename());
             }
@@ -320,36 +360,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
             return strnatcmp($a, $b);
         });
-    }
-
-    protected function handleInputFile($f, $includeExtensions)
-    {
-        if (!($f instanceof SplFileInfo)) {
-            $f = new SplFileInfo($f);
-            if (!$f->isReadable()) {
-                $this->output->writeln("skipping " . $f . " (does not exist)");
-                return;
-            }
-        }
-
-        if ($f->isDir()) {
-            $dir = new RecursiveDirectoryIterator($f, FilesystemIterator::SKIP_DOTS);
-            $it = new RecursiveIteratorIterator($dir, RecursiveIteratorIterator::CHILD_FIRST);
-            $filtered = new CallbackFilterIterator($it, function (SplFileInfo $current /*, $key, $iterator*/) use ($includeExtensions) {
-                return in_array(mb_strtolower($current->getExtension()), $includeExtensions, true);
-            });
-            foreach ($filtered as $itFile) {
-                if ($itFile->isDir()) {
-                    continue;
-                }
-                if (!$itFile->isReadable() || $itFile->isLink()) {
-                    continue;
-                }
-                $this->filesToConvert[] = new SplFileInfo($itFile->getRealPath());
-            }
-        } else {
-            $this->filesToConvert[] = new SplFileInfo($f->getRealPath());
-        }
+        return $files;
     }
 
     /**
@@ -359,32 +370,33 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     private function processInputFiles()
     {
 
-        $this->loadInputMetadataFromFirstFile();
-        $this->lookupAndAddCover();
-        $this->lookupAndAddDescription();
+        if (!$this->input->getOption(static::OPTION_TAG_ONLY)) {
+            $this->loadInputMetadataFromFirstFile();
+            $this->lookupAndAddCover();
+            $this->lookupAndAddDescription();
 
-        if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
-            $this->prepareMergeWithoutConversion();
-        } else {
-            $this->convertInputFiles();
+            if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
+                $this->prepareMergeWithoutConversion();
+            } else {
+                $this->convertInputFiles();
+            }
+            $this->lookupAndAddCover();
+
+            $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
+            if ($chaptersFileContent !== null) {
+                $chapterParser = new Mp4ChapsChapterParser();
+                $this->chapters = $chapterParser->parse($chaptersFileContent);
+            } else {
+                $this->buildChaptersFromConvertedFileDurations();
+                $this->replaceChaptersWithMusicBrainz();
+                $this->addTrackMarkers();
+            }
+
+
+            $this->mergeFiles();
+            $this->deleteTemporaryFiles();
+            $this->importChapters();
         }
-        $this->lookupAndAddCover();
-
-        $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
-        if ($chaptersFileContent !== null) {
-            $chapterParser = new Mp4ChapsChapterParser();
-            $this->chapters = $chapterParser->parse($chaptersFileContent);
-        } else {
-            $this->buildChaptersFromConvertedFileDurations();
-            $this->replaceChaptersWithMusicBrainz();
-            $this->addTrackMarkers();
-        }
-
-
-        $this->mergeFiles();
-        $this->deleteTemporaryFiles();
-
-        $this->importChapters();
 
         $this->tagMergedFile();
     }

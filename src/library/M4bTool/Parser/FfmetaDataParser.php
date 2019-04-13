@@ -4,6 +4,7 @@
 namespace M4bTool\Parser;
 
 
+use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
 use M4bTool\StringUtilities\Runes;
@@ -71,7 +72,7 @@ class FfmetaDataParser
     /**
      * @param $metaData
      * @param string $streamInfo
-     * @throws \Exception
+     * @throws Exception
      */
     public function parse($metaData, $streamInfo = "")
     {
@@ -90,7 +91,7 @@ class FfmetaDataParser
 
     /**
      * @param $streamInfo
-     * @throws \Exception
+     * @throws Exception
      */
     private function parseStreamInfo($streamInfo)
     {
@@ -154,7 +155,7 @@ class FfmetaDataParser
 
     /**
      * @param $lineWithDuration
-     * @throws \Exception
+     * @throws Exception
      */
     private function parseDuration($lineWithDuration)
     {
@@ -168,7 +169,7 @@ class FfmetaDataParser
 
     /**
      * @param $matches
-     * @throws \Exception
+     * @throws Exception
      */
     private function parseDurationMatches($matches)
     {
@@ -232,7 +233,6 @@ class FfmetaDataParser
             }
 
         }
-
 
 
     }
