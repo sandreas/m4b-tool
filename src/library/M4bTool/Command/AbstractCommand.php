@@ -308,6 +308,11 @@ class AbstractCommand extends Command
         $process = $this->ffmpeg($command, $message);
         $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
 
+        // ensure metadata is utf-8
+        if (!preg_match("//u", $metaDataOutput)) {
+            $metaDataOutput = mb_scrub($metaDataOutput, "utf-8");
+        }
+
         $this->debug($metaDataOutput);
 
         $cacheItem->set($metaDataOutput);
