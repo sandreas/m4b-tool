@@ -184,8 +184,15 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $clonedOutput = clone $output;
             $clonedCommand = clone $command;
             $trimmedBatchPattern = $formatParser->trimSeparatorPrefix($batchPattern);
-            $fileNamePart = rtrim($formatParser->format($trimmedBatchPattern), "\\/") . ".m4b";
-            $batchOutputFile = $outputFile . "/" . $fileNamePart;
+
+            $fileNamePart = rtrim($formatParser->format($trimmedBatchPattern), "\\/");
+
+            // add a folder for name, if it is not a series
+            if (!$formatParser->getPlaceHolderValue("%s")) {
+                $fileNamePart .= "/" . $formatParser->format("%n");
+            }
+
+            $batchOutputFile = $outputFile . "/" . $fileNamePart . ".m4b";
             $clonedInput->setArgument(static::ARGUMENT_INPUT, $baseDir);
             $clonedInput->setOption(static::OPTION_OUTPUT_FILE, $batchOutputFile);
             $clonedInput->setOption(static::OPTION_BATCH_PATTERN, []);
