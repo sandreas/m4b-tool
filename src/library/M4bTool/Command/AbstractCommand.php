@@ -5,6 +5,7 @@ namespace M4bTool\Command;
 
 use DateTime;
 use Exception;
+use M4bTool\Audio\Chapter;
 use M4bTool\Parser\FfmetaDataParser;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -53,6 +54,12 @@ class AbstractCommand extends Command
     const OPTION_FFMPEG_PARAM = "ffmpeg-param";
 
     const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
+    const OPTION_SILENCE_MIN_LENGTH = "silence-min-length";
+    const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
+    const OPTION_MAX_CHAPTER_LENGTH = "max-chapter-length";
+    const OPTION_DESIRED_CHAPTER_LENGTH = "desired-chapter-length";
+
+
     const OPTION_CONVERT_CHARSET = "convert-charset";
 
     const OPTION_OUTPUT_FILE = "output-file";
@@ -361,6 +368,11 @@ class AbstractCommand extends Command
         $this->addOption(static::OPTION_FFMPEG_THREADS, null, InputOption::VALUE_OPTIONAL, "specify -threads parameter for ffmpeg", "");
         $this->addOption(static::OPTION_CONVERT_CHARSET, null, InputOption::VALUE_OPTIONAL, "Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems)", "");
         $this->addOption(static::OPTION_FFMPEG_PARAM, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --" . static::OPTION_FFMPEG_PARAM . '="-max_muxing_queue_size" ' . '--' . static::OPTION_FFMPEG_PARAM . '="1000" for ffmpeg [...] -max_muxing_queue_size 1000)', []);
+        $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "a", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", 1750);
+        $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "b", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
+        $this->addOption(static::OPTION_DESIRED_CHAPTER_LENGTH, null, InputOption::VALUE_OPTIONAL, "desired chapter length in milliseconds", 0);
+        $this->addOption(static::OPTION_MAX_CHAPTER_LENGTH, null, InputOption::VALUE_OPTIONAL, "maximum chapter length in milliseconds", 0);
+
     }
 
     function dasherize($string)
@@ -586,4 +598,49 @@ class AbstractCommand extends Command
         }
     }
 
+
+    /**
+     * @param SplFileInfo $file
+     * @return mixed|string
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    protected function detectSilencesForChapterGuessing(SplFileInfo $file)
+    {
+        $fileNameHash = hash('sha256', $file->getRealPath());
+
+        $cacheItem = $this->cache->getItem("chapter.silences." . $fileNameHash);
+        if ($cacheItem->isHit()) {
+            return $cacheItem->get();
+        }
+
+
+        $process = $this->ffmpeg([
+            "-i", $file,
+            "-af", "silencedetect=noise=-30dB:d=" . ((float)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH) / 1000),
+            "-f", "null",
+            "-",
+
+        ], "detecting silence of " . $file);
+        $silenceDetectionOutput = $process->getOutput();
+        $silenceDetectionOutput .= $process->getErrorOutput();
+
+
+        $cacheItem->set($silenceDetectionOutput);
+        $this->cache->save($cacheItem);
+        return $silenceDetectionOutput;
+    }
+
+    /**
+     * @param Chapter[] $chapters
+     * @return array
+     * @throws Exception
+     */
+    protected function chaptersToMp4v2Format(array $chapters)
+    {
+        $chaptersAsLines = [];
+        foreach ($chapters as $chapter) {
+            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
+        }
+        return $chaptersAsLines;
+    }
 }

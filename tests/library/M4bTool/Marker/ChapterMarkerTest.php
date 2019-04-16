@@ -16,7 +16,8 @@ class ChapterMarkerTest extends TestCase
     protected $musicBrainzChapters = [];
     protected $detectedSilences = [];
 
-    public function setUp() {
+    public function setUp()
+    {
         $this->subject = new ChapterMarker();
         $this->musicBrainzChapters = [
             '0' => new Chapter(new TimeUnit(0, TimeUnit::MILLISECOND), new TimeUnit(258520, TimeUnit::MILLISECOND), 'Kapitel 01: „Auf den ersten Blick“, Teil 1'),
@@ -528,7 +529,8 @@ class ChapterMarkerTest extends TestCase
         ];
     }
 
-    public function testGenerate() {
+    public function testGenerate()
+    {
         $fullLength = new TimeUnit(48902034, TimeUnit::MILLISECOND);
         /**
          * @var Chapter[] $guessedChapters
@@ -542,5 +544,186 @@ class ChapterMarkerTest extends TestCase
 
     }
 
+    public function testAdjustTooLongChapters()
+    {
+        $maxChapterLength = 900000;
+        $desiredChapterLength = 300000;
+        $chapterOptions = array(
+            'first-chapter-offset' => 0,
+            'last-chapter-offset' => 0,
+            'merge-similar' => false,
+            'no-chapter-numbering' => false,
+            'chapter-pattern' => '/^[^:]+[1-9][0-9]*:[\\s]*(.*),.*[1-9][0-9]*[\\s]*$/i',
+            'chapter-remove-chars' => '„“”',
+        );
 
+        $chapters = [
+            new Chapter(new TimeUnit(0), new TimeUnit(32000281), 1)
+        ];
+
+
+        $silences = array(
+            9939 => new Silence(new TimeUnit(9939.59), new TimeUnit(3477.51)),
+            14079 => new Silence(new TimeUnit(14079.849999999999), new TimeUnit(1941.4499999999998)),
+            312020 => new Silence(new TimeUnit(312020.66), new TimeUnit(1970.34)),
+            651335 => new Silence(new TimeUnit(651335.35), new TimeUnit(3072.65)),
+            1616239 => new Silence(new TimeUnit(1616239.73), new TimeUnit(1900.27)),
+            1789310 => new Silence(new TimeUnit(1789310.63), new TimeUnit(3159.37)),
+            1856360 => new Silence(new TimeUnit(1856360.39), new TimeUnit(1769.61)),
+            1993929 => new Silence(new TimeUnit(1993929.46), new TimeUnit(2080.54)),
+            2224524 => new Silence(new TimeUnit(2224524.47), new TimeUnit(4345.53)),
+            2229334 => new Silence(new TimeUnit(2229334.94), new TimeUnit(2035.0600000000002)),
+            2822022 => new Silence(new TimeUnit(2822022.45), new TimeUnit(1797.55)),
+            3021478 => new Silence(new TimeUnit(3021478.3), new TimeUnit(3131.7)),
+            3618016 => new Silence(new TimeUnit(3618016.1), new TimeUnit(1843.9)),
+            4024934 => new Silence(new TimeUnit(4024934.94), new TimeUnit(1855.06)),
+            4306690 => new Silence(new TimeUnit(4306690.45), new TimeUnit(4199.55)),
+            4374264 => new Silence(new TimeUnit(4374264.44), new TimeUnit(1995.56)),
+            4953524 => new Silence(new TimeUnit(4953524.56), new TimeUnit(4105.44)),
+            4988538 => new Silence(new TimeUnit(4988538.59), new TimeUnit(3161.41)),
+            5167917 => new Silence(new TimeUnit(5167917.64), new TimeUnit(3102.36)),
+            6422572 => new Silence(new TimeUnit(6422572.15), new TimeUnit(2087.85)),
+            6625518 => new Silence(new TimeUnit(6625518.32), new TimeUnit(2241.6800000000003)),
+            6638965 => new Silence(new TimeUnit(6638965.01), new TimeUnit(4264.99)),
+            7783213 => new Silence(new TimeUnit(7783213.54), new TimeUnit(4136.459999999999)),
+            8339877 => new Silence(new TimeUnit(8339877.389999999), new TimeUnit(3512.61)),
+            8815036 => new Silence(new TimeUnit(8815036.49), new TimeUnit(1753.51)),
+            9069483 => new Silence(new TimeUnit(9069483.36), new TimeUnit(2236.64)),
+            9171695 => new Silence(new TimeUnit(9171695.08), new TimeUnit(2294.92)),
+            9233355 => new Silence(new TimeUnit(9233355.15), new TimeUnit(1904.85)),
+            9590467 => new Silence(new TimeUnit(9590467.94), new TimeUnit(1892.0600000000002)),
+            9613401 => new Silence(new TimeUnit(9613401.72), new TimeUnit(1758.28)),
+            9626073 => new Silence(new TimeUnit(9626073.81), new TimeUnit(2296.19)),
+            9784615 => new Silence(new TimeUnit(9784615.19), new TimeUnit(2204.81)),
+            9798919 => new Silence(new TimeUnit(9798919.75), new TimeUnit(1750.25)),
+            9803000 => new Silence(new TimeUnit(9803000.14), new TimeUnit(1979.86)),
+            9836457 => new Silence(new TimeUnit(9836457.39), new TimeUnit(2052.61)),
+            9841176 => new Silence(new TimeUnit(9841176.58), new TimeUnit(4293.42)),
+            10038958 => new Silence(new TimeUnit(10038958.05), new TimeUnit(2141.95)),
+            10677541 => new Silence(new TimeUnit(10677541.81), new TimeUnit(3158.19)),
+            11540707 => new Silence(new TimeUnit(11540707.66), new TimeUnit(2192.34)),
+            11696642 => new Silence(new TimeUnit(11696642.36), new TimeUnit(1857.6399999999999)),
+            11725934 => new Silence(new TimeUnit(11725934.2), new TimeUnit(1765.8)),
+            11824096 => new Silence(new TimeUnit(11824096.37), new TimeUnit(2003.6299999999999)),
+            12146487 => new Silence(new TimeUnit(12146487.98), new TimeUnit(4212.0199999999995)),
+            12317381 => new Silence(new TimeUnit(12317381.72), new TimeUnit(3118.2799999999997)),
+            14023179 => new Silence(new TimeUnit(14023179.5), new TimeUnit(3220.5)),
+            14262858 => new Silence(new TimeUnit(14262858.87), new TimeUnit(1841.1299999999999)),
+            14507307 => new Silence(new TimeUnit(14507307.26), new TimeUnit(2092.7400000000002)),
+            14610542 => new Silence(new TimeUnit(14610542.27), new TimeUnit(4157.73)),
+            14958986 => new Silence(new TimeUnit(14958986.67), new TimeUnit(1913.33)),
+            15043490 => new Silence(new TimeUnit(15043490.11), new TimeUnit(2009.8899999999999)),
+            15227778 => new Silence(new TimeUnit(15227778.19), new TimeUnit(3621.81)),
+            15487814 => new Silence(new TimeUnit(15487814.65), new TimeUnit(1985.35)),
+            16053434 => new Silence(new TimeUnit(16053434.29), new TimeUnit(1765.7099999999998)),
+            16069375 => new Silence(new TimeUnit(16069375.74), new TimeUnit(3124.26)),
+            16206343 => new Silence(new TimeUnit(16206343.85), new TimeUnit(1956.15)),
+            16236649 => new Silence(new TimeUnit(16236649.43), new TimeUnit(1950.57)),
+            16322245 => new Silence(new TimeUnit(16322245.12), new TimeUnit(2254.88)),
+            16423571 => new Silence(new TimeUnit(16423571.07), new TimeUnit(2128.93)),
+            16528316 => new Silence(new TimeUnit(16528316.459999999), new TimeUnit(1783.54)),
+            16779800 => new Silence(new TimeUnit(16779800.95), new TimeUnit(1799.05)),
+            17137561 => new Silence(new TimeUnit(17137561.0), new TimeUnit(3239.0)),
+            17258278 => new Silence(new TimeUnit(17258278.37), new TimeUnit(2021.63)),
+            17309508 => new Silence(new TimeUnit(17309508.39), new TimeUnit(1991.6100000000001)),
+            17369604 => new Silence(new TimeUnit(17369604.99), new TimeUnit(1795.01)),
+            17591410 => new Silence(new TimeUnit(17591410.66), new TimeUnit(2289.34)),
+            17687635 => new Silence(new TimeUnit(17687635.92), new TimeUnit(1964.0800000000002)),
+            18267363 => new Silence(new TimeUnit(18267363.81), new TimeUnit(2036.19)),
+            18284952 => new Silence(new TimeUnit(18284952.02), new TimeUnit(1847.98)),
+            18699609 => new Silence(new TimeUnit(18699609.8), new TimeUnit(4190.2)),
+            18791002 => new Silence(new TimeUnit(18791002.22), new TimeUnit(2297.7799999999997)),
+            18878055 => new Silence(new TimeUnit(18878055.37), new TimeUnit(4244.63)),
+            18899187 => new Silence(new TimeUnit(18899187.21), new TimeUnit(2012.79)),
+            19061042 => new Silence(new TimeUnit(19061042.86), new TimeUnit(1757.1399999999999)),
+            19098508 => new Silence(new TimeUnit(19098508.12), new TimeUnit(1791.8799999999999)),
+            19237018 => new Silence(new TimeUnit(19237018.32), new TimeUnit(3281.6800000000003)),
+            19291603 => new Silence(new TimeUnit(19291603.4), new TimeUnit(1796.6)),
+            19419536 => new Silence(new TimeUnit(19419536.78), new TimeUnit(1763.22)),
+            19575630 => new Silence(new TimeUnit(19575630.52), new TimeUnit(2169.48)),
+            19665301 => new Silence(new TimeUnit(19665301.95), new TimeUnit(2298.0499999999997)),
+            19676504 => new Silence(new TimeUnit(19676504.31), new TimeUnit(3295.69)),
+            19810267 => new Silence(new TimeUnit(19810267.07), new TimeUnit(1832.9299999999998)),
+            19814391 => new Silence(new TimeUnit(19814391.47), new TimeUnit(1808.53)),
+            19833214 => new Silence(new TimeUnit(19833214.42), new TimeUnit(2585.5800000000004)),
+            19906712 => new Silence(new TimeUnit(19906712.7), new TimeUnit(1787.3000000000002)),
+            19909713 => new Silence(new TimeUnit(19909713.92), new TimeUnit(1986.0800000000002)),
+            19926411 => new Silence(new TimeUnit(19926411.75), new TimeUnit(1888.25)),
+            19947936 => new Silence(new TimeUnit(19947936.24), new TimeUnit(2263.76)),
+            20055552 => new Silence(new TimeUnit(20055552.7), new TimeUnit(1847.3)),
+            20141418 => new Silence(new TimeUnit(20141418.28), new TimeUnit(1781.72)),
+            20184932 => new Silence(new TimeUnit(20184932.83), new TimeUnit(1867.17)),
+            20240116 => new Silence(new TimeUnit(20240116.1), new TimeUnit(1983.9)),
+            20510136 => new Silence(new TimeUnit(20510136.92), new TimeUnit(1763.08)),
+            20622188 => new Silence(new TimeUnit(20622188.53), new TimeUnit(2211.47)),
+            20649748 => new Silence(new TimeUnit(20649748.21), new TimeUnit(1751.79)),
+            20655622 => new Silence(new TimeUnit(20655622.0), new TimeUnit(1878.0)),
+            20660926 => new Silence(new TimeUnit(20660926.03), new TimeUnit(1873.9699999999998)),
+            20746788 => new Silence(new TimeUnit(20746788.07), new TimeUnit(1811.93)),
+            20770960 => new Silence(new TimeUnit(20770960.54), new TimeUnit(2139.46)),
+            20774931 => new Silence(new TimeUnit(20774931.47), new TimeUnit(2468.5299999999997)),
+            20782335 => new Silence(new TimeUnit(20782335.37), new TimeUnit(1964.63)),
+            21033402 => new Silence(new TimeUnit(21033402.99), new TimeUnit(4397.01)),
+            21073613 => new Silence(new TimeUnit(21073613.79), new TimeUnit(1786.21)),
+            21133722 => new Silence(new TimeUnit(21133722.81), new TimeUnit(1777.19)),
+            21303344 => new Silence(new TimeUnit(21303344.9), new TimeUnit(1955.1000000000001)),
+            21326852 => new Silence(new TimeUnit(21326852.15), new TimeUnit(1847.85)),
+            21456633 => new Silence(new TimeUnit(21456633.88), new TimeUnit(1766.12)),
+            21474814 => new Silence(new TimeUnit(21474814.51), new TimeUnit(2285.49)),
+            21484049 => new Silence(new TimeUnit(21484049.84), new TimeUnit(1750.1599999999999)),
+            21492635 => new Silence(new TimeUnit(21492635.24), new TimeUnit(1764.7600000000002)),
+            21497371 => new Silence(new TimeUnit(21497371.07), new TimeUnit(1828.9299999999998)),
+            21501539 => new Silence(new TimeUnit(21501539.27), new TimeUnit(1860.73)),
+            21574087 => new Silence(new TimeUnit(21574087.12), new TimeUnit(1812.88)),
+            21666089 => new Silence(new TimeUnit(21666089.57), new TimeUnit(2510.43)),
+            21671956 => new Silence(new TimeUnit(21671956.19), new TimeUnit(1843.81)),
+            21682156 => new Silence(new TimeUnit(21682156.24), new TimeUnit(2143.7599999999998)),
+            21781288 => new Silence(new TimeUnit(21781288.12), new TimeUnit(4311.88)),
+            21996014 => new Silence(new TimeUnit(21996014.69), new TimeUnit(1885.31)),
+            22032185 => new Silence(new TimeUnit(22032185.58), new TimeUnit(1914.42)),
+            22117300 => new Silence(new TimeUnit(22117300.41), new TimeUnit(2299.5899999999997)),
+            22166750 => new Silence(new TimeUnit(22166750.7), new TimeUnit(2049.3)),
+            22179252 => new Silence(new TimeUnit(22179252.97), new TimeUnit(2247.03)),
+            22266993 => new Silence(new TimeUnit(22266993.56), new TimeUnit(2106.44)),
+            22296033 => new Silence(new TimeUnit(22296033.24), new TimeUnit(2366.76)),
+            22320557 => new Silence(new TimeUnit(22320557.46), new TimeUnit(2842.54)),
+            22381712 => new Silence(new TimeUnit(22381712.15), new TimeUnit(2187.85)),
+            22448536 => new Silence(new TimeUnit(22448536.19), new TimeUnit(2263.81)),
+            22903402 => new Silence(new TimeUnit(22903402.49), new TimeUnit(1797.51)),
+            22913125 => new Silence(new TimeUnit(22913125.8), new TimeUnit(4074.2000000000003)),
+            23206867 => new Silence(new TimeUnit(23206867.35), new TimeUnit(2032.6499999999999)),
+            23364913 => new Silence(new TimeUnit(23364913.97), new TimeUnit(1786.03)),
+            23582036 => new Silence(new TimeUnit(23582036.15), new TimeUnit(3163.85)),
+            23717638 => new Silence(new TimeUnit(23717638.91), new TimeUnit(1761.0900000000001)),
+            23722959 => new Silence(new TimeUnit(23722959.73), new TimeUnit(1940.27)),
+            23777960 => new Silence(new TimeUnit(23777960.5), new TimeUnit(1839.5)),
+            23788045 => new Silence(new TimeUnit(23788045.9), new TimeUnit(4154.099999999999)),
+            24004310 => new Silence(new TimeUnit(24004310.25), new TimeUnit(1889.75)),
+            24103725 => new Silence(new TimeUnit(24103725.58), new TimeUnit(1974.42)),
+            24234799 => new Silence(new TimeUnit(24234799.64), new TimeUnit(3300.36)),
+            25841617 => new Silence(new TimeUnit(25841617.23), new TimeUnit(4182.7699999999995)),
+            26372332 => new Silence(new TimeUnit(26372332.43), new TimeUnit(3067.5699999999997)),
+            26771711 => new Silence(new TimeUnit(26771711.02), new TimeUnit(1988.98)),
+            27234896 => new Silence(new TimeUnit(27234896.28), new TimeUnit(1903.72)),
+            27377490 => new Silence(new TimeUnit(27377490.2), new TimeUnit(3209.8)),
+            27720414 => new Silence(new TimeUnit(27720414.78), new TimeUnit(1985.22)),
+            28008970 => new Silence(new TimeUnit(28008970.98), new TimeUnit(4129.0199999999995)),
+            28696556 => new Silence(new TimeUnit(28696556.28), new TimeUnit(1943.7199999999998)),
+            28766407 => new Silence(new TimeUnit(28766407.44), new TimeUnit(1792.56)),
+            28920882 => new Silence(new TimeUnit(28920882.81), new TimeUnit(2517.1899999999996)),
+            29056112 => new Silence(new TimeUnit(29056112.83), new TimeUnit(4387.17)),
+            29329592 => new Silence(new TimeUnit(29329592.74), new TimeUnit(1907.26)),
+            30225652 => new Silence(new TimeUnit(30225652.88), new TimeUnit(1947.12)),
+            30391221 => new Silence(new TimeUnit(30391221.95), new TimeUnit(2078.05)),
+            30396726 => new Silence(new TimeUnit(30396726.44), new TimeUnit(1973.56)),
+            30604350 => new Silence(new TimeUnit(30604350.75), new TimeUnit(4249.25)),
+            31062589 => new Silence(new TimeUnit(31062589.61), new TimeUnit(1810.3899999999999)),
+            31481364 => new Silence(new TimeUnit(31481364.9), new TimeUnit(4135.1)),
+            31985877 => new Silence(new TimeUnit(31985877.23), new TimeUnit(2822.77)),
+            31995328 => new Silence(new TimeUnit(31995328.8), new TimeUnit(2571.2000000000003)),
+        );
+
+        $chapters = $this->subject->adjustTooLongChapters($chapters, $silences, $maxChapterLength, $desiredChapterLength, $chapterOptions);
+        $this->assertCount(57, $chapters);
+    }
 }

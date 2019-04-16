@@ -18,6 +18,7 @@ use M4bTool\Marker\ChapterMarker;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
+use M4bTool\Parser\SilenceParser;
 use Psr\Cache\InvalidArgumentException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -63,6 +64,15 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         self::OPTION_TAG_SERIES_PART => "p",
 
         // "c" => self::OPTION_TAG_COVER, // cover cannot be string
+    ];
+
+    const NORMALIZE_CHAPTER_OPTIONS = [
+        'first-chapter-offset' => 0,
+        'last-chapter-offset' => 0,
+        'merge-similar' => false,
+        'no-chapter-numbering' => false,
+        'chapter-pattern' => "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i",
+        'chapter-remove-chars' => "„“”",
     ];
 
     protected $outputDirectory;
@@ -402,10 +412,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
             $this->mergeFiles();
             $this->deleteTemporaryFiles();
-            $this->importChapters();
         }
+        $this->adjustTooLongChapters();
 
-        $this->tagMergedFile();
+        $this->tagMergedFile($this->chapters);
     }
 
     protected function loadInputMetadataFromFirstFile()
@@ -622,15 +632,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $chapterMarker = new ChapterMarker();
         $this->chapters = $chapterMarker->guessChaptersByTracks($mbChapters, $this->chapters);
 
-        $options = [
-            'first-chapter-offset' => 0,
-            'last-chapter-offset' => 0,
-            'merge-similar' => false,
-            'no-chapter-numbering' => false,
-            'chapter-pattern' => "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i",
-            'chapter-remove-chars' => "„“”",
-        ];
-        $this->chapters = $chapterMarker->normalizeChapters($this->chapters, $options);
+
+        $this->chapters = $chapterMarker->normalizeChapters($this->chapters, static::NORMALIZE_CHAPTER_OPTIONS);
 
     }
 
@@ -745,47 +748,35 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
-     * @throws Exception
-     */
-    private function importChapters()
-    {
-
-        if (count($this->chapters) == 0) {
-            return;
-        }
-
-        if ($this->optAudioFormat != static::AUDIO_FORMAT_MP4) {
-            return;
-        }
-        $chaptersFile = $this->audioFileToChaptersFile($this->outputFile);
-        if ($chaptersFile->isFile() && !$this->optForce) {
-            throw new Exception("Chapters file " . $chaptersFile . " already exists, use --force to force overwrite");
-        }
-
-        file_put_contents($chaptersFile, implode(PHP_EOL, $this->chaptersAsLines()));
-        $this->mp4chaps(["-i", $this->outputFile], "importing chapters for " . $this->outputFile);
-    }
-
-    /**
-     * @return array
-     * @throws Exception
-     */
-    private function chaptersAsLines()
-    {
-        $chaptersAsLines = [];
-        foreach ($this->chapters as $chapter) {
-            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
-        }
-        return $chaptersAsLines;
-    }
-
-    /**
      * @throws InvalidArgumentException
      */
-    private function tagMergedFile()
+    private function adjustTooLongChapters()
+    {
+        $maxChapterLength = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
+        $desiredChapterLength = $this->input->getOption(static::OPTION_DESIRED_CHAPTER_LENGTH);
+
+        // both options have to be defined to adjust too long chapters
+        if ($maxChapterLength === 0 || $desiredChapterLength === 0) {
+            return;
+        }
+
+        $silenceDetectionOutput = $this->detectSilencesForChapterGuessing($this->outputFile);
+
+        $silenceParser = new SilenceParser();
+        $silences = $silenceParser->parse($silenceDetectionOutput);
+
+        $chapterMarker = new ChapterMarker();
+        $this->chapters = $chapterMarker->adjustTooLongChapters($this->chapters, $silences, $maxChapterLength, $desiredChapterLength, static::NORMALIZE_CHAPTER_OPTIONS);
+    }
+
+    /**
+     * @param Chapter[] $chapters
+     * @throws InvalidArgumentException
+     */
+    private function tagMergedFile(array $chapters)
     {
         $tag = $this->inputOptionsToTag();
-        $tag->chapters = $this->chapters;
+        $tag->chapters = $chapters;
         $this->tagFile($this->outputFile, $tag);
     }
 }

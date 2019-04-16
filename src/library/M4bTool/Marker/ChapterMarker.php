@@ -136,12 +136,12 @@ class ChapterMarker
             $lastSilence = new Silence(new TimeUnit(), new TimeUnit(5, TimeUnit::SECOND));
             $lastChapter = null;
             $index = 1;
-            foreach($silences as $silence) {
-                if($silence->getStart()->milliseconds()  < $lastSilence->getEnd()->milliseconds()) {
+            foreach ($silences as $silence) {
+                if ($silence->getStart()->milliseconds() < $lastSilence->getEnd()->milliseconds()) {
                     continue;
                 }
 
-                if($lastChapter instanceof Chapter && $lastChapter->getStart()->milliseconds() + 60000 > $silence->getStart()->milliseconds() ) {
+                if ($lastChapter instanceof Chapter && $lastChapter->getStart()->milliseconds() + 60000 > $silence->getStart()->milliseconds()) {
                     continue;
                 }
 
@@ -151,7 +151,7 @@ class ChapterMarker
                 $lastSilence = $silence;
             }
 
-            if($lastChapter && !in_array($lastChapter, $guessedChapters, true)) {
+            if ($lastChapter && !in_array($lastChapter, $guessedChapters, true)) {
                 $guessedChapters[] = $lastChapter;
             }
         }
@@ -231,8 +231,92 @@ class ChapterMarker
 
     /**
      * @param Chapter[] $chapters
+     * @param Silence[] $silences
+     * @param int $maxChapterLength
+     * @param int $desiredChapterLength
+     * @param array $normalizeChapterOptions
+     * @return array
      */
-    public function normalizeChapters($chapters, $options)
+    public function adjustTooLongChapters(array $chapters, array $silences, int $maxChapterLength, int $desiredChapterLength, array $normalizeChapterOptions)
+    {
+        $containsTooLongChapters = false;
+        $reindexChapters = true;
+        $silences = $this->normalizeSilenceArray($silences);
+
+        $resultChapters = [];
+        while (true) {
+            $chapter = current($chapters);
+            $nextChapter = next($chapters);
+            if ($chapter->getLength()->milliseconds() <= $maxChapterLength) {
+                $resultChapters[] = clone $chapter;
+                continue;
+            }
+
+            if (!preg_match("/^[1-9][0-9]*$/isU", $chapter->getName())) {
+                $reindexChapters = false;
+            }
+
+            $containsTooLongChapters = true;
+            $newChapter = clone $chapter;
+
+
+            /** @var Silence $silence */
+            foreach ($silences as $position => $silence) {
+                if ($nextChapter instanceof Chapter && $nextChapter->getStart()->milliseconds() < $silence->getStart()->milliseconds()) {
+                    break;
+                }
+
+                if ($silence->getStart()->milliseconds() < $newChapter->getStart()->milliseconds()) {
+                    continue;
+                }
+
+                if ($silence->getStart()->milliseconds() - $newChapter->getStart()->milliseconds() < $desiredChapterLength) {
+                    continue;
+                }
+
+                if ($silence->getStart()->milliseconds() > $newChapter->getStart()->milliseconds() + $maxChapterLength) {
+                    $newChapter->setLength(new TimeUnit($maxChapterLength));
+                } else {
+                    $newChapter->setEnd(new TimeUnit(floor($silence->getStart()->milliseconds() + $silence->getLength()->milliseconds() / 2)));
+                }
+
+
+                $resultChapters[] = $newChapter;
+                $newChapter = clone $chapter;
+                $newChapter->setStart($silence->getEnd());
+            }
+
+            $resultChapters[] = $newChapter;
+
+            if (!$nextChapter) {
+                break;
+            }
+
+        }
+
+        if (!$containsTooLongChapters) {
+            return $chapters;
+        }
+
+        if ($reindexChapters) {
+            $index = 1;
+            foreach ($resultChapters as $chapter) {
+                $chapter->setName($index);
+                $index++;
+            }
+            return $resultChapters;
+        }
+
+        return $this->normalizeChapters($resultChapters, $normalizeChapterOptions);
+
+    }
+
+    /**
+     * @param Chapter[] $chapters
+     * @param array $options
+     * @return array
+     */
+    public function normalizeChapters($chapters, $options = [])
     {
 
         $defaults = [

@@ -395,11 +395,22 @@ Codecs:
                 $this->debug($process->getOutput() . $process->getErrorOutput());
             }
 
-            return;
+
+            if (count($tag->chapters)) {
+                $chaptersFile = $this->audioFileToChaptersFile($file);
+                if ($chaptersFile->isFile() && !$this->optForce) {
+                    $this->output->writeln("Chapters file " . $chaptersFile . " already exists, use --force to force overwrite");
+                    return;
+                }
+
+                file_put_contents($chaptersFile, implode(PHP_EOL, $this->chaptersToMp4v2Format($tag->chapters)));
+                $this->mp4chaps(["-i", $file], "importing chapters for " . $file);
+            }
         }
 
 
     }
+
 
     private function adjustTagDescriptionForMp4(Tag $tag)
     {

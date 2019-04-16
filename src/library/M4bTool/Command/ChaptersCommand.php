@@ -20,8 +20,6 @@ class ChaptersCommand extends AbstractCommand
 {
 
 
-    const OPTION_SILENCE_MIN_LENGTH = "silence-min-length";
-    const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
     const OPTION_MERGE_SIMILAR = "merge-similar";
 
     const OPTION_FIND_MISPLACED_CHAPTERS = "find-misplaced-chapters";
@@ -68,8 +66,6 @@ class ChaptersCommand extends AbstractCommand
         $this->setHelp('Can add Chapters to m4b files via different types of inputs'); // the full command description shown when running the command with the "--help" option
 
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
-        $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "a", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", 1750);
-        $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "b", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
         $this->addOption(static::OPTION_MERGE_SIMILAR, "s", InputOption::VALUE_NONE, "merge similar chapter names");
         $this->addOption(static::OPTION_OUTPUT_FILE, static::OPTION_OUTPUT_FILE_SHORTCUT, InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
         $this->addOption(static::OPTION_ADJUST_BY_SILENCE, null, InputOption::VALUE_NONE, "will try to adjust chapters of a file by silence detection and existing chapter marks");
@@ -97,7 +93,7 @@ class ChaptersCommand extends AbstractCommand
         $this->initParsers();
         $this->loadFileToProcess();
 
-        $this->detectSilencesForChapterGuessing($this->filesToProcess);
+        $this->silenceDetectionOutput = $this->detectSilencesForChapterGuessing($this->filesToProcess);
 
         $parsedChapters = [];
 
@@ -150,31 +146,6 @@ class ChaptersCommand extends AbstractCommand
     }
 
 
-    protected function detectSilencesForChapterGuessing(\SplFileInfo $file)
-    {
-        $fileNameHash = hash('sha256', $file->getRealPath());
-
-        $cacheItem = $this->cache->getItem("chapter.silences." . $fileNameHash);
-        if ($cacheItem->isHit()) {
-            $this->silenceDetectionOutput = $cacheItem->get();
-            return;
-        }
-
-
-        $process = $this->ffmpeg([
-            "-i", $file,
-            "-af", "silencedetect=noise=-30dB:d=" . ((float)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH) / 1000),
-            "-f", "null",
-            "-",
-
-        ], "detecting silence of " . $file);
-        $this->silenceDetectionOutput = $process->getOutput();
-        $this->silenceDetectionOutput .= $process->getErrorOutput();
-
-
-        $cacheItem->set($this->silenceDetectionOutput);
-        $this->cache->save($cacheItem);
-    }
 
     private function loadOutputFile()
     {
@@ -275,7 +246,6 @@ class ChaptersCommand extends AbstractCommand
                 }
 
                 $chapter->setName($chapter->getName() . ' - index: ' . $index);
-                // $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
             }
             ksort($this->chapters);
         }
@@ -296,9 +266,13 @@ class ChaptersCommand extends AbstractCommand
         return $specialOffsetChapters;
     }
 
+    /**
+     * @param null $chaptersTxtFile
+     * @throws \Exception
+     */
     protected function exportChaptersToTxt($chaptersTxtFile = null)
     {
-        $chapterLines = $this->chaptersAsLines();
+        $chapterLines = $this->chaptersToMp4v2Format($this->chapters);
         $chapterLinesAsString = implode(PHP_EOL, $chapterLines);
         $this->output->writeln($chapterLinesAsString);
 

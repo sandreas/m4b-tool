@@ -93,4 +93,27 @@ class DirectoryLoaderTest extends TestCase
         ];
         $this->assertEquals($expected, $actual);
     }
+
+    public function testLoadWithSingleAudioBookStructure()
+    {
+        $structure = [
+            'input' => [
+                'Fantasy' => [
+                    'John Doe' => [
+                        '.DS_Store' => "",
+                        'Doetown' => [
+                            "cover.jpg" => "",
+                            "doetown.mp3" => ""
+                        ],
+                    ],
+                ],
+            ],
+        ];
+        $vfs = vfsStream::setup('root', null, $structure);
+        $actual = $this->subject->load($vfs->url() . "/input/", static::INCLUDE_EXTENSIONS);
+        $expected = [
+            $vfs->url() . "/input/Fantasy/John Doe/Doetown/",
+        ];
+        $this->assertEquals($expected, $actual);
+    }
 }
