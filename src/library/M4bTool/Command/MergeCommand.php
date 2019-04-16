@@ -188,7 +188,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $fileNamePart = rtrim($formatParser->format($trimmedBatchPattern), "\\/");
 
             // add a folder for name, if it is not a series
-            if (!$formatParser->getPlaceHolderValue("%s")) {
+            if (!$formatParser->getPlaceHolderValue(static::MAPPING_OPTIONS_PLACEHOLDERS[static::OPTION_TAG_SERIES])) {
                 $fileNamePart .= "/" . $formatParser->format("%n");
             }
 
@@ -655,6 +655,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     private function mergeFiles()
     {
+
+        if (count($this->filesToMerge) === 1) {
+            $this->debug("only 1 file in merge list, copying file");
+            copy(current($this->filesToMerge), $this->outputFile);
+            return;
+        }
 
         // howto quote: http://ffmpeg.org/ffmpeg-utils.html#Quoting-and-escaping
         $listFile = $this->outputFile . ".listing.txt";
