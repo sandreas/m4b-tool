@@ -211,7 +211,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $output->writeln(sprintf("  =>  %s", $batchOutputFile));
             foreach (static::MAPPING_OPTIONS_PLACEHOLDERS as $optionName => $placeHolderName) {
                 $placeHolderValue = $formatParser->getPlaceHolderValue($placeHolderName);
-                if ($placeHolderValue) {
+                if ($placeHolderValue !== "") {
                     $output->writeln(sprintf("- %s: %s", $optionName, $placeHolderValue));
                     $this->setOptionIfUndefined($optionName, $placeHolderValue, $clonedInput);
                 }

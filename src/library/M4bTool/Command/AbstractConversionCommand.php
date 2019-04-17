@@ -192,7 +192,7 @@ class AbstractConversionCommand extends AbstractCommand
         if ($input === null) {
             $input = $this->input;
         }
-        if (!$input->getOption($optionName) && $optionValue) {
+        if (!$input->getOption($optionName) && $optionValue !== "") {
             $input->setOption($optionName, $optionValue);
         }
     }
