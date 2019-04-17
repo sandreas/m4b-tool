@@ -8,6 +8,7 @@ use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\TagBuilder;
 use M4bTool\Parser\FfmetaDataParser;
+use M4bTool\Process\Ffmpeg;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -704,10 +705,12 @@ Codecs:
         if (!$this->optAdjustBitrateForIpod) {
             return;
         }
+        $ffmpeg = new Ffmpeg();
+
         $this->output->writeln("ipod auto adjust active, getting track durations");
         $totalDuration = new TimeUnit();
         foreach ($filesToConvert as $index => $file) {
-            $duration = $this->readDuration($file);
+            $duration = $ffmpeg->loadQuickEstimatedDuration($file);
             if (!$duration) {
                 throw new Exception("could not get duration for file " . $file . " - needed for " . static::OPTION_ADJUST_FOR_IPOD);
             }
@@ -716,7 +719,7 @@ Codecs:
 
         $durationSeconds = $totalDuration->milliseconds() / 1000;
         $maxSamplingRate = static::MAX_IPOD_SAMPLES / $durationSeconds;
-        $this->output->writeln("total duration: " . $totalDuration->format() . " (" . $durationSeconds . "s)");
+        $this->output->writeln("total estimated duration: " . $totalDuration->format() . " (" . $durationSeconds . "s)");
         $this->output->writeln("max possible sampling rate: " . round($maxSamplingRate) . "Hz");
 
         if ($this->optAudioSampleRate) {
