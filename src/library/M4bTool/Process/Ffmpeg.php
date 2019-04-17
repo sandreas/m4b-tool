@@ -212,7 +212,7 @@ class Ffmpeg extends AbstractExecutable
             "-hide_banner",
             "-i", $file,
             "-f", "ffmetadata",
-            "-"], sprintf("load estimated duration for file %s", $file));
+            "-"], sprintf("load estimated duration for file %s\n", $file));
         $output = $process->getOutput() . $process->getErrorOutput();
 
         preg_match("/\bDuration:[\s]+([0-9:\.]+)/", $output, $matches);
