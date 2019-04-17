@@ -7,6 +7,7 @@ use DateTime;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Parser\FfmetaDataParser;
+use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
@@ -21,6 +22,7 @@ use Symfony\Component\Process\Process;
 class AbstractCommand extends Command
 {
     const AUDIO_EXTENSION_MP3 = "mp3";
+    const AUDIO_EXTENSION_MP4 = "mp4";
     const AUDIO_EXTENSION_M4A = "m4a";
     const AUDIO_EXTENSION_M4B = "m4b";
 
@@ -109,14 +111,20 @@ class AbstractCommand extends Command
     /**
      * @param SplFileInfo $file
      * @return TimeUnit|null
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      * @throws Exception
      */
     public function readDuration(SplFileInfo $file)
     {
-        $meta = $this->readFileMetaData($file);
-        if ($meta->getFormat() === FfmetaDataParser::FORMAT_MP4 || $file->getExtension() == "mp4" || $file->getExtension() == "m4b") {
+        $isMp4 = $this->hasMp4AudioFileExtension($file);
+        $meta = null;
+        // loading metadata with ffmpeg takes a long time, so only load it when its really necessary
+        if (!$isMp4) {
+            $meta = $this->readFileMetaData($file);
+            $isMp4 = ($meta->getFormat() === FfmetaDataParser::FORMAT_MP4);
+        }
 
+        if ($isMp4) {
             $cacheItem = $this->cache->getItem("duration." . hash('sha256', $file->getRealPath()));
             if ($cacheItem->isHit()) {
                 return new TimeUnit($cacheItem->get(), TimeUnit::SECOND);
@@ -146,10 +154,15 @@ class AbstractCommand extends Command
 
     }
 
+    public function hasMp4AudioFileExtension(SplFileInfo $file)
+    {
+        return in_array($file->getExtension(), [static::AUDIO_EXTENSION_M4A, static::AUDIO_EXTENSION_M4B, static::AUDIO_EXTENSION_MP4], true);
+    }
+
     /**
      * @param array $command
      * @param null $introductionMessage
-     * @return \Symfony\Component\Process\Process
+     * @return Process
      * @throws Exception
      */
     protected function shell(array $command, $introductionMessage = null)
@@ -249,7 +262,7 @@ class AbstractCommand extends Command
      * @param SplFileInfo $file
      * @return FfmetaDataParser
      * @throws Exception
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public function readFileMetaData(SplFileInfo $file)
     {
@@ -266,7 +279,7 @@ class AbstractCommand extends Command
     /**
      * @param SplFileInfo $file
      * @return mixed|string
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     protected function readFileMetaDataOutput(SplFileInfo $file)
     {
@@ -282,7 +295,7 @@ class AbstractCommand extends Command
     /**
      * @param SplFileInfo $file
      * @return mixed|string
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     protected function readFileMetaDataStreamInfo(SplFileInfo $file)
     {
@@ -300,7 +313,7 @@ class AbstractCommand extends Command
      * @param $cacheKey
      * @param null $message
      * @return mixed|string
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      * @throws Exception
      */
     private function runCachedFfmpeg(array $command, $cacheKey, $message = null)
@@ -330,7 +343,7 @@ class AbstractCommand extends Command
     /**
      * @param $command
      * @param null $introductionMessage
-     * @return \Symfony\Component\Process\Process
+     * @return Process
      * @throws Exception
      */
     protected function ffmpeg($command, $introductionMessage = null)
@@ -534,7 +547,7 @@ class AbstractCommand extends Command
     /**
      * @param $command
      * @param null $introductionMessage
-     * @return \Symfony\Component\Process\Process
+     * @return Process
      * @throws Exception
      */
     protected function mp4chaps($command, $introductionMessage = null)
@@ -546,7 +559,7 @@ class AbstractCommand extends Command
     /**
      * @param $command
      * @param null $introductionMessage
-     * @return \Symfony\Component\Process\Process
+     * @return Process
      * @throws Exception
      */
     protected function fdkaac($command, $introductionMessage = null)
@@ -558,7 +571,7 @@ class AbstractCommand extends Command
     /**
      * @param $command
      * @param null $introductionMessage
-     * @return \Symfony\Component\Process\Process
+     * @return Process
      * @throws Exception
      */
     protected function mp4art($command, $introductionMessage = null)
@@ -571,7 +584,7 @@ class AbstractCommand extends Command
     /**
      * @param $command
      * @param null $introductionMessage
-     * @return \Symfony\Component\Process\Process
+     * @return Process
      * @throws Exception
      */
     protected function mp4tags($command, $introductionMessage = null)
@@ -602,7 +615,8 @@ class AbstractCommand extends Command
     /**
      * @param SplFileInfo $file
      * @return mixed|string
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
+     * @throws Exception
      */
     protected function detectSilencesForChapterGuessing(SplFileInfo $file)
     {
