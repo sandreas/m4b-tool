@@ -131,19 +131,23 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     protected function execute(InputInterface $input, OutputInterface $output)
     {
 
-        $batchPatterns = $input->getOption(static::OPTION_BATCH_PATTERN);
-        if (count($batchPatterns) > 0) {
-            $inputFile = new SplFileInfo($input->getArgument(static::ARGUMENT_INPUT));
-            $inputFiles = $input->getArgument(static::ARGUMENT_MORE_INPUT_FILES);
-            if (count($inputFiles) > 0 || !is_dir($inputFile)) {
-                throw new Exception("The use of --" . static::OPTION_BATCH_PATTERN . " assumes that exactly one directory is processed - please provide a valid and existing directory");
-            }
+        try {
+            $batchPatterns = $input->getOption(static::OPTION_BATCH_PATTERN);
+            if (count($batchPatterns) > 0) {
+                $inputFile = new SplFileInfo($input->getArgument(static::ARGUMENT_INPUT));
+                $inputFiles = $input->getArgument(static::ARGUMENT_MORE_INPUT_FILES);
+                if (count($inputFiles) > 0 || !is_dir($inputFile)) {
+                    throw new Exception("The use of --" . static::OPTION_BATCH_PATTERN . " assumes that exactly one directory is processed - please provide a valid and existing directory");
+                }
 
-            foreach ($batchPatterns as $batchPattern) {
-                $this->processBatchDirectory($batchPattern, clone $this, clone $input, clone $output);
+                foreach ($batchPatterns as $batchPattern) {
+                    $this->processBatchDirectory($batchPattern, clone $this, clone $input, clone $output);
+                }
+            } else {
+                $this->processFiles($input, $output);
             }
-        } else {
-            $this->processFiles($input, $output);
+        } catch (Throwable $e) {
+            $this->debug(sprintf("ERROR: %s\ntrace: %s\nprint_r:%s\n", $e->getMessage(), $e->getTraceAsString(), print_r($e, true)));
         }
 
 
@@ -280,6 +284,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $this->output->writeln(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
             return;
         }
+
         $this->loadInputFiles();
         $this->ensureOutputFileIsNotEmpty($this->outputFile);
         $this->processInputFiles();
@@ -550,7 +555,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $dir .= $this->outputFile->getBasename("." . $this->outputFile->getExtension()) . "-tmpfiles" . DIRECTORY_SEPARATOR;
 
         if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
-            throw new Exception("Could not create temp directory " . $dir);
+            $message = sprintf("Could not create temp directory %s", $dir);
+            $this->debug($message);
+            throw new Exception($message);
         }
 
         $this->adjustBitrateForIpod($this->filesToConvert);
@@ -759,7 +766,17 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         if ($maxChapterLength === 0 || $desiredChapterLength === 0) {
             return;
         }
+        $allChapterLengthsOk = true;
+        foreach ($this->chapters as $chapter) {
+            if ($chapter->getLength()->milliseconds() > $maxChapterLength) {
+                $allChapterLengthsOk = false;
+                break;
+            }
+        }
 
+        if ($allChapterLengthsOk) {
+            return;
+        }
         $silenceDetectionOutput = $this->detectSilencesForChapterGuessing($this->outputFile);
 
         $silenceParser = new SilenceParser();

@@ -13,6 +13,7 @@ use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputOption;
+use Throwable;
 
 class AbstractConversionCommand extends AbstractCommand
 {
@@ -264,15 +265,91 @@ Codecs:
      */
     protected function tagFile(SplFileInfo $file, Tag $tag)
     {
+        $this->debug(sprintf("tagging file %s with tag:\n%s", $file, print_r($tag, true)));
         if ($this->input->getOption(static::OPTION_FIX_MIME_TYPE)) {
             // todo: https://dbojan.github.io/howto_pc/media,%20How%20to%20add%20chapter%20marks%20to%20audio%20books,%20using%20opus%20codec.htm
             // -> see mimetype options and do this in one command when using ffmpeg below
+            $this->debug(sprintf("fixing mimetype of file %s to audio/mp4", $file));
             $this->fixMimeType($file);
         }
 
+        $isMp4Format = $this->hasMp4AudioFileExtension($file);
+        if (!$isMp4Format) {
+            $metaData = $this->readFileMetaData($file);
+            $isMp4Format = ($metaData->getFormat() === FfmetaDataParser::FORMAT_MP4);
+        }
 
-        // see https://wiki.multimedia.cx/index.php/FFmpeg_Metadata#MP3
-        if ($this->optAudioFormat === static::AUDIO_FORMAT_MP3) {
+        if ($isMp4Format) {
+            $this->debug(sprintf("file %s is an MP4 file", $file));
+            $command = [];
+
+            $this->adjustTagDescriptionForMp4($tag);
+
+            $this->appendParameterToCommand($command, "-track", $tag->track);
+            $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
+            $this->appendParameterToCommand($command, "-song", $tag->title);
+            $this->appendParameterToCommand($command, "-artist", $tag->artist);
+            $this->appendParameterToCommand($command, "-genre", $tag->genre);
+            $this->appendParameterToCommand($command, "-writer", $tag->writer);
+            $this->appendParameterToCommand($command, "-description", $tag->description);
+            $this->appendParameterToCommand($command, "-longdesc", $tag->longDescription);
+            $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
+            $this->appendParameterToCommand($command, "-year", $tag->year);
+            $this->appendParameterToCommand($command, "-album", $tag->album);
+            $this->appendParameterToCommand($command, "-comment", $tag->comment);
+            $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
+            $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy ?? $tag->encoder);
+            $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
+            $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
+
+            if ($this->doesMp4tagsSupportSorting()) {
+                if (!$tag->sortTitle && $tag->series) {
+                    $tag->sortTitle = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
+                }
+
+                if (!$tag->sortAlbum && $tag->series) {
+                    $tag->sortAlbum = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
+                }
+
+                $this->appendParameterToCommand($command, "-sortname", $tag->sortTitle);
+                $this->appendParameterToCommand($command, "-sortalbum", $tag->sortAlbum);
+                $this->appendParameterToCommand($command, "-sortartist", $tag->sortArtist);
+            }
+
+
+            if (count($command) > 1) {
+                $command[] = $file;
+                $this->mp4tags($command, "tagging file " . $file);
+            }
+
+            if ($tag->cover && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
+                if (!file_exists($tag->cover)) {
+                    $this->output->writeln("cover file " . $tag->cover . " does not exist");
+                    return;
+                }
+                $command = ["--add", $tag->cover, $file];
+                $this->appendParameterToCommand($command, "-f", $this->optForce);
+                $process = $this->mp4art($command, "adding cover " . $tag->cover . " to " . $file);
+                $this->debug($process->getOutput() . $process->getErrorOutput());
+            }
+
+
+            if (count($tag->chapters)) {
+                $chaptersFile = $this->audioFileToChaptersFile($file);
+                if ($chaptersFile->isFile() && !$this->optForce) {
+                    $this->output->writeln("Chapters file " . $chaptersFile . " already exists, use --force to force overwrite");
+                    return;
+                }
+
+                file_put_contents($chaptersFile, implode(PHP_EOL, $this->chaptersToMp4v2Format($tag->chapters)));
+                $this->mp4chaps(["-i", $file], "importing chapters for " . $file);
+            }
+            return;
+        }
+
+        try {
+            // see https://wiki.multimedia.cx/index.php/FFmpeg_Metadata#MP3
+            $this->debug(sprintf("trying to tag file %s file with ffmpeg", $file));
             $outputFile = new SplFileInfo((string)$file . uniqid("", true) . ".mp3");
             $command = ["-i", $file];
 
@@ -337,76 +414,9 @@ Codecs:
             if (!unlink($file) || !rename($outputFile, $file)) {
                 $this->output->writeln("tagging file " . $file . " failed, could not rename temp output file " . $outputFile . " to " . $file);
             }
-            return;
-        }
-
-        $metaData = $this->readFileMetaData($file);
-
-
-        if ($metaData->getFormat() === FfmetaDataParser::FORMAT_MP4) {
-            $command = [];
-
-            $this->adjustTagDescriptionForMp4($tag);
-
-            $this->appendParameterToCommand($command, "-track", $tag->track);
-            $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
-            $this->appendParameterToCommand($command, "-song", $tag->title);
-            $this->appendParameterToCommand($command, "-artist", $tag->artist);
-            $this->appendParameterToCommand($command, "-genre", $tag->genre);
-            $this->appendParameterToCommand($command, "-writer", $tag->writer);
-            $this->appendParameterToCommand($command, "-description", $tag->description);
-            $this->appendParameterToCommand($command, "-longdesc", $tag->longDescription);
-            $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
-            $this->appendParameterToCommand($command, "-year", $tag->year);
-            $this->appendParameterToCommand($command, "-album", $tag->album);
-            $this->appendParameterToCommand($command, "-comment", $tag->comment);
-            $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
-            $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy ?? $tag->encoder);
-            $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
-            $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
-
-            if ($this->doesMp4tagsSupportSorting()) {
-                if (!$tag->sortTitle && $tag->series) {
-                    $tag->sortTitle = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
-                }
-
-                if (!$tag->sortAlbum && $tag->series) {
-                    $tag->sortAlbum = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
-                }
-
-                $this->appendParameterToCommand($command, "-sortname", $tag->sortTitle);
-                $this->appendParameterToCommand($command, "-sortalbum", $tag->sortAlbum);
-                $this->appendParameterToCommand($command, "-sortartist", $tag->sortArtist);
-            }
-
-
-            if (count($command) > 1) {
-                $command[] = $file;
-                $this->mp4tags($command, "tagging file " . $file);
-            }
-
-            if ($tag->cover && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
-                if (!file_exists($tag->cover)) {
-                    $this->output->writeln("cover file " . $tag->cover . " does not exist");
-                    return;
-                }
-                $command = ["--add", $tag->cover, $file];
-                $this->appendParameterToCommand($command, "-f", $this->optForce);
-                $process = $this->mp4art($command, "adding cover " . $tag->cover . " to " . $file);
-                $this->debug($process->getOutput() . $process->getErrorOutput());
-            }
-
-
-            if (count($tag->chapters)) {
-                $chaptersFile = $this->audioFileToChaptersFile($file);
-                if ($chaptersFile->isFile() && !$this->optForce) {
-                    $this->output->writeln("Chapters file " . $chaptersFile . " already exists, use --force to force overwrite");
-                    return;
-                }
-
-                file_put_contents($chaptersFile, implode(PHP_EOL, $this->chaptersToMp4v2Format($tag->chapters)));
-                $this->mp4chaps(["-i", $file], "importing chapters for " . $file);
-            }
+        } catch (Throwable $e) {
+            $this->output->writeln("ERROR: %s", $e->getMessage());
+            $this->debug(sprintf("could not tag file %s with ffmpeg, error: %s, trace: %s", $file, $e->getMessage(), $e->getTraceAsString()));
         }
 
 

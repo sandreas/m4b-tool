@@ -23,6 +23,13 @@ class ChapterMarker
         $this->maxDiffMilliseconds = $maxDiffMilliseconds;
     }
 
+    /**
+     * @param $mbChapters
+     * @param $silences
+     * @param TimeUnit $fullLength
+     * @return array
+     * @throws \Exception
+     */
     public function guessChaptersBySilences($mbChapters, $silences, TimeUnit $fullLength)
     {
         $guessedChapters = [];
@@ -244,8 +251,11 @@ class ChapterMarker
         $silences = $this->normalizeSilenceArray($silences);
 
         $resultChapters = [];
-        while (true) {
+        while (count($chapters) > 0) {
             $chapter = current($chapters);
+            if (!$chapter) {
+                break;
+            }
             $nextChapter = next($chapters);
             if ($chapter->getLength()->milliseconds() <= $maxChapterLength) {
                 $resultChapters[] = clone $chapter;
