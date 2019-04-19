@@ -147,7 +147,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 $this->processFiles($input, $output);
             }
         } catch (Throwable $e) {
-            $this->debug(sprintf("ERROR: %s\ntrace: %s\nprint_r:%s\n", $e->getMessage(), $e->getTraceAsString(), print_r($e, true)));
+            $this->error($e->getMessage());
+            $this->debug("trace:", $e->getTraceAsString());
         }
 
 
@@ -185,10 +186,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
 
         $matchCount = count($verifiedDirectories);
-        $output->writeln(($matchCount === 1 ? "1 match" : $matchCount . " matches") . " for pattern " . $batchPattern);
+        $this->info(($matchCount === 1 ? "1 match" : $matchCount . " matches") . " for pattern " . $batchPattern);
 
         if ($matchCount > 0) {
-            $output->writeln("================================");
+            $this->info("================================");
         }
 
 
@@ -211,17 +212,17 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $clonedInput->setOption(static::OPTION_OUTPUT_FILE, $batchOutputFile);
             $clonedInput->setOption(static::OPTION_BATCH_PATTERN, []);
 
-            $output->writeln(sprintf("merge %s", $baseDir));
-            $output->writeln(sprintf("  =>  %s", $batchOutputFile));
+            $this->info(sprintf("merge %s", $baseDir));
+            $this->info(sprintf("  =>  %s", $batchOutputFile));
             foreach (static::MAPPING_OPTIONS_PLACEHOLDERS as $optionName => $placeHolderName) {
                 $placeHolderValue = $formatParser->getPlaceHolderValue($placeHolderName);
                 if ($placeHolderValue !== "") {
-                    $output->writeln(sprintf("- %s: %s", $optionName, $placeHolderValue));
+                    $this->info(sprintf("- %s: %s", $optionName, $placeHolderValue));
                     $this->setOptionIfUndefined($optionName, $placeHolderValue, $clonedInput);
                 }
             }
-            $output->writeln("");
-            $output->writeln("================================");
+            $this->info("");
+            $this->info("================================");
 
             if ($clonedInput->getOption(static::OPTION_DRY_RUN)) {
                 continue;
@@ -230,7 +231,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             try {
                 $clonedCommand->execute($clonedInput, $clonedOutput);
             } catch (Exception $e) {
-                $output->writeln(sprintf("ERROR processing %s: %s", $baseDir, $e->getMessage()));
+                $this->error(sprintf("processing failed for %s: %s", $baseDir, $e->getMessage()));
                 $this->debug(sprintf("error on %s: %s", $baseDir, $e->getTraceAsString()));
             }
         }
@@ -281,7 +282,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
 
         if (!$this->optForce && $batchProcessing && $this->outputFile->isFile()) {
-            $this->output->writeln(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
+            $this->info(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
             return;
         }
 
@@ -331,7 +332,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         if (!($f instanceof SplFileInfo)) {
             $f = new SplFileInfo($f);
             if (!$f->isReadable()) {
-                $this->output->writeln("skipping " . $f . " (does not exist)");
+                $this->info("skipping " . $f . " (does not exist)");
                 return;
             }
         }
@@ -449,7 +450,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $coverDir = $this->argInputFile->isDir() ? $this->argInputFile : new SplFileInfo($this->argInputFile->getPath());
 
         if (!$this->input->getOption(static::OPTION_SKIP_COVER) && !$this->input->getOption(static::OPTION_COVER)) {
-            $this->output->writeln("searching for cover in " . $coverDir);
+            $this->info("searching for cover in " . $coverDir);
             $autoCoverFile = new SplFileInfo($coverDir . DIRECTORY_SEPARATOR . "cover.jpg");
             if ($autoCoverFile->isFile()) {
                 $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
@@ -477,9 +478,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         }
         if ($this->input->getOption(static::OPTION_COVER)) {
-            $this->output->writeln("using cover " . $this->input->getOption("cover"));
+            $this->info("using cover ", $this->input->getOption("cover"));
         } else {
-            $this->output->writeln("cover not found or specified");
+            $this->info("cover not found or not specified");
         }
     }
 
@@ -494,17 +495,16 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     private function lookupFileContents(SplFileInfo $referenceFile, $nameOfFile, $maxSize = 1024 * 1024)
     {
         $nameOfFileDir = $referenceFile->isDir() ? $referenceFile : new SplFileInfo($referenceFile->getPath());
-        $this->output->writeln(sprintf("searching for %s in %s", $nameOfFile, $nameOfFileDir));
+        $this->info(sprintf("searching for %s in %s", $nameOfFile, $nameOfFileDir));
         $autoDescriptionFile = new SplFileInfo($nameOfFileDir . DIRECTORY_SEPARATOR . $nameOfFile);
 
-        if ($this->optDebug) {
-            $this->output->writeln(sprintf("checking file %s, realpath: %s", $autoDescriptionFile, $autoDescriptionFile->getRealPath()));
-        }
+        $this->debug(sprintf("checking file %s, realpath: %s", $autoDescriptionFile, $autoDescriptionFile->getRealPath()));
+
         if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < $maxSize) {
-            $this->output->writeln(sprintf("success: found %s for import", $nameOfFile));
+            $this->info(sprintf("success: found %s for import", $nameOfFile));
             return file_get_contents($autoDescriptionFile);
         } else {
-            $this->output->writeln(sprintf("file %s not found or too big", $nameOfFile));
+            $this->info(sprintf("file %s not found or too big", $nameOfFile));
         }
         return null;
     }
@@ -582,7 +582,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             }
 
             if ($finishedOutputFile->isFile() && $finishedOutputFile->getSize() > 0) {
-                $this->output->writeln("output file " . $outputFile . " already exists, skipping");
+                $this->info("output file " . $outputFile . " already exists, skipping");
                 continue;
             }
 
@@ -729,7 +729,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $this->deleteFilesAndParentDir($this->filesToMerge);
             $this->deleteFilesAndParentDir($this->otherTmpFiles);
         } catch (Throwable $e) {
-            $this->output->writeln("ERROR: could not delete temporary files (" . $e->getMessage() . ")");
+            $this->error("could not delete temporary files: ", $e->getMessage());
+            $this->debug("trace:", $e->getTraceAsString());
         }
 
     }

@@ -4,6 +4,7 @@
 namespace M4bTool\Command;
 
 
+use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use M4bTool\Marker\ChapterMarker;
@@ -85,6 +86,13 @@ class ChaptersCommand extends AbstractCommand
         $this->addOption(static::OPTION_LAST_CHAPTER_OFFSET, null, InputOption::VALUE_OPTIONAL, "milliseconds to add after silence on chapter start", 0);
     }
 
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int|void|null
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws Exception
+     */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
 
@@ -140,11 +148,10 @@ class ChaptersCommand extends AbstractCommand
     {
         $this->filesToProcess = new SplFileInfo($this->input->getArgument(static::ARGUMENT_INPUT));
         if (!$this->filesToProcess->isFile()) {
-            $this->output->writeln("Input file is not a valid file, currently directories are not supported");
+            $this->info("Input file is not a valid file, currently directories are not supported");
             return;
         }
     }
-
 
 
     private function loadOutputFile()
@@ -153,19 +160,26 @@ class ChaptersCommand extends AbstractCommand
         if ($this->outputFile === "") {
             $this->outputFile = $this->filesToProcess->getPath() . DIRECTORY_SEPARATOR . $this->filesToProcess->getBasename("." . $this->filesToProcess->getExtension()) . ".chapters.txt";
             if (file_exists($this->outputFile) && !$this->input->getOption(static::OPTION_FORCE)) {
-                $this->output->writeln("output file already exists, add --force option to overwrite");
+                $this->info("output file already exists, add --force option to overwrite");
                 $this->outputFile = "";
             }
         }
     }
 
+    /**
+     * @param array $mbChapters
+     * @throws Exception
+     */
     private function buildChapters(array $mbChapters)
     {
         $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
-        $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
+        $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_VERBOSITY));
         $this->chapters = $chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $this->silenceParser->getDuration());
     }
 
+    /**
+     * @throws Exception
+     */
     private function normalizeChapters()
     {
 
@@ -274,7 +288,7 @@ class ChaptersCommand extends AbstractCommand
     {
         $chapterLines = $this->chaptersToMp4v2Format($this->chapters);
         $chapterLinesAsString = implode(PHP_EOL, $chapterLines);
-        $this->output->writeln($chapterLinesAsString);
+        $this->debug($chapterLinesAsString);
 
         if ($chaptersTxtFile === null) {
             $this->loadOutputFile();
@@ -284,24 +298,18 @@ class ChaptersCommand extends AbstractCommand
         if ($chaptersTxtFile) {
             $outputDir = dirname($this->outputFile);
             if (!is_dir($outputDir) && !mkdir($outputDir, 0777, true)) {
-                $this->output->writeln("Could not create output directory: " . $outputDir);
+                $this->info("Could not create output directory: " . $outputDir);
             } elseif (!file_put_contents($chaptersTxtFile, $chapterLinesAsString)) {
-                $this->output->writeln("Could not write output file: " . $chaptersTxtFile);
+                $this->info("Could not write output file: " . $chaptersTxtFile);
             } else {
-                $this->output->writeln("Chapters successfully exported to file: " . $chaptersTxtFile);
+                $this->info("Chapters successfully exported to file: " . $chaptersTxtFile);
             }
         }
     }
 
-    private function chaptersAsLines()
-    {
-        $chaptersAsLines = [];
-        foreach ($this->chapters as $chapter) {
-            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
-        }
-        return $chaptersAsLines;
-    }
-
+    /**
+     * @throws Exception
+     */
     protected function importChaptersToM4b()
     {
         $fileToImport = preg_replace("/(.*)(.chapters.txt)$/i", "$1.m4b", $this->outputFile);
@@ -310,7 +318,7 @@ class ChaptersCommand extends AbstractCommand
             $process = $this->mp4chaps([
                 "-i", $fileToImport
             ], "importing chapters to " . $fileToImport);
-            $this->output->writeln($process->getOutput() . $process->getErrorOutput());
+            $this->info($process->getOutput() . $process->getErrorOutput());
         }
 
     }

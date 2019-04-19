@@ -18,7 +18,13 @@ class ChapterTitleBuilder
     public function __construct(MetaReaderInterface $metaReader) {
         $this->metaReader = $metaReader;
     }
-    
+
+    /**
+     * @param $files
+     * @param $autoSplitMilliSeconds
+     * @return array
+     * @throws Exception
+     */
     public function buildChapters($files, $autoSplitMilliSeconds) {
         $this->totalDuration = new TimeUnit();
         $lastTitle = null;
@@ -39,7 +45,7 @@ class ChapterTitleBuilder
 
 
             if (!$durationContainer[$fileIndex]) {
-                throw new Exception("could not get duration for file " . $file);
+                throw new Exception(sprintf("could not get duration for file %s: metareader class: %s", $file, get_class($this->metaReader)));
             }
 
             $titleContainer[$fileIndex] = [

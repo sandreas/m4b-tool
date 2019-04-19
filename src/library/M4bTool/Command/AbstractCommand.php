@@ -49,7 +49,8 @@ class AbstractCommand extends Command
     const ARGUMENT_INPUT = "input";
 
     const OPTION_DEBUG = "debug";
-    const OPTION_DEBUG_FILENAME = "debug-filename";
+    const OPTION_VERBOSITY = "verbosity";
+    const OPTION_LOG_FILE = "logfile";
     const OPTION_FORCE = "force";
     const OPTION_NO_CACHE = "no-cache";
     const OPTION_FFMPEG_THREADS = "ffmpeg-threads";
@@ -62,10 +63,26 @@ class AbstractCommand extends Command
     const OPTION_DESIRED_CHAPTER_LENGTH = "desired-chapter-length";
 
 
-    const OPTION_CONVERT_CHARSET = "convert-charset";
+    const OPTION_PLATFORM_CHARSET = "platform-charset";
 
     const OPTION_OUTPUT_FILE = "output-file";
     const OPTION_OUTPUT_FILE_SHORTCUT = "o";
+
+    const LEVEL_DEBUG = 100;
+    const LEVEL_INFO = 200;
+    const LEVEL_WARN = 300;
+    const LEVEL_ERROR = 400;
+    const LEVEL_TO_STRING = [
+        self::LEVEL_DEBUG => 'DEBUG',
+        self::LEVEL_INFO => 'INFO',
+//        self::LEVEL_NOTICE    => 'NOTICE',
+        self::LEVEL_WARN => 'WARN',
+        self::LEVEL_ERROR => 'ERROR',
+//        self::LEVEL_CRITICAL  => 'CRITICAL',
+//        self::LEVEL_ALERT     => 'ALERT',
+//        self::LEVEL_EMERGENCY => 'EMERGENCY',
+    ];
+
 
     /**
      * @var AbstractAdapter
@@ -98,15 +115,26 @@ class AbstractCommand extends Command
      */
     protected $optNoCache = false;
 
+
     /**
      * @var bool
      */
     protected $optDebug = false;
 
+
+    /**
+     * @var bool
+     */
+    protected $optVerbosity = false;
+
     /**
      * @var SplFileInfo
      */
-    protected $optDebugFile;
+    protected $optLogFile;
+
+    /** @var int */
+    protected $logLevel;
+
 
     /**
      * @param SplFileInfo $file
@@ -116,6 +144,7 @@ class AbstractCommand extends Command
      */
     public function readDuration(SplFileInfo $file)
     {
+        $this->debug(sprintf("reading duration for file %s", $file));
         $isMp4 = $this->hasMp4AudioFileExtension($file);
         $meta = null;
         // loading metadata with ffmpeg takes a long time, so only load it when its really necessary
@@ -125,6 +154,7 @@ class AbstractCommand extends Command
         }
 
         if ($isMp4) {
+
             $cacheItem = $this->cache->getItem("duration." . hash('sha256', $file->getRealPath()));
             if ($cacheItem->isHit()) {
                 return new TimeUnit($cacheItem->get(), TimeUnit::SECOND);
@@ -135,127 +165,85 @@ class AbstractCommand extends Command
 
             $output = $proc->getOutput() . $proc->getErrorOutput();
 
+            $this->debug("file is mp4, trying mp4info, output: ", $output);
             preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
             $seconds = isset($matches[1]) ? $matches[1] : 0;
-            if (!$seconds) {
-                return null;
+            if ($seconds) {
+                $cacheItem->set($seconds);
+                $this->cache->save($cacheItem);
+                return new TimeUnit($seconds, TimeUnit::SECOND);
             }
-            $cacheItem->set($seconds);
-            $this->cache->save($cacheItem);
-            return new TimeUnit($seconds, TimeUnit::SECOND);
+            $this->warn("could not get mp4 duration with mp4info, trying to use ffmpeg");
+            $this->debug("mp4info output:", $output);
         }
-
 
         if (!$meta) {
-            return null;
+            $meta = $this->readFileMetaData($file);
         }
+
+        $this->debug("meta: ", print_r($meta, true));
+
         return $meta->getDuration();
+    }
 
+    protected function debug(...$params)
+    {
+        $this->log(static::LEVEL_DEBUG, ...$params);
+    }
 
+    protected function log($level, ...$params)
+    {
+        $messageParts = [];
+        foreach ($params as $param) {
+            if (is_scalar($param) || (is_object($param) && method_exists($param, "__toString"))) {
+                $messageParts[] = (string)$param;
+            } else if (is_array($param)) {
+                $messageParts[] = var_export($param, true);
+            } else {
+                $messageParts[] = "type: " . gettype($param);
+            }
+        }
+
+        if ($level >= $this->getLogLevel()) {
+            $logMessage = implode(" ", $messageParts);
+            $formattedLogMessage = $logMessage;
+            if ($level === static::LEVEL_WARN) {
+                $formattedLogMessage = "<fg=black;bg=yellow>" . $formattedLogMessage . "</>";
+            } elseif ($level === static::LEVEL_ERROR) {
+                $formattedLogMessage = "<fg=black;bg=red>" . $formattedLogMessage . "</>";
+            }
+
+            $this->output->writeln($formattedLogMessage);
+            if ($this->optLogFile instanceof SplFileInfo) {
+                if (!touch($this->optLogFile) || !$this->optLogFile->isWritable()) {
+                    $this->output->writeln(sprintf("<error>Debug file %s is not writable</error>", $this->optLogFile));
+                    $this->optLogFile = null;
+                }
+                $logLevel = static::LEVEL_TO_STRING[$level] ?? "UNKNOWN";
+                file_put_contents($this->optLogFile, $logLevel . " " . $logMessage . PHP_EOL, FILE_APPEND);
+            }
+        }
+    }
+
+    protected function getLogLevel()
+    {
+        if ($this->logLevel) {
+            return $this->logLevel;
+        }
+        $this->logLevel = static::LEVEL_INFO;
+        $verbosity = $this->input->getOption(static::OPTION_VERBOSITY);
+        foreach (static::LEVEL_TO_STRING as $level => $string) {
+            if (mb_strtolower($verbosity) === mb_strtolower($string)) {
+                $this->logLevel = $level;
+                break;
+            }
+        }
+        return $this->logLevel;
     }
 
     public function hasMp4AudioFileExtension(SplFileInfo $file)
     {
         return in_array($file->getExtension(), [static::AUDIO_EXTENSION_M4A, static::AUDIO_EXTENSION_M4B, static::AUDIO_EXTENSION_MP4], true);
-    }
-
-    /**
-     * @param array $command
-     * @param null $introductionMessage
-     * @return Process
-     * @throws Exception
-     */
-    protected function shell(array $command, $introductionMessage = null)
-    {
-        $this->debug($this->formatShellCommand($command));
-        if ($introductionMessage) {
-            $this->output->writeln($introductionMessage);
-        }
-
-        $convertCharset = strtolower($this->input->getOption(static::OPTION_CONVERT_CHARSET));
-        if ($convertCharset == "" && $this->isWindows()) {
-            $convertCharset = "windows-1252";
-        }
-
-        if ($convertCharset && in_array($command[0], ["mp4art", "mp4chaps", "mp4extract", "mp4file", "mp4info", "mp4subtitle", "mp4tags", "mp4track", "mp4trackdump"])) {
-            if (function_exists("mb_convert_encoding")) {
-                $availableCharsets = array_map('strtolower', mb_list_encodings());
-                if (!in_array($convertCharset, $availableCharsets, true)) {
-                    throw new Exception("charset " . $convertCharset . " is not supported - use one of these instead: " . implode(", ", $availableCharsets) . " ");
-                }
-
-                $this->debug("using charset " . $convertCharset);
-                foreach ($command as $key => $part) {
-                    $command[$key] = mb_convert_encoding($part, "UTF-8", $convertCharset);
-                }
-            } else if (!$this->optForce) {
-                throw new Exception("mbstring extension is not loaded - please enable in php.ini or use --force to try with unexpected results");
-            }
-        }
-
-        $process = new Process($command);
-        $process->setTimeout(null);
-        $process->start();
-
-
-        usleep(250000);
-        $shouldShowEmptyLine = false;
-        while ($process->isRunning()) {
-            $shouldShowEmptyLine = true;
-            $this->updateProgress();
-        }
-        if ($shouldShowEmptyLine) {
-            $this->output->writeln('');
-        }
-
-        if ($process->getExitCode() != 0) {
-            $this->debug($process->getOutput() . $process->getErrorOutput());
-        }
-
-        return $process;
-    }
-
-    /**
-     * @param $message
-     * @throws Exception
-     */
-    protected function debug($message)
-    {
-        if (!$this->optDebug) {
-            return;
-        }
-
-        if (!touch($this->optDebugFile) || !$this->optDebugFile->isWritable()) {
-            throw new Exception("Debug file " . $this->optDebugFile . " is not writable");
-        }
-
-        if (!is_scalar($message)) {
-            $message = var_export($message, true);
-        }
-        file_put_contents($this->optDebugFile, $message . PHP_EOL, FILE_APPEND);
-    }
-
-    protected function formatShellCommand(array $command)
-    {
-
-        $cmd = array_map(function ($part) {
-            if (preg_match('/\s/', $part)) {
-                return '"' . $part . '"';
-            }
-            return $part;
-        }, $command);
-        return implode(" ", $cmd);
-    }
-
-    protected function updateProgress()
-    {
-        static $i = 0;
-        if (++$i % 60 == 0) {
-            $this->output->writeln('+');
-        } else {
-            $this->output->write('+');
-            usleep(1000000);
-        }
     }
 
     /**
@@ -270,10 +258,15 @@ class AbstractCommand extends Command
             throw new Exception("cannot read metadata, file " . $file . " does not exist");
         }
 
-        $this->output->writeln("reading metadata and streaminfo for file " . $file);
+        $this->info("reading metadata and streaminfo for file " . $file);
         $metaData = new FfmetaDataParser();
         $metaData->parse($this->readFileMetaDataOutput($file), $this->readFileMetaDataStreamInfo($file));
         return $metaData;
+    }
+
+    protected function info(...$params)
+    {
+        $this->log(static::LEVEL_INFO, ...$params);
     }
 
     /**
@@ -288,22 +281,6 @@ class AbstractCommand extends Command
             "-hide_banner",
             "-i", $file,
             "-f", "ffmetadata",
-            "-"
-        ], $cacheKey);
-    }
-
-    /**
-     * @param SplFileInfo $file
-     * @return mixed|string
-     * @throws InvalidArgumentException
-     */
-    protected function readFileMetaDataStreamInfo(SplFileInfo $file)
-    {
-        $cacheKey = "streaminfo." . hash('sha256', $file->getRealPath());
-        return $this->runCachedFfmpeg([
-            "-hide_banner",
-            "-i", $file,
-            "-f", "null",
             "-"
         ], $cacheKey);
     }
@@ -368,18 +345,129 @@ class AbstractCommand extends Command
         return $this->shell($command, $introductionMessage);
     }
 
+    /**
+     * @param array $command
+     * @param null $introductionMessage
+     * @return Process
+     * @throws Exception
+     */
+    protected function shell(array $command, $introductionMessage = null)
+    {
+        $this->debug($this->formatShellCommand($command));
+        if ($introductionMessage) {
+            $this->info($introductionMessage);
+        }
+
+        $platformCharset = strtolower($this->input->getOption(static::OPTION_PLATFORM_CHARSET));
+        if ($platformCharset == "" && $this->isWindows()) {
+            $platformCharset = "windows-1252";
+        }
+
+        if ($platformCharset && in_array($command[0], ["mp4art", "mp4chaps", "mp4extract", "mp4file", "mp4info", "mp4subtitle", "mp4tags", "mp4track", "mp4trackdump"])) {
+            if (function_exists("mb_convert_encoding")) {
+                $availableCharsets = array_map('strtolower', mb_list_encodings());
+                if (!in_array($platformCharset, $availableCharsets, true)) {
+                    throw new Exception("charset " . $platformCharset . " is not supported - use one of these instead: " . implode(", ", $availableCharsets) . " ");
+                }
+
+                $this->debug("using charset " . $platformCharset);
+                foreach ($command as $key => $part) {
+                    $command[$key] = mb_convert_encoding($part, "UTF-8", $platformCharset);
+                }
+            } else if (!$this->optForce) {
+                throw new Exception("mbstring extension is not loaded - please enable in php.ini or use --force to try with unexpected results");
+            }
+        }
+
+        $process = new Process($command);
+        $process->setTimeout(null);
+        $process->start();
+
+
+        usleep(250000);
+        $shouldShowEmptyLine = false;
+        while ($process->isRunning()) {
+            $shouldShowEmptyLine = true;
+            $this->updateProgress();
+        }
+        if ($shouldShowEmptyLine) {
+            $this->info('');
+        }
+
+        if ($process->getExitCode() != 0) {
+            $this->debug($process->getOutput() . $process->getErrorOutput());
+        }
+
+        return $process;
+    }
+
+    protected function formatShellCommand(array $command)
+    {
+
+        $cmd = array_map(function ($part) {
+            if (preg_match('/\s/', $part)) {
+                return '"' . $part . '"';
+            }
+            return $part;
+        }, $command);
+        return implode(" ", $cmd);
+    }
+
+    protected function isWindows()
+    {
+        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+    }
+
+    protected function updateProgress()
+    {
+        static $i = 0;
+        if (++$i % 60 == 0) {
+            $this->info('+');
+        } else {
+            $this->output->write('+');
+            usleep(1000000);
+        }
+    }
+
+    /**
+     * @param SplFileInfo $file
+     * @return mixed|string
+     * @throws InvalidArgumentException
+     */
+    protected function readFileMetaDataStreamInfo(SplFileInfo $file)
+    {
+        $cacheKey = "streaminfo." . hash('sha256', $file->getRealPath());
+        return $this->runCachedFfmpeg([
+            "-hide_banner",
+            "-i", $file,
+            "-f", "null",
+            "-"
+        ], $cacheKey);
+    }
+
+    protected function warn(...$params)
+    {
+        $this->log(static::LEVEL_WARN, ...$params);
+    }
+
+    protected function error(...$params)
+    {
+        $this->log(static::LEVEL_ERROR, ...$params);
+    }
+
     protected function configure()
     {
         $className = get_class($this);
         $commandName = $this->dasherize(substr($className, strrpos($className, '\\') + 1));
         $this->setName(str_replace("-command", "", $commandName));
         $this->addArgument(static::ARGUMENT_INPUT, InputArgument::REQUIRED, 'Input file or folder');
-        $this->addOption(static::OPTION_DEBUG, "d", InputOption::VALUE_NONE, "file to dump debugging info");
-        $this->addOption(static::OPTION_DEBUG_FILENAME, null, InputOption::VALUE_OPTIONAL, "file to dump debugging info", "m4b-tool_debug.log");
+        $this->addOption(static::OPTION_VERBOSITY, null, InputOption::VALUE_OPTIONAL, "verbosity level (debug, info, warn, error)", static::LEVEL_TO_STRING[static::LEVEL_INFO]);
+        $this->addOption(static::OPTION_LOG_FILE, null, InputOption::VALUE_OPTIONAL, "file to dump all output", "");
+        $this->addOption(static::OPTION_DEBUG, null, InputOption::VALUE_NONE, "enable debug mode - sets verbosity to debug, logfile to m4b-tool.log and temporary files are not deleted");
         $this->addOption(static::OPTION_FORCE, "f", InputOption::VALUE_NONE, "force overwrite of existing files");
         $this->addOption(static::OPTION_NO_CACHE, null, InputOption::VALUE_NONE, "do not use cached values and clear cache completely");
         $this->addOption(static::OPTION_FFMPEG_THREADS, null, InputOption::VALUE_OPTIONAL, "specify -threads parameter for ffmpeg", "");
-        $this->addOption(static::OPTION_CONVERT_CHARSET, null, InputOption::VALUE_OPTIONAL, "Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems)", "");
+        $this->addOption(static::OPTION_PLATFORM_CHARSET, null, InputOption::VALUE_OPTIONAL, "Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems)", "");
         $this->addOption(static::OPTION_FFMPEG_PARAM, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --" . static::OPTION_FFMPEG_PARAM . '="-max_muxing_queue_size" ' . '--' . static::OPTION_FFMPEG_PARAM . '="1000" for ffmpeg [...] -max_muxing_queue_size 1000)', []);
         $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "a", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", 1750);
         $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "b", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
@@ -408,11 +496,19 @@ class AbstractCommand extends Command
 
     protected function loadArguments()
     {
+        $optLogFile = $this->input->getOption(static::OPTION_LOG_FILE);
+
         $this->argInputFile = new SplFileInfo($this->input->getArgument(static::ARGUMENT_INPUT));
+        $this->optDebug = $this->input->getOption(static::OPTION_DEBUG);
+        $this->optLogFile = $optLogFile !== "" ? new SplFileInfo($optLogFile) : null;
+
+        if ($this->optDebug) {
+            $this->input->setOption(static::OPTION_VERBOSITY, static::LEVEL_TO_STRING[static::LEVEL_DEBUG]);
+            $this->optLogFile = $this->optLogFile ?? new SplFileInfo("m4b-tool.log");
+        }
+
         $this->optForce = $this->input->getOption(static::OPTION_FORCE);
         $this->optNoCache = $this->input->getOption(static::OPTION_NO_CACHE);
-        $this->optDebug = $this->input->getOption(static::OPTION_DEBUG);
-        $this->optDebugFile = new SplFileInfo($this->input->getOption(static::OPTION_DEBUG_FILENAME));
     }
 
     /**
@@ -435,7 +531,6 @@ class AbstractCommand extends Command
             throw new Exception("You must provide a valid value for parameter --" . static::OPTION_OUTPUT_FILE);
         }
     }
-
 
     protected function chaptersFileToAudioFile(SplFileInfo $chaptersFile, $audioExtension = "m4b")
     {
@@ -476,11 +571,6 @@ class AbstractCommand extends Command
         }
         $invalidFilenameChars = [" / ", "\0"];
         return str_replace($invalidFilenameChars, '-', $fileName);
-    }
-
-    protected function isWindows()
-    {
-        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
     }
 
     protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)

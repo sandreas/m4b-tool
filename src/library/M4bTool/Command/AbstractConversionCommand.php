@@ -251,7 +251,7 @@ Codecs:
         }
 
         if ($index > 0) {
-            $this->output->writeln("Your ffmpeg version cannot produce top quality aac using encoder " . $returnValue . " instead of " . $aacQualityOrder[0] . "");
+            $this->warn("Your ffmpeg version cannot produce top quality aac using encoder " . $returnValue . " instead of " . $aacQualityOrder[0] . "");
         }
 
         return $returnValue;
@@ -324,7 +324,7 @@ Codecs:
 
             if ($tag->cover && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
                 if (!file_exists($tag->cover)) {
-                    $this->output->writeln("cover file " . $tag->cover . " does not exist");
+                    $this->info("cover file " . $tag->cover . " does not exist");
                     return;
                 }
                 $command = ["--add", $tag->cover, $file];
@@ -337,7 +337,7 @@ Codecs:
             if (count($tag->chapters)) {
                 $chaptersFile = $this->audioFileToChaptersFile($file);
                 if ($chaptersFile->isFile() && !$this->optForce) {
-                    $this->output->writeln("Chapters file " . $chaptersFile . " already exists, use --force to force overwrite");
+                    $this->info("Chapters file " . $chaptersFile . " already exists, use --force to force overwrite");
                     return;
                 }
 
@@ -407,16 +407,16 @@ Codecs:
             }
 
             if (!$outputFile->isFile()) {
-                $this->output->writeln("tagging file " . $file . " failed, could not write temp output file " . $outputFile);
+                $this->error("tagging file " . $file . " failed, could not write temp output file " . $outputFile);
                 return;
             }
 
             if (!unlink($file) || !rename($outputFile, $file)) {
-                $this->output->writeln("tagging file " . $file . " failed, could not rename temp output file " . $outputFile . " to " . $file);
+                $this->error("tagging file " . $file . " failed, could not rename temp output file " . $outputFile . " to " . $file);
             }
         } catch (Throwable $e) {
-            $this->output->writeln("ERROR: %s", $e->getMessage());
-            $this->debug(sprintf("could not tag file %s with ffmpeg, error: %s, trace: %s", $file, $e->getMessage(), $e->getTraceAsString()));
+            $this->error(sprintf("could not tag file %s with ffmpeg, error: %s", $file, $e->getMessage()));
+            $this->debug("trace:", $e->getTraceAsString());
         }
 
 
@@ -432,7 +432,7 @@ Codecs:
         $description = $tag->description;
         $encoding = $this->detectEncoding($description);
         if ($encoding === "") {
-            $this->output->writeln("could not detect encoding of description, using UTF-8 as default");
+            $this->info("could not detect encoding of description, using UTF-8 as default");
         } else if ($encoding !== "UTF-8") {
             $description = mb_convert_encoding($tag->description, "UTF-8", $encoding);
         }
@@ -493,11 +493,11 @@ Codecs:
         $searchStrings = ["-sortname", "-sortartist", "-sortalbum"];
         foreach ($searchStrings as $searchString) {
             if (strpos($result, $searchString) === false) {
-                $this->output->writeln("not supported - get a release from https://github.com/sandreas/mp4v2 for sorting support");
+                $this->info("not supported - get a release from https://github.com/sandreas/mp4v2 for sorting support");
                 return false;
             }
         }
-        $this->output->writeln("supported, proceeding...");
+        $this->info("supported, proceeding...");
         return true;
     }
 
@@ -607,12 +607,12 @@ Codecs:
         }
 
         if (!$file->isFile()) {
-            $this->output->writeln("skip cover extraction, source file " . $file . " does not exist");
+            $this->info("skip cover extraction, source file " . $file . " does not exist");
             return null;
         }
 
         if ($coverTargetFile->isFile() && !$force) {
-            $this->output->writeln("skip cover extraction, file " . $coverTargetFile . " already exists - use --force to overwrite");
+            $this->info("skip cover extraction, file " . $coverTargetFile . " already exists - use --force to overwrite");
             return null;
         }
         if ($this->input->getOption(static::OPTION_SKIP_COVER)) {
@@ -634,12 +634,12 @@ Codecs:
 
             $extractedCoverFile = $this->audioFileToExtractedCoverFile($file);
             if (!$extractedCoverFile->isFile()) {
-                $this->output->writeln("extracting cover to " . $extractedCoverFile . " failed");
+                $this->warn("extracting cover to " . $extractedCoverFile . " failed");
                 return null;
             }
 
             if (!rename($extractedCoverFile, $coverTargetFile)) {
-                $this->output->writeln("renaming cover " . $extractedCoverFile . " => " . $coverTargetFile . " failed");
+                $this->error("renaming cover " . $extractedCoverFile . " => " . $coverTargetFile . " failed");
                 return null;
             }
         } else {
@@ -647,12 +647,10 @@ Codecs:
         }
 
         if (!$coverTargetFile->isFile()) {
-            $this->output->writeln("extracting cover to " . $coverTargetFile . " failed");
+            $this->warn("extracting cover to " . $coverTargetFile . " failed");
             return null;
         }
-        $this->output->writeln("extracted cover to " . $coverTargetFile . "");
-
-
+        $this->info("extracted cover to " . $coverTargetFile . "");
         return $coverTargetFile;
     }
 
@@ -673,12 +671,12 @@ Codecs:
         }
 
         if ($descriptionTargetFile->isFile() && !$this->optForce) {
-            $this->output->writeln("skip description extraction, file " . $descriptionTargetFile . " already exists - use --force to overwrite");
+            $this->info("skip description extraction, file " . $descriptionTargetFile . " already exists - use --force to overwrite");
             return null;
         }
 
         if (!$tag->description && !$tag->longDescription) {
-            $this->output->writeln("skip description extraction, tag does not contain a description");
+            $this->info("skip description extraction, tag does not contain a description");
             return null;
         }
 
@@ -698,10 +696,10 @@ Codecs:
         }
 
         if (file_put_contents($descriptionTargetFile, $description) === false) {
-            $this->output->writeln("extracting description to " . $descriptionTargetFile . " failed");
+            $this->warn("extracting description to " . $descriptionTargetFile . " failed");
             return null;
         };
-        $this->output->writeln("extracted description to " . $descriptionTargetFile . "");
+        $this->info("extracted description to " . $descriptionTargetFile . "");
         return $descriptionTargetFile;
     }
 
@@ -717,7 +715,7 @@ Codecs:
         }
         $ffmpeg = new Ffmpeg();
 
-        $this->output->writeln("ipod auto adjust active, getting track durations");
+        $this->info("ipod auto adjust active, getting track durations");
         $totalDuration = new TimeUnit();
         foreach ($filesToConvert as $index => $file) {
             $duration = $ffmpeg->loadQuickEstimatedDuration($file);
@@ -729,16 +727,16 @@ Codecs:
 
         $durationSeconds = $totalDuration->milliseconds() / 1000;
         $maxSamplingRate = static::MAX_IPOD_SAMPLES / $durationSeconds;
-        $this->output->writeln("total estimated duration: " . $totalDuration->format() . " (" . $durationSeconds . "s)");
-        $this->output->writeln("max possible sampling rate: " . round($maxSamplingRate) . "Hz");
+        $this->info("total estimated duration: " . $totalDuration->format() . " (" . $durationSeconds . "s)");
+        $this->info("max possible sampling rate: " . round($maxSamplingRate) . "Hz");
 
         if ($this->optAudioSampleRate) {
-            $this->output->writeln("desired sampling rate: " . $this->samplingRateToInt() . "Hz");
+            $this->info("desired sampling rate: " . $this->samplingRateToInt() . "Hz");
         }
 
 
         if ($this->optAudioSampleRate && $this->samplingRateToInt() > $maxSamplingRate) {
-            $this->output->writeln("desired sampling rate " . $this->optAudioSampleRate . " is greater than max sampling rate " . $maxSamplingRate . "Hz, trying to adjust");
+            $this->warn("desired sampling rate " . $this->optAudioSampleRate . " is greater than max sampling rate " . $maxSamplingRate . "Hz, trying to adjust");
             $resultSamplingRate = 0;
             $resultBitrate = "";
             foreach (static::SAMPLING_RATE_TO_BITRATE_MAPPING as $samplingRate => $bitrate) {
@@ -756,9 +754,9 @@ Codecs:
 
             $this->optAudioSampleRate = $resultSamplingRate;
             $this->optAudioBitRate = $resultBitrate;
-            $this->output->writeln("adjusted to " . $resultBitrate . "/" . $resultSamplingRate);
+            $this->info("adjusted to " . $resultBitrate . "/" . $resultSamplingRate);
         } else {
-            $this->output->writeln("desired sampling rate is ok, nothing to change");
+            $this->info("desired sampling rate is ok, nothing to change");
         }
     }
 

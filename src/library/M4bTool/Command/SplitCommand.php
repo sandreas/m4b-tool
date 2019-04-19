@@ -8,10 +8,18 @@ use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Parser\Mp4ChapsChapterParser;
+use Psr\Cache\InvalidArgumentException;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
+use Twig\Error\LoaderError;
+use Twig\Error\SyntaxError;
+use Twig_Environment;
+use Twig_Error_Loader;
+use Twig_Error_Syntax;
+use Twig_Loader_Array;
 
 class SplitCommand extends AbstractConversionCommand
 {
@@ -53,9 +61,10 @@ class SplitCommand extends AbstractConversionCommand
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int|void|null
-     * @throws \Throwable
-     * @throws \Twig_Error_Loader
-     * @throws \Twig_Error_Syntax
+     * @throws Throwable
+     * @throws Twig_Error_Loader
+     * @throws Twig_Error_Syntax
+     * @throws InvalidArgumentException
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
@@ -114,9 +123,10 @@ class SplitCommand extends AbstractConversionCommand
     }
 
     /**
-     * @throws \Throwable
-     * @throws \Twig_Error_Loader
-     * @throws \Twig_Error_Syntax
+     * @throws Throwable
+     * @throws Twig_Error_Loader
+     * @throws Twig_Error_Syntax
+     * @throws InvalidArgumentException
      */
     private function splitChapters()
     {
@@ -127,8 +137,8 @@ class SplitCommand extends AbstractConversionCommand
         try {
             $metaData = $this->readFileMetaData($this->argInputFile);
             $metaDataTag = $metaData->toTag();
-        } catch (\Throwable $t) {
-            $this->output->writeln("Could not read extended metadata for Tag: " . $t->getMessage());
+        } catch (Throwable $t) {
+            $this->warn("Could not read extended metadata for Tag: " . $t->getMessage());
         }
 
         $this->extractDescription($metaDataTag, new SplFileInfo($this->outputDirectory . "/description.txt"));
@@ -160,13 +170,12 @@ class SplitCommand extends AbstractConversionCommand
     /**
      * @param Tag $tag
      * @return string|string[]|null
-     * @throws \Throwable
-     * @throws \Twig_Error_Loader
-     * @throws \Twig_Error_Syntax
+     * @throws LoaderError
+     * @throws SyntaxError
      */
     protected function buildFileName(Tag $tag)
     {
-        $env = new \Twig_Environment(new \Twig_Loader_Array([]));
+        $env = new Twig_Environment(new Twig_Loader_Array([]));
         $template = $env->createTemplate($this->optFilenameTemplate);
         $fileNameTemplate = $template->render((array)$tag);
         $replacedFileName = preg_replace("/\r|\n/", "", $fileNameTemplate);
@@ -175,6 +184,13 @@ class SplitCommand extends AbstractConversionCommand
         return $replacedFileName . "." . $this->optAudioExtension;
     }
 
+    /**
+     * @param Chapter $chapter
+     * @param SplFileInfo $outputFile
+     * @param Tag $tag
+     * @return SplFileInfo
+     * @throws Exception
+     */
     private function extractChapter(Chapter $chapter, SplFileInfo $outputFile, Tag $tag)
     {
         // mp3 has to be splitted via tempfile
@@ -184,6 +200,13 @@ class SplitCommand extends AbstractConversionCommand
         return $this->extractChapterMp4($chapter, $outputFile, $tag);
     }
 
+    /**
+     * @param Chapter $chapter
+     * @param SplFileInfo $outputFile
+     * @param Tag $tag
+     * @return SplFileInfo
+     * @throws Exception
+     */
     private function extractChapterNonMp4(Chapter $chapter, SplFileInfo $outputFile, Tag $tag)
     {
 
@@ -255,6 +278,13 @@ class SplitCommand extends AbstractConversionCommand
         return $outputFile;
     }
 
+    /**
+     * @param Chapter $chapter
+     * @param SplFileInfo $outputFile
+     * @param Tag $tag
+     * @return SplFileInfo
+     * @throws Exception
+     */
     private function extractChapterMp4(Chapter $chapter, SplFileInfo $outputFile, Tag $tag)
     {
 
