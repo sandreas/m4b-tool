@@ -736,7 +736,7 @@ Codecs:
 
 
         if ($this->optAudioSampleRate && $this->samplingRateToInt() > $maxSamplingRate) {
-            $this->warn("desired sampling rate " . $this->optAudioSampleRate . " is greater than max sampling rate " . $maxSamplingRate . "Hz, trying to adjust");
+            $this->warn("desired sampling rate " . $this->optAudioSampleRate . " is higher than max possible sampling rate " . $maxSamplingRate . "Hz, trying to adjust...");
             $resultSamplingRate = 0;
             $resultBitrate = "";
             foreach (static::SAMPLING_RATE_TO_BITRATE_MAPPING as $samplingRate => $bitrate) {
