@@ -719,13 +719,22 @@ Codecs:
         $totalDuration = new TimeUnit();
         foreach ($filesToConvert as $index => $file) {
             $duration = $ffmpeg->loadQuickEstimatedDuration($file);
-            if (!$duration) {
+            if (!$duration || ($duration instanceof TimeUnit && $duration->milliseconds() == 0)) {
+                $this->debug("load quick estimated duration failed for file, trying to read exact duration", $file);
+                $duration = $this->readDuration($file);
+            }
+
+            if (!$duration || ($duration instanceof TimeUnit && $duration->milliseconds() == 0)) {
                 throw new Exception("could not get duration for file " . $file . " - needed for " . static::OPTION_ADJUST_FOR_IPOD);
             }
             $totalDuration->add($duration->milliseconds());
         }
 
         $durationSeconds = $totalDuration->milliseconds() / 1000;
+        if ($durationSeconds <= 0) {
+            throw new Exception(sprintf("could not adjust bitrate for ipod, calculated a total duration of %s seconds, something went wrong", $durationSeconds));
+        }
+
         $maxSamplingRate = static::MAX_IPOD_SAMPLES / $durationSeconds;
         $this->info("total estimated duration: " . $totalDuration->format() . " (" . $durationSeconds . "s)");
         $this->info("max possible sampling rate: " . round($maxSamplingRate) . "Hz");
@@ -874,7 +883,7 @@ Codecs:
 
         $command[] = $outputFile;
 
-        $this->ffmpeg($command, "ffmpeg: converting " . $file . " to " . $outputFile . "");
+        $this->ffmpeg($command, sprintf("converting %s to %s", $file, $outputFile));
     }
 
 }
