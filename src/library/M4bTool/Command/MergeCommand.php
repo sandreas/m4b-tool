@@ -186,10 +186,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
 
         $matchCount = count($verifiedDirectories);
-        $this->info(($matchCount === 1 ? "1 match" : $matchCount . " matches") . " for pattern " . $batchPattern);
+        $this->notice(($matchCount === 1 ? "1 match" : $matchCount . " matches") . " for pattern " . $batchPattern);
 
         if ($matchCount > 0) {
-            $this->info("================================");
+            $this->notice("================================");
         }
 
 
@@ -212,17 +212,17 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $clonedInput->setOption(static::OPTION_OUTPUT_FILE, $batchOutputFile);
             $clonedInput->setOption(static::OPTION_BATCH_PATTERN, []);
 
-            $this->info(sprintf("merge %s", $baseDir));
-            $this->info(sprintf("  =>  %s", $batchOutputFile));
+            $this->notice(sprintf("merge %s", $baseDir));
+            $this->notice(sprintf("  =>  %s", $batchOutputFile));
             foreach (static::MAPPING_OPTIONS_PLACEHOLDERS as $optionName => $placeHolderName) {
                 $placeHolderValue = $formatParser->getPlaceHolderValue($placeHolderName);
                 if ($placeHolderValue !== "") {
-                    $this->info(sprintf("- %s: %s", $optionName, $placeHolderValue));
+                    $this->notice(sprintf("- %s: %s", $optionName, $placeHolderValue));
                     $this->setOptionIfUndefined($optionName, $placeHolderValue, $clonedInput);
                 }
             }
-            $this->info("");
-            $this->info("================================");
+            $this->notice("");
+            $this->notice("================================");
 
             if ($clonedInput->getOption(static::OPTION_DRY_RUN)) {
                 continue;
@@ -282,7 +282,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
 
         if (!$this->optForce && $batchProcessing && $this->outputFile->isFile()) {
-            $this->info(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
+            $this->notice(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
             return;
         }
 
@@ -332,7 +332,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         if (!($f instanceof SplFileInfo)) {
             $f = new SplFileInfo($f);
             if (!$f->isReadable()) {
-                $this->info("skipping " . $f . " (does not exist)");
+                $this->notice("skipping " . $f . " (does not exist)");
                 return;
             }
         }
@@ -450,7 +450,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $coverDir = $this->argInputFile->isDir() ? $this->argInputFile : new SplFileInfo($this->argInputFile->getPath());
 
         if (!$this->input->getOption(static::OPTION_SKIP_COVER) && !$this->input->getOption(static::OPTION_COVER)) {
-            $this->info("searching for cover in " . $coverDir);
+            $this->notice("searching for cover in " . $coverDir);
             $autoCoverFile = new SplFileInfo($coverDir . DIRECTORY_SEPARATOR . "cover.jpg");
             if ($autoCoverFile->isFile()) {
                 $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
@@ -478,9 +478,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         }
         if ($this->input->getOption(static::OPTION_COVER)) {
-            $this->info("using cover ", $this->input->getOption("cover"));
+            $this->notice("using cover ", $this->input->getOption("cover"));
         } else {
-            $this->info("cover not found or not specified");
+            $this->notice("cover not found or not specified");
         }
     }
 
@@ -495,16 +495,16 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     private function lookupFileContents(SplFileInfo $referenceFile, $nameOfFile, $maxSize = 1024 * 1024)
     {
         $nameOfFileDir = $referenceFile->isDir() ? $referenceFile : new SplFileInfo($referenceFile->getPath());
-        $this->info(sprintf("searching for %s in %s", $nameOfFile, $nameOfFileDir));
+        $this->notice(sprintf("searching for %s in %s", $nameOfFile, $nameOfFileDir));
         $autoDescriptionFile = new SplFileInfo($nameOfFileDir . DIRECTORY_SEPARATOR . $nameOfFile);
 
         $this->debug(sprintf("checking file %s, realpath: %s", $autoDescriptionFile, $autoDescriptionFile->getRealPath()));
 
         if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < $maxSize) {
-            $this->info(sprintf("success: found %s for import", $nameOfFile));
+            $this->notice(sprintf("success: found %s for import", $nameOfFile));
             return file_get_contents($autoDescriptionFile);
         } else {
-            $this->info(sprintf("file %s not found or too big", $nameOfFile));
+            $this->notice(sprintf("file %s not found or too big", $nameOfFile));
         }
         return null;
     }
@@ -582,7 +582,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             }
 
             if ($finishedOutputFile->isFile() && $finishedOutputFile->getSize() > 0) {
-                $this->info("output file " . $outputFile . " already exists, skipping");
+                $this->notice("output file " . $outputFile . " already exists, skipping");
                 continue;
             }
 

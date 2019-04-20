@@ -49,7 +49,6 @@ class AbstractCommand extends Command
     const ARGUMENT_INPUT = "input";
 
     const OPTION_DEBUG = "debug";
-    const OPTION_VERBOSITY = "verbosity";
     const OPTION_LOG_FILE = "logfile";
     const OPTION_FORCE = "force";
     const OPTION_NO_CACHE = "no-cache";
@@ -68,21 +67,15 @@ class AbstractCommand extends Command
     const OPTION_OUTPUT_FILE = "output-file";
     const OPTION_OUTPUT_FILE_SHORTCUT = "o";
 
-    const LEVEL_DEBUG = 100;
-    const LEVEL_INFO = 200;
-    const LEVEL_WARN = 300;
-    const LEVEL_ERROR = 400;
     const LEVEL_TO_STRING = [
-        self::LEVEL_DEBUG => 'DEBUG',
-        self::LEVEL_INFO => 'INFO',
-//        self::LEVEL_NOTICE    => 'NOTICE',
-        self::LEVEL_WARN => 'WARN',
-        self::LEVEL_ERROR => 'ERROR',
-//        self::LEVEL_CRITICAL  => 'CRITICAL',
-//        self::LEVEL_ALERT     => 'ALERT',
-//        self::LEVEL_EMERGENCY => 'EMERGENCY',
+        OutputInterface::VERBOSITY_DEBUG => 'DEBUG',
+        OutputInterface::VERBOSITY_VERBOSE => 'NOTICE',
+        OutputInterface::VERBOSITY_VERY_VERBOSE => 'INFO',
+        OutputInterface::VERBOSITY_NORMAL => 'WARN',
+        OutputInterface::VERBOSITY_QUIET => 'ERROR',
     ];
 
+    protected $startTime;
 
     /**
      * @var AbstractAdapter
@@ -188,28 +181,31 @@ class AbstractCommand extends Command
 
     protected function debug(...$params)
     {
-        $this->log(static::LEVEL_DEBUG, ...$params);
+        $this->log(OutputInterface::VERBOSITY_DEBUG, ...$params);
     }
 
     protected function log($level, ...$params)
     {
-        $messageParts = [];
-        foreach ($params as $param) {
-            if (is_scalar($param) || (is_object($param) && method_exists($param, "__toString"))) {
-                $messageParts[] = (string)$param;
-            } else if (is_array($param)) {
-                $messageParts[] = var_export($param, true);
-            } else {
-                $messageParts[] = "type: " . gettype($param);
-            }
+        if ($this->startTime === null) {
+            $this->startTime = microtime(true);
         }
 
-        if ($level >= $this->getLogLevel()) {
+        if ($this->output->getVerbosity() >= $level) {
+            $messageParts = [];
+            foreach ($params as $param) {
+                if (is_scalar($param) || (is_object($param) && method_exists($param, "__toString"))) {
+                    $messageParts[] = (string)$param;
+                } else if (is_array($param)) {
+                    $messageParts[] = var_export($param, true);
+                } else {
+                    $messageParts[] = "type: " . gettype($param);
+                }
+            }
             $logMessage = implode(" ", $messageParts);
             $formattedLogMessage = $logMessage;
-            if ($level === static::LEVEL_WARN) {
+            if ($level === OutputInterface::VERBOSITY_VERBOSE) {
                 $formattedLogMessage = "<fg=black;bg=yellow>" . $formattedLogMessage . "</>";
-            } elseif ($level === static::LEVEL_ERROR) {
+            } elseif ($level === OutputInterface::VERBOSITY_NORMAL) {
                 $formattedLogMessage = "<fg=black;bg=red>" . $formattedLogMessage . "</>";
             }
 
@@ -219,27 +215,14 @@ class AbstractCommand extends Command
                     $this->output->writeln(sprintf("<error>Debug file %s is not writable</error>", $this->optLogFile));
                     $this->optLogFile = null;
                 }
-                $logLevel = static::LEVEL_TO_STRING[$level] ?? "UNKNOWN";
-                file_put_contents($this->optLogFile, $logLevel . " " . $logMessage . PHP_EOL, FILE_APPEND);
+
+                $logTime = str_pad(round((microtime(true) - $this->startTime) * 1000) . "ms", 10, " ", STR_PAD_LEFT);
+                $logLevel = str_pad(static::LEVEL_TO_STRING[$level] ?? "UNKNOWN", 8);
+                file_put_contents($this->optLogFile, $logLevel . " " . $logTime . " " . $logMessage . PHP_EOL, FILE_APPEND);
             }
         }
     }
 
-    protected function getLogLevel()
-    {
-        if ($this->logLevel) {
-            return $this->logLevel;
-        }
-        $this->logLevel = static::LEVEL_INFO;
-        $verbosity = $this->input->getOption(static::OPTION_VERBOSITY);
-        foreach (static::LEVEL_TO_STRING as $level => $string) {
-            if (mb_strtolower($verbosity) === mb_strtolower($string)) {
-                $this->logLevel = $level;
-                break;
-            }
-        }
-        return $this->logLevel;
-    }
 
     public function hasMp4AudioFileExtension(SplFileInfo $file)
     {
@@ -258,15 +241,27 @@ class AbstractCommand extends Command
             throw new Exception("cannot read metadata, file " . $file . " does not exist");
         }
 
-        $this->info("reading metadata and streaminfo for file " . $file);
+
+        /*
+        TODO:
+        - Write classes for
+            - MetaData (format, duration, codec, bandwidth, tag, etc.)
+            - MetaDataWriter (read, write)
+        - Rewrite MetaData logic
+            - use mp4info / mp4tags / mp4chapters where possible
+            - speed up ffmpeg usage by not recoding the whole file over and over again
+            - use Caching to not re-read a file again
+        */
+
+        $this->notice("reading metadata and streaminfo for file " . $file);
         $metaData = new FfmetaDataParser();
         $metaData->parse($this->readFileMetaDataOutput($file), $this->readFileMetaDataStreamInfo($file));
         return $metaData;
     }
 
-    protected function info(...$params)
+    protected function notice(...$params)
     {
-        $this->log(static::LEVEL_INFO, ...$params);
+        $this->log(OutputInterface::VERBOSITY_VERBOSE, ...$params);
     }
 
     /**
@@ -355,7 +350,7 @@ class AbstractCommand extends Command
     {
         $this->debug($this->formatShellCommand($command));
         if ($introductionMessage) {
-            $this->info($introductionMessage);
+            $this->notice($introductionMessage);
         }
 
         $platformCharset = strtolower($this->input->getOption(static::OPTION_PLATFORM_CHARSET));
@@ -386,12 +381,13 @@ class AbstractCommand extends Command
 
         usleep(250000);
         $shouldShowEmptyLine = false;
+        $i = 0;
         while ($process->isRunning()) {
             $shouldShowEmptyLine = true;
-            $this->updateProgress();
+            $this->updateProgress($i);
         }
         if ($shouldShowEmptyLine) {
-            $this->info('');
+            $this->notice('');
         }
 
         if ($process->getExitCode() != 0) {
@@ -418,11 +414,10 @@ class AbstractCommand extends Command
         return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
     }
 
-    protected function updateProgress()
+    protected function updateProgress(&$i)
     {
-        static $i = 0;
         if (++$i % 60 == 0) {
-            $this->info('+');
+            $this->notice('+');
         } else {
             $this->output->write('+');
             usleep(1000000);
@@ -447,12 +442,17 @@ class AbstractCommand extends Command
 
     protected function warn(...$params)
     {
-        $this->log(static::LEVEL_WARN, ...$params);
+        $this->log(OutputInterface::VERBOSITY_NORMAL, ...$params);
+    }
+
+    protected function info(...$params)
+    {
+        $this->log(OutputInterface::VERBOSITY_VERY_VERBOSE, ...$params);
     }
 
     protected function error(...$params)
     {
-        $this->log(static::LEVEL_ERROR, ...$params);
+        $this->log(OutputInterface::VERBOSITY_QUIET, ...$params);
     }
 
     protected function configure()
@@ -461,7 +461,6 @@ class AbstractCommand extends Command
         $commandName = $this->dasherize(substr($className, strrpos($className, '\\') + 1));
         $this->setName(str_replace("-command", "", $commandName));
         $this->addArgument(static::ARGUMENT_INPUT, InputArgument::REQUIRED, 'Input file or folder');
-        $this->addOption(static::OPTION_VERBOSITY, null, InputOption::VALUE_OPTIONAL, "verbosity level (debug, info, warn, error)", static::LEVEL_TO_STRING[static::LEVEL_INFO]);
         $this->addOption(static::OPTION_LOG_FILE, null, InputOption::VALUE_OPTIONAL, "file to dump all output", "");
         $this->addOption(static::OPTION_DEBUG, null, InputOption::VALUE_NONE, "enable debug mode - sets verbosity to debug, logfile to m4b-tool.log and temporary files are not deleted");
         $this->addOption(static::OPTION_FORCE, "f", InputOption::VALUE_NONE, "force overwrite of existing files");
@@ -503,7 +502,7 @@ class AbstractCommand extends Command
         $this->optLogFile = $optLogFile !== "" ? new SplFileInfo($optLogFile) : null;
 
         if ($this->optDebug) {
-            $this->input->setOption(static::OPTION_VERBOSITY, static::LEVEL_TO_STRING[static::LEVEL_DEBUG]);
+            $this->output->setVerbosity(OutputInterface::VERBOSITY_DEBUG);
             $this->optLogFile = $this->optLogFile ?? new SplFileInfo("m4b-tool.log");
         }
 

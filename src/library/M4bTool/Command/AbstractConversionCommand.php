@@ -324,7 +324,7 @@ Codecs:
 
             if ($tag->cover && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
                 if (!file_exists($tag->cover)) {
-                    $this->info("cover file " . $tag->cover . " does not exist");
+                    $this->notice("cover file " . $tag->cover . " does not exist");
                     return;
                 }
                 $command = ["--add", $tag->cover, $file];
@@ -337,7 +337,7 @@ Codecs:
             if (count($tag->chapters)) {
                 $chaptersFile = $this->audioFileToChaptersFile($file);
                 if ($chaptersFile->isFile() && !$this->optForce) {
-                    $this->info("Chapters file " . $chaptersFile . " already exists, use --force to force overwrite");
+                    $this->notice("Chapters file " . $chaptersFile . " already exists, use --force to force overwrite");
                     return;
                 }
 
@@ -432,7 +432,7 @@ Codecs:
         $description = $tag->description;
         $encoding = $this->detectEncoding($description);
         if ($encoding === "") {
-            $this->info("could not detect encoding of description, using UTF-8 as default");
+            $this->notice("could not detect encoding of description, using UTF-8 as default");
         } else if ($encoding !== "UTF-8") {
             $description = mb_convert_encoding($tag->description, "UTF-8", $encoding);
         }
@@ -493,11 +493,11 @@ Codecs:
         $searchStrings = ["-sortname", "-sortartist", "-sortalbum"];
         foreach ($searchStrings as $searchString) {
             if (strpos($result, $searchString) === false) {
-                $this->info("not supported - get a release from https://github.com/sandreas/mp4v2 for sorting support");
+                $this->notice("not supported - get a release from https://github.com/sandreas/mp4v2 for sorting support");
                 return false;
             }
         }
-        $this->info("supported, proceeding...");
+        $this->notice("supported, proceeding...");
         return true;
     }
 
@@ -607,12 +607,12 @@ Codecs:
         }
 
         if (!$file->isFile()) {
-            $this->info("skip cover extraction, source file " . $file . " does not exist");
+            $this->notice("skip cover extraction, source file " . $file . " does not exist");
             return null;
         }
 
         if ($coverTargetFile->isFile() && !$force) {
-            $this->info("skip cover extraction, file " . $coverTargetFile . " already exists - use --force to overwrite");
+            $this->notice("skip cover extraction, file " . $coverTargetFile . " already exists - use --force to overwrite");
             return null;
         }
         if ($this->input->getOption(static::OPTION_SKIP_COVER)) {
@@ -650,7 +650,7 @@ Codecs:
             $this->warn("extracting cover to " . $coverTargetFile . " failed");
             return null;
         }
-        $this->info("extracted cover to " . $coverTargetFile . "");
+        $this->notice("extracted cover to " . $coverTargetFile . "");
         return $coverTargetFile;
     }
 
@@ -671,12 +671,12 @@ Codecs:
         }
 
         if ($descriptionTargetFile->isFile() && !$this->optForce) {
-            $this->info("skip description extraction, file " . $descriptionTargetFile . " already exists - use --force to overwrite");
+            $this->notice("skip description extraction, file " . $descriptionTargetFile . " already exists - use --force to overwrite");
             return null;
         }
 
         if (!$tag->description && !$tag->longDescription) {
-            $this->info("skip description extraction, tag does not contain a description");
+            $this->notice("skip description extraction, tag does not contain a description");
             return null;
         }
 
@@ -699,7 +699,7 @@ Codecs:
             $this->warn("extracting description to " . $descriptionTargetFile . " failed");
             return null;
         };
-        $this->info("extracted description to " . $descriptionTargetFile . "");
+        $this->notice("extracted description to " . $descriptionTargetFile . "");
         return $descriptionTargetFile;
     }
 
@@ -715,7 +715,7 @@ Codecs:
         }
         $ffmpeg = new Ffmpeg();
 
-        $this->info("ipod auto adjust active, getting track durations");
+        $this->notice("ipod auto adjust active, getting track durations");
         $totalDuration = new TimeUnit();
         foreach ($filesToConvert as $index => $file) {
             $duration = $ffmpeg->loadQuickEstimatedDuration($file);
@@ -736,11 +736,11 @@ Codecs:
         }
 
         $maxSamplingRate = static::MAX_IPOD_SAMPLES / $durationSeconds;
-        $this->info("total estimated duration: " . $totalDuration->format() . " (" . $durationSeconds . "s)");
-        $this->info("max possible sampling rate: " . round($maxSamplingRate) . "Hz");
+        $this->notice("total estimated duration: " . $totalDuration->format() . " (" . $durationSeconds . "s)");
+        $this->notice("max possible sampling rate: " . round($maxSamplingRate) . "Hz");
 
         if ($this->optAudioSampleRate) {
-            $this->info("desired sampling rate: " . $this->samplingRateToInt() . "Hz");
+            $this->notice("desired sampling rate: " . $this->samplingRateToInt() . "Hz");
         }
 
 
@@ -763,9 +763,9 @@ Codecs:
 
             $this->optAudioSampleRate = $resultSamplingRate;
             $this->optAudioBitRate = $resultBitrate;
-            $this->info("adjusted to " . $resultBitrate . "/" . $resultSamplingRate);
+            $this->notice("adjusted to " . $resultBitrate . "/" . $resultSamplingRate);
         } else {
-            $this->info("desired sampling rate is ok, nothing to change");
+            $this->notice("desired sampling rate is ok, nothing to change");
         }
     }
 

@@ -1,0 +1,5 @@
+#!/bin/sh
+M4B_LOCATION="~/bin/m4b-tool"
+scp dist/m4b-tool.phar vm:${M4B_LOCATION} && ssh -t vm "chmod +x $M4B_LOCATION"
+
+

@@ -148,7 +148,7 @@ class ChaptersCommand extends AbstractCommand
     {
         $this->filesToProcess = new SplFileInfo($this->input->getArgument(static::ARGUMENT_INPUT));
         if (!$this->filesToProcess->isFile()) {
-            $this->info("Input file is not a valid file, currently directories are not supported");
+            $this->notice("Input file is not a valid file, currently directories are not supported");
             return;
         }
     }
@@ -160,7 +160,7 @@ class ChaptersCommand extends AbstractCommand
         if ($this->outputFile === "") {
             $this->outputFile = $this->filesToProcess->getPath() . DIRECTORY_SEPARATOR . $this->filesToProcess->getBasename("." . $this->filesToProcess->getExtension()) . ".chapters.txt";
             if (file_exists($this->outputFile) && !$this->input->getOption(static::OPTION_FORCE)) {
-                $this->info("output file already exists, add --force option to overwrite");
+                $this->notice("output file already exists, add --force option to overwrite");
                 $this->outputFile = "";
             }
         }
@@ -173,7 +173,7 @@ class ChaptersCommand extends AbstractCommand
     private function buildChapters(array $mbChapters)
     {
         $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
-        $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_VERBOSITY));
+        $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
         $this->chapters = $chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $this->silenceParser->getDuration());
     }
 
@@ -298,11 +298,11 @@ class ChaptersCommand extends AbstractCommand
         if ($chaptersTxtFile) {
             $outputDir = dirname($this->outputFile);
             if (!is_dir($outputDir) && !mkdir($outputDir, 0777, true)) {
-                $this->info("Could not create output directory: " . $outputDir);
+                $this->notice("Could not create output directory: " . $outputDir);
             } elseif (!file_put_contents($chaptersTxtFile, $chapterLinesAsString)) {
-                $this->info("Could not write output file: " . $chaptersTxtFile);
+                $this->notice("Could not write output file: " . $chaptersTxtFile);
             } else {
-                $this->info("Chapters successfully exported to file: " . $chaptersTxtFile);
+                $this->notice("Chapters successfully exported to file: " . $chaptersTxtFile);
             }
         }
     }
@@ -318,7 +318,7 @@ class ChaptersCommand extends AbstractCommand
             $process = $this->mp4chaps([
                 "-i", $fileToImport
             ], "importing chapters to " . $fileToImport);
-            $this->info($process->getOutput() . $process->getErrorOutput());
+            $this->notice($process->getOutput() . $process->getErrorOutput());
         }
 
     }
