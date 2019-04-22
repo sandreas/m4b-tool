@@ -9,10 +9,17 @@ use DirectoryIterator;
 use Exception;
 use FilesystemIterator;
 use IteratorIterator;
-use M4bTool\Chapter\ChapterTitleBuilder;
+use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
+use M4bTool\Executables\Ffmpeg;
+use M4bTool\Executables\Mp4art;
+use M4bTool\Executables\Mp4chaps;
+use M4bTool\Executables\Mp4info;
+use M4bTool\Executables\Mp4tags;
+use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Filesystem\DirectoryLoader;
 use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Parser\FfmetaDataParser;
@@ -99,6 +106,13 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     /** @var string[] */
     protected $alreadyProcessedBatchDirs = [];
 
+
+    /** @var MetaDataHandler */
+    protected $metaHandler;
+
+    /** @var ChapterHandler */
+    protected $chapterHandler;
+
     protected function configure()
     {
         parent::configure();
@@ -132,6 +146,16 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     {
 
         try {
+            $ffmpeg = new Ffmpeg();
+            $mp4v2 = new Mp4v2Wrapper(
+                new Mp4art(),
+                new Mp4chaps(),
+                new Mp4info(),
+                new Mp4tags()
+            );
+            $this->metaHandler = new MetaDataHandler($ffmpeg, $mp4v2);
+            $this->chapterHandler = new ChapterHandler($this->metaHandler);
+
             $batchPatterns = $input->getOption(static::OPTION_BATCH_PATTERN);
             if (count($batchPatterns) > 0) {
                 $inputFile = new SplFileInfo($input->getArgument(static::ARGUMENT_INPUT));
@@ -614,10 +638,13 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     {
         $this->debug("== build chapters ==");
 
-        $autoSplitMilliSeconds = (int)$this->input->getOption(static::OPTION_AUTO_SPLIT_SECONDS) * 1000;
 
-        $chapterBuilder = new ChapterTitleBuilder($this);
-        $this->chapters = $chapterBuilder->buildChapters($this->filesToMerge, $autoSplitMilliSeconds);
+//        $autoSplitMilliSeconds = (int)$this->input->getOption(static::OPTION_AUTO_SPLIT_SECONDS) * 1000;
+//
+//        $chapterBuilder = new ChapterTitleBuilder($this);
+//        $this->chapters = $chapterBuilder->buildChapters($this->filesToMerge, $autoSplitMilliSeconds);
+
+        $this->chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge);
     }
 
     /**
@@ -760,31 +787,35 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     private function adjustTooLongChapters()
     {
-        $maxChapterLength = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
         $desiredChapterLength = $this->input->getOption(static::OPTION_DESIRED_CHAPTER_LENGTH);
-
-        // both options have to be defined to adjust too long chapters
-        if ($maxChapterLength === 0 || $desiredChapterLength === 0) {
+        $maxChapterLength = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
+        $autoSplitMilliSeconds = (int)$this->input->getOption(static::OPTION_AUTO_SPLIT_SECONDS) * 1000;
+        // at least one option has to be defined to adjust too long chapters
+        if ($autoSplitMilliSeconds === 0 && $maxChapterLength === 0 && $desiredChapterLength === 0) {
             return;
         }
-        $allChapterLengthsOk = true;
-        foreach ($this->chapters as $chapter) {
-            if ($chapter->getLength()->milliseconds() > $maxChapterLength) {
-                $allChapterLengthsOk = false;
-                break;
-            }
+
+        if ($maxChapterLength > 0) {
+            $this->chapterHandler->setMaxLength($maxChapterLength);
+        } else if ($autoSplitMilliSeconds > 0) {
+            $this->chapterHandler->setMaxLength($autoSplitMilliSeconds);
         }
 
-        if ($allChapterLengthsOk) {
-            return;
+        if ($desiredChapterLength > 0) {
+            $this->chapterHandler->setDesiredLength($desiredChapterLength);
         }
+
+
         $silenceDetectionOutput = $this->detectSilencesForChapterGuessing($this->outputFile);
-
         $silenceParser = new SilenceParser();
         $silences = $silenceParser->parse($silenceDetectionOutput);
 
-        $chapterMarker = new ChapterMarker();
-        $this->chapters = $chapterMarker->adjustTooLongChapters($this->chapters, $silences, $maxChapterLength, $desiredChapterLength, static::NORMALIZE_CHAPTER_OPTIONS);
+
+        $this->chapters = $this->chapterHandler->adjustChapters($this->chapters, $silences);
+
+
+//        $chapterMarker = new ChapterMarker();
+//        $this->chapters = $chapterMarker->adjustTooLongChapters($this->chapters, $silences, $maxChapterLength, $desiredChapterLength, static::NORMALIZE_CHAPTER_OPTIONS);
     }
 
     /**
