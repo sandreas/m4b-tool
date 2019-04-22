@@ -7,7 +7,7 @@ namespace M4bTool\Command;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
-use M4bTool\Marker\ChapterMarker;
+use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use M4bTool\Parser\SilenceParser;

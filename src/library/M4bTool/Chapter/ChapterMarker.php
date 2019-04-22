@@ -1,7 +1,7 @@
 <?php
 
 
-namespace M4bTool\Marker;
+namespace M4bTool\Chapter;
 
 
 use M4bTool\Audio\Chapter;
@@ -192,6 +192,7 @@ class ChapterMarker
      * @param Chapter[] $mbChapters
      * @param Chapter[] $trackChapters
      * @return Chapter[] $guessedChapters
+     * @throws \Exception
      */
     public function guessChaptersByTracks($mbChapters, $trackChapters)
     {

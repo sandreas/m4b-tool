@@ -1,7 +1,7 @@
 <?php
 
 
-namespace M4bTool\Process;
+namespace M4bTool\Executables;
 
 
 use Symfony\Component\Console\Helper\DebugFormatterHelper;
@@ -9,6 +9,7 @@ use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
 
 abstract class AbstractExecutable
 {
@@ -40,15 +41,29 @@ abstract class AbstractExecutable
         $this->pathToBinary = $pathToBinary;
     }
 
-    public function setVerbosity(int $verbosity)
-    {
-        $this->verbosity = $verbosity;
-    }
 
     protected function createProcess(array $arguments, $messageInCaseOfError = null)
     {
         array_unshift($arguments, $this->pathToBinary);
         return $this->processHelper->run($this->output, $arguments, $messageInCaseOfError);
+    }
+
+    protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)
+    {
+        if (is_bool($parameterValue)) {
+            $command[] = $parameterName;
+            return;
+        }
+
+        if ($parameterValue) {
+            $command[] = $parameterName;
+            $command[] = $parameterValue;
+        }
+    }
+
+    protected function getAllProcessOutput(Process $process)
+    {
+        return $process->getOutput() . $process->getErrorOutput();
     }
 
 }

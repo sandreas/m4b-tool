@@ -78,7 +78,9 @@ class FfmetaDataParser
     {
         $this->reset();
         $this->parseMetaData($metaData);
-        $this->parseStreamInfo($streamInfo);
+        if ($streamInfo !== "") {
+            $this->parseStreamInfo($streamInfo);
+        }
     }
 
     private function reset()

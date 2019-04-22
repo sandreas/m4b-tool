@@ -417,7 +417,7 @@ class AbstractCommand extends Command
     protected function updateProgress(&$i)
     {
         if (++$i % 60 == 0) {
-            $this->notice('+');
+            $this->output->writeln('+');
         } else {
             $this->output->write('+');
             usleep(1000000);

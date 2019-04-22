@@ -8,7 +8,7 @@ use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\TagBuilder;
 use M4bTool\Parser\FfmetaDataParser;
-use M4bTool\Process\Ffmpeg;
+use M4bTool\Executables\Ffmpeg;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -718,7 +718,8 @@ Codecs:
         $this->notice("ipod auto adjust active, getting track durations");
         $totalDuration = new TimeUnit();
         foreach ($filesToConvert as $index => $file) {
-            $duration = $ffmpeg->loadQuickEstimatedDuration($file);
+            $this->notice("load estimated duration for file", $file);
+            $duration = $ffmpeg->estimateDuration($file);
             if (!$duration || ($duration instanceof TimeUnit && $duration->milliseconds() == 0)) {
                 $this->debug("load quick estimated duration failed for file, trying to read exact duration", $file);
                 $duration = $this->readDuration($file);

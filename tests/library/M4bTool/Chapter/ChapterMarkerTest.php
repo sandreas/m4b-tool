@@ -1,6 +1,6 @@
 <?php
 
-namespace M4bTool\Marker;
+namespace M4bTool\Chapter;
 
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
@@ -529,6 +529,9 @@ class ChapterMarkerTest extends TestCase
         ];
     }
 
+    /**
+     * @throws \Exception
+     */
     public function testGenerate()
     {
         $fullLength = new TimeUnit(48902034, TimeUnit::MILLISECOND);

@@ -1,19 +1,23 @@
 <?php
 
 
-namespace M4bTool\Process;
+namespace M4bTool\Executables;
 
 
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
+use M4bTool\Common\Flags;
+use M4bTool\Parser\FfmetaDataParser;
+use M4bTool\Parser\SilenceParser;
 use Sandreas\Strings\RuneList;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class Ffmpeg extends AbstractExecutable
+
+class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface
 {
     const AAC_FALLBACK_CODEC = "aac";
     const AAC_BEST_QUALITY_NON_FREE_CODEC = "libfdk_aac";
@@ -58,11 +62,12 @@ class Ffmpeg extends AbstractExecutable
     /**
      * @param SplFileInfo $file
      * @param Tag $tag
+     * @param Flags|null $flags
      * @throws Exception
      */
-    public function tagFile(SplFileInfo $file, Tag $tag)
+    public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
-        $outputFile = $this->createTempFileInFileDirectory($file);
+        $outputFile = $this->createTempFileInSameDirectory($file);
         $command = ["-i", $file];
 
         $commandAddition = [];
@@ -85,7 +90,7 @@ class Ffmpeg extends AbstractExecutable
         }
 
         $command[] = $outputFile;
-        $this->ffmpeg($command, sprintf("tagging file %s", $file));
+        $this->ffmpeg($command);
 
         if ($fpPath && file_exists($fpPath)/* && !$this->optDebug*/) {
             // $this->debug("deleting ffmetadata file");
@@ -101,7 +106,7 @@ class Ffmpeg extends AbstractExecutable
         }
     }
 
-    protected function createTempFileInFileDirectory(SplFileInfo $file)
+    protected function createTempFileInSameDirectory(SplFileInfo $file)
     {
         return new SplFileInfo((string)$file . "-" . uniqid("", true) . "." . $file->getExtension());
     }
@@ -160,11 +165,8 @@ class Ffmpeg extends AbstractExecutable
         ]);
     }
 
-    protected function ffmpeg($arguments, $introductionMessage = null)
+    protected function ffmpeg($arguments)
     {
-        if ($introductionMessage !== null) {
-            $this->output->write($introductionMessage);
-        }
         array_unshift($arguments, "-hide_banner");
         return $this->createProcess($arguments);
     }
@@ -175,11 +177,11 @@ class Ffmpeg extends AbstractExecutable
      */
     public function forceAudioMimeType(SplFileInfo $file)
     {
-        $fixedFile = $this->createTempFileInFileDirectory($file);
+        $fixedFile = $this->createTempFileInSameDirectory($file);
         $this->ffmpeg([
             "-i", $file, "-vn", "-acodec", "copy", "-map_metadata", "0",
             $fixedFile
-        ], sprintf("force audio mimetype for file %", $file));
+        ]);
         if (!$fixedFile->isFile()) {
             throw new Exception(sprintf("could not create file with audio mimetype: %s", $fixedFile));
         }
@@ -191,7 +193,7 @@ class Ffmpeg extends AbstractExecutable
 
     public function loadHighestAvailableQualityAacCodec()
     {
-        $process = $this->ffmpeg(["-codecs"], "determine highest available aac codec");
+        $process = $this->ffmpeg(["-codecs"]);
         $process->stop(10);
         $codecOutput = $process->getOutput() . $process->getErrorOutput();
 
@@ -206,21 +208,89 @@ class Ffmpeg extends AbstractExecutable
      * @return TimeUnit|void
      * @throws Exception
      */
-    public function loadQuickEstimatedDuration(SplFileInfo $file)
+    public function estimateDuration(SplFileInfo $file): ?TimeUnit
     {
         $process = $this->ffmpeg([
             "-hide_banner",
             "-i", $file,
             "-f", "ffmetadata",
-            "-"], sprintf("load estimated duration for file %s\n", $file));
+            "-"]);
         $output = $process->getOutput() . $process->getErrorOutput();
 
         preg_match("/\bDuration:[\s]+([0-9:\.]+)/", $output, $matches);
         if (!isset($matches[1])) {
             return null;
         }
-
         return TimeUnit::fromFormat($matches[1], TimeUnit::FORMAT_DEFAULT);
+    }
+
+    /**
+     * @param SplFileInfo $file
+     * @return TimeUnit|void
+     * @throws Exception
+     */
+    public function inspectExactDuration(SplFileInfo $file): ?TimeUnit
+    {
+
+        $output = $this->getAllProcessOutput($this->createStreamInfoProcess($file));
+
+        preg_match("/time=([0-9:\.]+)/is", $output, $matches);
+
+        if (!isset($matches[1])) {
+            return null;
+        }
+        return TimeUnit::fromFormat($matches[1], TimeUnit::FORMAT_DEFAULT);
+    }
+
+    private function createStreamInfoProcess(SplFileInfo $file)
+    {
+        // for only stats use "-v", "quiet", "-stats"
+        return $this->ffmpeg([
+            "-hide_banner",
+            "-i", $file,
+            "-f", "null",
+            "-"
+        ]);
+    }
+
+    private function createMetaDataProcess(SplFileInfo $file)
+    {
+        return $this->ffmpeg([
+            "-hide_banner",
+            "-i", $file,
+            "-f", "ffmetadata",
+            "-"
+        ]);
+    }
+
+    /**
+     * @param SplFileInfo $file
+     * @return Tag
+     * @throws Exception
+     */
+    public function readTag(SplFileInfo $file): Tag
+    {
+        if (!$file->isFile()) {
+            throw new Exception(sprintf("cannot read metadata, file %s does not exist", $file));
+        }
+        $output = $this->getAllProcessOutput($this->createMetaDataProcess($file));
+        $metaData = new FfmetaDataParser();
+        $metaData->parse($output);
+        return $metaData->toTag();
+    }
+
+    public function detectSilences(SplFileInfo $file, TimeUnit $silenceLength)
+    {
+        $process = $this->ffmpeg([
+            "-i", $file,
+            "-af", "silencedetect=noise=-30dB:d=" . ($silenceLength->milliseconds() / 1000),
+            "-f", "null",
+            "-",
+
+        ]);
+
+        $silenceParser = new SilenceParser();
+        return $silenceParser->parse($this->getAllProcessOutput($process));
     }
 
 }
