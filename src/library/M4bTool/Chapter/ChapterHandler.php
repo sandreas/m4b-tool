@@ -11,6 +11,7 @@ use Sandreas\Time\TimeUnit;
 
 class ChapterHandler
 {
+    // chapters are seen as numbered consecutively, if this ratio of all chapter names only differs by numeric values
     const CHAPTER_REINDEX_RATIO = 0.75;
     /**
      * @var MetaDataHandler
@@ -193,28 +194,18 @@ class ChapterHandler
      */
     private function adjustNumberedChapters(array $chapters)
     {
-        $chapterNamesIndexOnly = array_map(function (Chapter $chapter) {
-            $name = preg_replace("/[\s]+/", " ", $chapter->getName());
-            $indexesAndSpacesOnly = preg_replace("/[^0-9\. ]/", "", $name);
-
-
-            $indexes = array_filter(explode(" ", $indexesAndSpacesOnly), function ($element) {
-                // check for numbers (e.g. 1, 2, 2.1, 3.1.1, etc.)
-                $numbers = explode(".", $element);
-                foreach ($numbers as $number) {
-                    if (!preg_match("/^[0-9]+$/", $number)) {
-                        return false;
-                    }
-                }
-                return true;
-            });
-            $lastIndex = end($indexes);
-            return $lastIndex === false ? "" : trim($lastIndex);
-        }, $chapters);
+        $chaptersCount = count($chapters);
+        $chapterNamesIndexOnly = $this->extractIndexFromChapterNames($chapters);
 
         $chapterNamesFrequency = array_count_values($chapterNamesIndexOnly);
+        $mostUsedChapterIndexCount = max($chapterNamesFrequency);
 
-        $highestGlobalIndex = 1;
+        // if chapter names contain always the same number, no subindexing (1.1, 1.2, etc.) is needed
+        if ($mostUsedChapterIndexCount > $chaptersCount * static::CHAPTER_REINDEX_RATIO) {
+            $chapterNamesIndexOnly = array_fill(0, $chaptersCount, "");
+        }
+
+        $highestGlobalIndex = 0;
         $subIndexes = [];
         /** @var Chapter[] $reIndexedChapters */
         $reIndexedChapters = [];
@@ -241,6 +232,28 @@ class ChapterHandler
 
         return $reIndexedChapters;
 
+    }
+
+    private function extractIndexFromChapterNames($chapters)
+    {
+        return array_map(function (Chapter $chapter) {
+            $name = preg_replace("/[\s]+/", " ", $chapter->getName());
+            $indexesAndSpacesOnly = preg_replace("/[^0-9\. ]/", "", $name);
+
+
+            $indexes = array_filter(explode(" ", $indexesAndSpacesOnly), function ($element) {
+                // check for numbers (e.g. 1, 2, 2.1, 3.1.1, etc.)
+                $numbers = explode(".", $element);
+                foreach ($numbers as $number) {
+                    if (!preg_match("/^[0-9]+$/", $number)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+            $lastIndex = end($indexes);
+            return $lastIndex === false ? "" : trim($lastIndex);
+        }, $chapters);
     }
 
     private function adjustNamedChapters(array $chapters)

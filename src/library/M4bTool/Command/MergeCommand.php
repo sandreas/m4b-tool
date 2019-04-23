@@ -157,7 +157,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $this->chapterHandler = new ChapterHandler($this->metaHandler);
 
             $batchPatterns = $input->getOption(static::OPTION_BATCH_PATTERN);
-            if (count($batchPatterns) > 0) {
+            if ($this->isBatchMode($input)) {
                 $inputFile = new SplFileInfo($input->getArgument(static::ARGUMENT_INPUT));
                 $inputFiles = $input->getArgument(static::ARGUMENT_MORE_INPUT_FILES);
                 if (count($inputFiles) > 0 || !is_dir($inputFile)) {
@@ -176,6 +176,11 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
 
 
+    }
+
+    private function isBatchMode(InputInterface $input)
+    {
+        return count($input->getOption(static::OPTION_BATCH_PATTERN));
     }
 
     /**
@@ -299,13 +304,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      * @throws Exception
      * @throws Exception
      */
-    private function processFiles(InputInterface $input, OutputInterface $output, $batchProcessing = false)
+    private function processFiles(InputInterface $input, OutputInterface $output)
     {
         $this->initExecution($input, $output);
         $this->loadOutputFile();
 
-
-        if (!$this->optForce && $batchProcessing && $this->outputFile->isFile()) {
+        if (!$this->optForce && $this->isBatchMode($this->input) && $this->outputFile->isFile()) {
             $this->notice(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
             return;
         }
@@ -416,6 +420,11 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     private function processInputFiles()
     {
+
+        if (count($this->filesToConvert) === 0) {
+            $this->warn("no files to convert for given input...");
+            return;
+        }
 
         if (!$this->input->getOption(static::OPTION_TAG_ONLY)) {
             $this->loadInputMetadataFromFirstFile();
@@ -573,7 +582,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     private function convertInputFiles()
     {
-
         $padLen = strlen(count($this->filesToConvert));
         $dir = $this->outputFile->getPath() ? $this->outputFile->getPath() . DIRECTORY_SEPARATOR : "";
         $dir .= $this->outputFile->getBasename("." . $this->outputFile->getExtension()) . "-tmpfiles" . DIRECTORY_SEPARATOR;

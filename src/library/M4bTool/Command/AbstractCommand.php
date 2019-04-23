@@ -67,12 +67,19 @@ class AbstractCommand extends Command
     const OPTION_OUTPUT_FILE = "output-file";
     const OPTION_OUTPUT_FILE_SHORTCUT = "o";
 
-    const LEVEL_TO_STRING = [
-        OutputInterface::VERBOSITY_DEBUG => 'DEBUG',
-        OutputInterface::VERBOSITY_VERBOSE => 'NOTICE',
-        OutputInterface::VERBOSITY_VERY_VERBOSE => 'INFO',
-        OutputInterface::VERBOSITY_NORMAL => 'WARN',
-        OutputInterface::VERBOSITY_QUIET => 'ERROR',
+
+    const LOG_LEVEL_DEBUG = 'DEBUG';
+    const LOG_LEVEL_NOTICE = 'NOTICE';
+    const LOG_LEVEL_INFO = 'INFO';
+    const LOG_LEVEL_WARN = 'WARN';
+    const LOG_LEVEL_ERROR = 'ERROR';
+
+    const VERBOSITY_TO_LOG_LEVEL = [
+        OutputInterface::VERBOSITY_DEBUG => self::LOG_LEVEL_DEBUG,
+        OutputInterface::VERBOSITY_VERBOSE => self::LOG_LEVEL_NOTICE,
+        OutputInterface::VERBOSITY_VERY_VERBOSE => self::LOG_LEVEL_INFO,
+        OutputInterface::VERBOSITY_NORMAL => self::LOG_LEVEL_WARN,
+        OutputInterface::VERBOSITY_QUIET => self::LOG_LEVEL_ERROR,
     ];
 
     protected $startTime;
@@ -203,9 +210,9 @@ class AbstractCommand extends Command
             }
             $logMessage = implode(" ", $messageParts);
             $formattedLogMessage = $logMessage;
-            if ($level === OutputInterface::VERBOSITY_VERBOSE) {
+            if (static::VERBOSITY_TO_LOG_LEVEL[$level] === static::LOG_LEVEL_WARN) {
                 $formattedLogMessage = "<fg=black;bg=yellow>" . $formattedLogMessage . "</>";
-            } elseif ($level === OutputInterface::VERBOSITY_NORMAL) {
+            } elseif (static::VERBOSITY_TO_LOG_LEVEL[$level] === static::LOG_LEVEL_ERROR) {
                 $formattedLogMessage = "<fg=black;bg=red>" . $formattedLogMessage . "</>";
             }
 
@@ -217,7 +224,7 @@ class AbstractCommand extends Command
                 }
 
                 $logTime = str_pad(round((microtime(true) - $this->startTime) * 1000) . "ms", 10, " ", STR_PAD_LEFT);
-                $logLevel = str_pad(static::LEVEL_TO_STRING[$level] ?? "UNKNOWN", 8);
+                $logLevel = str_pad(static::VERBOSITY_TO_LOG_LEVEL[$level] ?? "UNKNOWN", 8);
                 file_put_contents($this->optLogFile, $logLevel . " " . $logTime . " " . $logMessage . PHP_EOL, FILE_APPEND);
             }
         }
@@ -417,9 +424,9 @@ class AbstractCommand extends Command
     protected function updateProgress(&$i)
     {
         if (++$i % 60 == 0) {
-            $this->output->writeln('+');
+            $this->notice('+');
         } else {
-            $this->output->write('+');
+            $this->output->write('+', false, OutputInterface::VERBOSITY_VERBOSE);
             usleep(1000000);
         }
     }

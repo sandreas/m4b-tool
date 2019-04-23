@@ -27,7 +27,7 @@ class ChapterHandlerTest extends TestCase
         $this->subject = new ChapterHandler($this->mockMetaDataHandler);
     }
 
-    public function testNormalizeChapterNames()
+    public function testAdjustChaptersNumbered()
     {
         $chapters = [
             $this->createChapter("Chapter 1"),
@@ -54,7 +54,32 @@ class ChapterHandlerTest extends TestCase
         $this->assertEquals("7", $actual[8]->getName());
     }
 
-    public function testNormalizeChapterNamesWithNamedChapters()
+
+    public function testAdjustChaptersNamedWithSameNumber()
+    {
+        $chapters = [
+            $this->createChapter("Title 1"),
+            $this->createChapter("Title 1"),
+            $this->createChapter("Title 1"),
+            $this->createChapter("Title 1"),
+            $this->createChapter("Title 1"),
+            $this->createChapter("Title 1"),
+            $this->createChapter("Title 1"),
+        ];
+
+        $actual = $this->subject->adjustChapters($chapters);
+        $this->assertEquals(count($actual), count($chapters));
+        $this->assertEquals("1", $actual[0]->getName());
+        $this->assertEquals("2", $actual[1]->getName());
+        $this->assertEquals("3", $actual[2]->getName());
+        $this->assertEquals("4", $actual[3]->getName());
+        $this->assertEquals("5", $actual[4]->getName());
+        $this->assertEquals("6", $actual[5]->getName());
+        $this->assertEquals("7", $actual[6]->getName());
+    }
+
+
+    public function testAdjustChaptersNamed()
     {
         $chapters = [
             $this->createChapter("First Chapter"),
