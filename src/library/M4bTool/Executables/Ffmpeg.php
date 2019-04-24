@@ -234,12 +234,13 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
         $output = $this->getAllProcessOutput($this->createStreamInfoProcess($file));
 
-        preg_match("/time=([0-9:\.]+)/is", $output, $matches);
+        preg_match_all("/time=([0-9:\.]+)/is", $output, $matches);
 
-        if (!isset($matches[1])) {
-            return null;
+        if (!isset($matches[1]) || !is_array($matches[1]) || count($matches[1]) === 0) {
+            return $this->estimateDuration($file);
         }
-        return TimeUnit::fromFormat($matches[1], TimeUnit::FORMAT_DEFAULT);
+        $lastMatch = end($matches[1]);
+        return TimeUnit::fromFormat($lastMatch, TimeUnit::FORMAT_DEFAULT);
     }
 
     private function createStreamInfoProcess(SplFileInfo $file)

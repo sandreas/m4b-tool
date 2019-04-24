@@ -73,7 +73,7 @@ class ChapterHandler
         });
 
         if (count($silences) > 0) {
-            $this->splitTooLongChaptersBySilence($chapters, $silences);
+            $chapters = $this->splitTooLongChaptersBySilence($chapters, $silences);
         }
 
         return $this->adjustChapterNames($chapters);
@@ -106,14 +106,20 @@ class ChapterHandler
             $newChapter = clone $chapter;
             /** @var Silence $silence */
             foreach ($silences as $position => $silence) {
-                if ($nextChapter instanceof Chapter && $nextChapter->getStart()->milliseconds() < $silence->getStart()->milliseconds()) {
+                // place subchapter in the middle of the silence
+                $potentialChapterStart = new TimeUnit($silence->getStart()->milliseconds() + $silence->getLength()->milliseconds() / 2);
+
+                // if silence end is later in timeline than next chapter start, break the loop
+                if ($nextChapter instanceof Chapter && $nextChapter->getStart()->milliseconds() <= $silence->getEnd()->milliseconds()) {
                     break;
                 }
 
+                // skip all silences that are before the chapter start
                 if ($silence->getStart()->milliseconds() < $newChapter->getStart()->milliseconds()) {
                     continue;
                 }
 
+                // skip all silences that are after chapter start but before the desired length of a chapter
                 if ($silence->getStart()->milliseconds() - $newChapter->getStart()->milliseconds() < $this->desiredLength) {
                     continue;
                 }
@@ -127,7 +133,7 @@ class ChapterHandler
 
                 $resultChapters[] = $newChapter;
                 $newChapter = clone $chapter;
-                $newChapter->setStart($silence->getEnd());
+                $newChapter->setStart($potentialChapterStart);
             }
 
             $resultChapters[] = $newChapter;
@@ -138,7 +144,7 @@ class ChapterHandler
 
         }
 
-        return $chapters;
+        return $resultChapters;
     }
 
     public function containsTooLongChapters($chapters)
