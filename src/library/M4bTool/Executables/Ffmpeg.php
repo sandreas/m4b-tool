@@ -275,6 +275,10 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
             throw new Exception(sprintf("cannot read metadata, file %s does not exist", $file));
         }
         $output = $this->getAllProcessOutput($this->createMetaDataProcess($file));
+        // force utf-8
+        if (!preg_match("//u", $output)) {
+            $output = mb_scrub($output, "utf-8");
+        }
         $metaData = new FfmetaDataParser();
         $metaData->parse($output);
         return $metaData->toTag();

@@ -13,6 +13,7 @@ class ChapterHandler
 {
     // chapters are seen as numbered consecutively, if this ratio of all chapter names only differs by numeric values
     const CHAPTER_REINDEX_RATIO = 0.75;
+    const CHAPTER_START_MAX_OFFSET_MS = 25;
     /**
      * @var MetaDataHandler
      */
@@ -92,11 +93,7 @@ class ChapterHandler
         }
 
         $resultChapters = [];
-        while (count($chapters) > 0) {
-            $chapter = current($chapters);
-            if (!$chapter) {
-                break;
-            }
+        while ($chapter = current($chapters)) {
             $nextChapter = next($chapters);
             if ($chapter->getLength()->milliseconds() <= $this->maxLength) {
                 $resultChapters[] = clone $chapter;
@@ -106,8 +103,8 @@ class ChapterHandler
             $newChapter = clone $chapter;
             /** @var Silence $silence */
             foreach ($silences as $position => $silence) {
-                // place subchapter in the middle of the silence
-                $potentialChapterStart = new TimeUnit($silence->getStart()->milliseconds() + $silence->getLength()->milliseconds() / 2);
+                // place subchapter after the silence
+                $potentialChapterStart = new TimeUnit($silence->getStart()->milliseconds() + min(static::CHAPTER_START_MAX_OFFSET_MS, $silence->getLength()->milliseconds()));
 
                 // if silence end is later in timeline than next chapter start, break the loop
                 if ($nextChapter instanceof Chapter && $nextChapter->getStart()->milliseconds() <= $silence->getEnd()->milliseconds()) {
@@ -127,7 +124,7 @@ class ChapterHandler
                 if ($silence->getStart()->milliseconds() > $newChapter->getStart()->milliseconds() + $this->maxLength) {
                     $newChapter->setLength(new TimeUnit($this->maxLength));
                 } else {
-                    $newChapter->setEnd(new TimeUnit(floor($silence->getStart()->milliseconds() + $silence->getLength()->milliseconds() / 2)));
+                    $newChapter->setEnd($potentialChapterStart);
                 }
 
 
