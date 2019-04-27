@@ -884,7 +884,9 @@ Codecs:
 
         $command[] = $outputFile;
 
-        $this->ffmpeg($command, sprintf("converting %s to %s", $file, $outputFile));
+        $this->notice(sprintf(" convert %s", $file));
+        $this->notice(sprintf("     => %s", $outputFile));
+        $this->ffmpeg($command);
     }
 
 }

@@ -31,6 +31,7 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Sandreas\Strings\Format\FormatParser;
 use Sandreas\Strings\Format\PlaceHolder;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -47,7 +48,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     const OPTION_AUTO_SPLIT_SECONDS = "auto-split-seconds";
     const OPTION_NO_CONVERSION = "no-conversion";
     const OPTION_BATCH_PATTERN = "batch-pattern";
-    const OPTION_TAG_ONLY = "tag-only";
     const OPTION_DRY_RUN = "dry-run";
 
 
@@ -126,12 +126,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", "aac,alac,flac,m4a,m4b,mp3,oga,ogg,wav,wma,mp4");
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
         $this->addOption(static::OPTION_MARK_TRACKS, null, InputOption::VALUE_NONE, "add chapter marks for each track");
-        $this->addOption(static::OPTION_AUTO_SPLIT_SECONDS, null, InputOption::VALUE_OPTIONAL, "auto split chapters after x seconds, if track is too long");
         $this->addOption(static::OPTION_NO_CONVERSION, null, InputOption::VALUE_NONE, "skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)");
 
         $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title)", []);
         $this->addOption(static::OPTION_DRY_RUN, null, InputOption::VALUE_NONE, "perform a dry run without converting all the files in batch mode (requires --" . static::OPTION_BATCH_PATTERN . ")");
-        $this->addOption(static::OPTION_TAG_ONLY, null, InputOption::VALUE_NONE, "perform batch operations, but only tag the result files with new information (requires --" . static::OPTION_BATCH_PATTERN . ")");
 
     }
 
@@ -164,9 +162,13 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                     throw new Exception("The use of --" . static::OPTION_BATCH_PATTERN . " assumes that exactly one directory is processed - please provide a valid and existing directory");
                 }
 
+                $batchJobs = [];
                 foreach ($batchPatterns as $batchPattern) {
-                    $this->processBatchDirectory($batchPattern, clone $this, clone $input, clone $output);
+                    $batchJobs = array_merge($batchJobs, $this->prepareBatchJobs(clone $input, clone $output, $batchPattern));
                 }
+
+                $this->processBatchJobs(clone $this, clone $output, $batchJobs);
+
             } else {
                 $this->processFiles($input, $output);
             }
@@ -184,14 +186,13 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
-     * @param string $batchPattern
-     * @param MergeCommand $command
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @throws InvalidArgumentException
+     * @param string $batchPattern
+     * @return InputInterface[]
      * @throws Exception
      */
-    private function processBatchDirectory($batchPattern, MergeCommand $command, InputInterface $input, OutputInterface $output)
+    private function prepareBatchJobs(InputInterface $input, OutputInterface $output, $batchPattern)
     {
 
         $this->initExecution($input, $output);
@@ -222,11 +223,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
 
 
+        $batchJobs = [];
         foreach ($verifiedDirectories as $baseDir => $formatParser) {
             // clone input to work with current directory instead of existing data from an old directory
             $clonedInput = clone $input;
-            $clonedOutput = clone $output;
-            $clonedCommand = clone $command;
             $trimmedBatchPattern = $formatParser->trimSeparatorPrefix($batchPattern);
 
             $fileNamePart = rtrim($formatParser->format($trimmedBatchPattern), "\\/");
@@ -237,6 +237,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             }
 
             $batchOutputFile = $outputFile . "/" . $fileNamePart . ".m4b";
+
             $clonedInput->setArgument(static::ARGUMENT_INPUT, $baseDir);
             $clonedInput->setOption(static::OPTION_OUTPUT_FILE, $batchOutputFile);
             $clonedInput->setOption(static::OPTION_BATCH_PATTERN, []);
@@ -257,14 +258,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 continue;
             }
 
-            try {
-                $clonedCommand->execute($clonedInput, $clonedOutput);
-            } catch (Exception $e) {
-                $this->error(sprintf("processing failed for %s: %s", $baseDir, $e->getMessage()));
-                $this->debug(sprintf("error on %s: %s", $baseDir, $e->getTraceAsString()));
-            }
+            $batchJobs[] = $clonedInput;
         }
+        $this->notice("");
+        $this->notice("================================");
 
+        return $batchJobs;
     }
 
     private function parseIncludeExtensions($extraExtensions = [])
@@ -297,11 +296,34 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
+     * @param MergeCommand $command
+     * @param OutputInterface $output
+     * @param InputInterface[] $batchJobs
+     * @throws InvalidArgumentException
+     */
+    private function processBatchJobs(MergeCommand $command, OutputInterface $output, array $batchJobs)
+    {
+
+        foreach ($batchJobs as $clonedInput) {
+
+            $baseDir = $clonedInput->getArgument(static::ARGUMENT_INPUT);
+
+            try {
+                $this->notice(sprintf("processing %s", $baseDir));
+                $clonedCommand = clone $command;
+                $clonedOutput = clone $output;
+                $clonedCommand->execute($clonedInput, $clonedOutput);
+            } catch (Exception $e) {
+                $this->error(sprintf("processing failed for %s: %s", $baseDir, $e->getMessage()));
+                $this->debug(sprintf("error on %s: %s", $baseDir, $e->getTraceAsString()));
+            }
+        }
+    }
+
+    /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @param bool $batchProcessing
      * @throws InvalidArgumentException
-     * @throws Exception
      * @throws Exception
      */
     private function processFiles(InputInterface $input, OutputInterface $output)
@@ -426,35 +448,40 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             return;
         }
 
-        if (!$this->input->getOption(static::OPTION_TAG_ONLY)) {
-            $this->loadInputMetadataFromFirstFile();
-            $this->lookupAndAddCover();
-            $this->lookupAndAddDescription();
+        $this->loadInputMetadataFromFirstFile();
+        $this->lookupAndAddCover();
+        $this->lookupAndAddDescription();
 
-            if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
-                $this->prepareMergeWithoutConversion();
-            } else {
-                $this->convertInputFiles();
-            }
-            $this->lookupAndAddCover();
-
-            $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
-            if ($chaptersFileContent !== null) {
-                $chapterParser = new Mp4ChapsChapterParser();
-                $this->chapters = $chapterParser->parse($chaptersFileContent);
-            } else {
-                $this->buildChaptersFromConvertedFileDurations();
-                $this->replaceChaptersWithMusicBrainz();
-                $this->addTrackMarkers();
-            }
-
-
-            $this->mergeFiles();
-            $this->deleteTemporaryFiles();
+        if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
+            $this->prepareMergeWithoutConversion();
+        } else {
+            $this->convertInputFiles();
         }
-        $this->adjustTooLongChapters();
+        $this->lookupAndAddCover();
 
-        $this->tagMergedFile($this->chapters);
+        $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
+
+        if ($chaptersFileContent !== null) {
+            $this->notice("importing chapters from existing chapters.txt");
+            $chapterParser = new Mp4ChapsChapterParser();
+            $this->chapters = $chapterParser->parse($chaptersFileContent);
+        } else {
+            $this->notice("rebuilding chapters from converted files title tags");
+            $this->buildChaptersFromConvertedFileDurations();
+            $this->replaceChaptersWithMusicBrainz();
+            $this->addTrackMarkers();
+        }
+
+
+        $outputTempFile = $this->mergeFiles();
+
+        $this->adjustTooLongChapters($outputTempFile);
+        $this->tagMergedFile($outputTempFile, $this->chapters);
+
+        $this->moveFinishedOutputFile($outputTempFile, $this->outputFile);
+
+        $this->deleteTemporaryFiles();
+
     }
 
     protected function loadInputMetadataFromFirstFile()
@@ -577,12 +604,11 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @return string
      * @throws Exception
      */
-    private function convertInputFiles()
+    private function createOutputTempDir()
     {
-        $padLen = strlen(count($this->filesToConvert));
         $dir = $this->outputFile->getPath() ? $this->outputFile->getPath() . DIRECTORY_SEPARATOR : "";
         $dir .= $this->outputFile->getBasename("." . $this->outputFile->getExtension()) . "-tmpfiles" . DIRECTORY_SEPARATOR;
 
@@ -591,12 +617,22 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $this->debug($message);
             throw new Exception($message);
         }
-
+        return $dir;
+    }
+    /**
+     * @throws InvalidArgumentException
+     * @throws Exception
+     */
+    private function convertInputFiles()
+    {
+        $padLen = strlen(count($this->filesToConvert));
         $this->adjustBitrateForIpod($this->filesToConvert);
 
         $coverTargetFile = new SPLFileInfo($this->argInputFile . "/cover.jpg");
         $forceExtractCover = $this->optForce;
         $baseFdkAacCommand = $this->buildFdkaacCommand();
+
+        $outputTempDir = $this->createOutputTempDir();
         foreach ($this->filesToConvert as $index => $file) {
 
             // use "force" flag only once
@@ -604,8 +640,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $forceExtractCover = false;
 
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
-            $outputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
-            $finishedOutputFile = new SplFileInfo($dir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
+            $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
+            $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
 
             $this->filesToMerge[] = $finishedOutputFile;
 
@@ -696,15 +732,26 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
+     * @return SplFileInfo
      * @throws Exception
      */
     private function mergeFiles()
     {
+        $outputTempFile = new SplFileInfo($this->createOutputTempDir() . "/tmp_" . $this->outputFile->getBasename());
+        $outputTempChaptersFile = $this->audioFileToChaptersFile($outputTempFile);
+
+        if ($outputTempFile->isFile() && !unlink($outputTempFile)) {
+            throw new Exception(sprintf("Could not delete temporary output file %s", $outputTempFile));
+        }
+
+        if ($outputTempChaptersFile->isFile() && !unlink($outputTempChaptersFile)) {
+            throw new Exception(sprintf("Could not delete temporary chapters file %s", $outputTempChaptersFile));
+        }
 
         if (count($this->filesToMerge) === 1) {
             $this->debug("only 1 file in merge list, copying file");
-            copy(current($this->filesToMerge), $this->outputFile);
-            return;
+            copy(current($this->filesToMerge), $outputTempFile);
+            return $outputTempFile;
         }
 
         // howto quote: http://ffmpeg.org/ffmpeg-utils.html#Quoting-and-escaping
@@ -736,18 +783,19 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $command[] = $this->optAudioFormat;
         }
 
-        $command[] = $this->outputFile;
+        $command[] = $outputTempFile;
 
 
-        $this->ffmpeg($command, "merging " . $this->outputFile . ", this can take a while");
+        $this->ffmpeg($command, "merging " . $outputTempFile . ", this can take a while");
 
-        if (!$this->outputFile->isFile()) {
-            throw new Exception("could not merge to " . $this->outputFile);
+        if (!$outputTempFile->isFile()) {
+            throw new Exception("could not merge to " . $outputTempFile);
         }
 
         if (!$this->optDebug) {
             unlink($listFile);
         }
+        return $outputTempFile;
     }
 
     private function deleteTemporaryFiles()
@@ -791,49 +839,75 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
+     * @param SplFileInfo $outputFile
      * @throws InvalidArgumentException
      */
-    private function adjustTooLongChapters()
+    private function adjustTooLongChapters(SplFileInfo $outputFile)
     {
-        $desiredChapterLength = $this->input->getOption(static::OPTION_DESIRED_CHAPTER_LENGTH);
-        $maxChapterLength = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
-        $autoSplitMilliSeconds = (int)$this->input->getOption(static::OPTION_AUTO_SPLIT_SECONDS) * 1000;
+        // value examples:
+        // 300 => maxLength = 300 seconds
+        // 300,900 => desiredLength = 300 seconds, maxLength = 900 seconds
+        $maxChapterLengthOriginalValue = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
+        $maxChapterLengthParts = explode(",", $maxChapterLengthOriginalValue);
+
+        $desiredChapterLengthSeconds = $maxChapterLengthParts[0] ?? 0;
+        $maxChapterLengthSeconds = $maxChapterLengthParts[1] ?? $desiredChapterLengthSeconds;
+
+        $maxChapterLength = new TimeUnit((int)$maxChapterLengthSeconds, TimeUnit::SECOND);
+        $desiredChapterLength = new TimeUnit((int)$desiredChapterLengthSeconds, TimeUnit::SECOND);
+
         // at least one option has to be defined to adjust too long chapters
-        if ($autoSplitMilliSeconds === 0 && $maxChapterLength === 0 && $desiredChapterLength === 0) {
+        if ($maxChapterLength->milliseconds() === 0) {
             return;
         }
 
-        if ($maxChapterLength > 0) {
+        if ($maxChapterLength->milliseconds() > 0) {
             $this->chapterHandler->setMaxLength($maxChapterLength);
-        } else if ($autoSplitMilliSeconds > 0) {
-            $this->chapterHandler->setMaxLength($autoSplitMilliSeconds);
-        }
-
-        if ($desiredChapterLength > 0) {
             $this->chapterHandler->setDesiredLength($desiredChapterLength);
         }
 
-
-        $silenceDetectionOutput = $this->detectSilencesForChapterGuessing($this->outputFile);
+        $silenceDetectionOutput = $this->detectSilencesForChapterGuessing($outputFile);
         $silenceParser = new SilenceParser();
         $silences = $silenceParser->parse($silenceDetectionOutput);
 
 
         $this->chapters = $this->chapterHandler->adjustChapters($this->chapters, $silences);
-
-
-//        $chapterMarker = new ChapterMarker();
-//        $this->chapters = $chapterMarker->adjustTooLongChapters($this->chapters, $silences, $maxChapterLength, $desiredChapterLength, static::NORMALIZE_CHAPTER_OPTIONS);
     }
 
     /**
+     * @param SplFileInfo $outputTmpFile
      * @param Chapter[] $chapters
      * @throws InvalidArgumentException
      */
-    private function tagMergedFile(array $chapters)
+    private function tagMergedFile(SplFileInfo $outputTmpFile, array $chapters)
     {
         $tag = $this->inputOptionsToTag();
         $tag->chapters = $chapters;
-        $this->tagFile($this->outputFile, $tag);
+        $this->tagFile($outputTmpFile, $tag);
     }
+
+    /**
+     * @param SplFileInfo $outputTempFile
+     * @param SplFileInfo $outputFile
+     * @throws Exception
+     */
+    private function moveFinishedOutputFile(SplFileInfo $outputTempFile, SplFileInfo $outputFile)
+    {
+        $outputDir = dirname($outputFile);
+        if (!is_dir($outputDir) && !mkdir($outputDir, 0755, true)) {
+            throw new Exception(sprintf("Could not create path for file %s", $outputFile));
+        }
+
+        if (!rename($outputTempFile, $outputFile)) {
+            throw new Exception(sprintf("Could not rename output file from %s to %s", $outputTempFile, $outputFile));
+        }
+
+        $sourceChaptersFile = $this->audioFileToChaptersFile($outputTempFile);
+        $destinationChaptersFile = $this->audioFileToChaptersFile($outputFile);
+        if ($sourceChaptersFile->isFile() && !rename($sourceChaptersFile, $destinationChaptersFile)) {
+            throw new Exception(sprintf("Could not rename chapters file from %s to %s", $sourceChaptersFile, $destinationChaptersFile));
+        }
+    }
+
+
 }

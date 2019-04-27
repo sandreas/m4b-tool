@@ -18,27 +18,34 @@ class ChapterHandler
      * @var MetaDataHandler
      */
     protected $meta;
-    protected $desiredLength = 0;
-    protected $maxLength = 0;
+    /** @var TimeUnit */
+    protected $desiredLength;
+    /** @var TimeUnit */
+    protected $maxLength;
 
     protected $removeChars;
 
     public function __construct(MetaDataHandler $meta)
     {
         $this->meta = $meta;
+        $this->maxLength = new TimeUnit();
+        $this->desiredLength = new TimeUnit();
     }
 
-    public function setMaxLength(int $maxLengthMs)
+    /**
+     * @param TimeUnit $maxLength
+     */
+    public function setMaxLength(TimeUnit $maxLength)
     {
-        $this->maxLength = $maxLengthMs;
-        if ($this->desiredLength === 0) {
-            $this->setDesiredLength($maxLengthMs);
-        }
+        $this->maxLength = $maxLength;
     }
 
-    public function setDesiredLength(int $desiredLengthMs)
+    /**
+     * @param TimeUnit $desiredLength
+     */
+    public function setDesiredLength(TimeUnit $desiredLength)
     {
-        $this->desiredLength = $desiredLengthMs;
+        $this->desiredLength = $desiredLength;
     }
 
     /**
@@ -88,14 +95,17 @@ class ChapterHandler
      */
     private function splitTooLongChaptersBySilence(array $chapters, array $silences)
     {
-        if ($this->maxLength === 0 || !$this->containsTooLongChapters($chapters)) {
+        if ($this->maxLength->milliseconds() === 0 || !$this->containsTooLongChapters($chapters)) {
             return $chapters;
         }
+
+        // normalize desired length, since it has to be set > 0 and <= maxLength
+        $desiredLength = $this->desiredLength->milliseconds() === 0 || $this->desiredLength->milliseconds() > $this->maxLength->milliseconds() ? $this->maxLength : $this->desiredLength;
 
         $resultChapters = [];
         while ($chapter = current($chapters)) {
             $nextChapter = next($chapters);
-            if ($chapter->getLength()->milliseconds() <= $this->maxLength) {
+            if ($chapter->getLength()->milliseconds() <= $this->maxLength->milliseconds()) {
                 $resultChapters[] = clone $chapter;
                 continue;
             }
@@ -117,12 +127,12 @@ class ChapterHandler
                 }
 
                 // skip all silences that are after chapter start but before the desired length of a chapter
-                if ($silence->getStart()->milliseconds() - $newChapter->getStart()->milliseconds() < $this->desiredLength) {
+                if ($silence->getStart()->milliseconds() - $newChapter->getStart()->milliseconds() < $desiredLength->milliseconds()) {
                     continue;
                 }
 
-                if ($silence->getStart()->milliseconds() > $newChapter->getStart()->milliseconds() + $this->maxLength) {
-                    $newChapter->setLength(new TimeUnit($this->maxLength));
+                if ($silence->getStart()->milliseconds() > $newChapter->getStart()->milliseconds() + $this->maxLength->milliseconds()) {
+                    $newChapter->setLength(new TimeUnit($this->maxLength->milliseconds()));
                 } else {
                     $newChapter->setEnd($potentialChapterStart);
                 }
@@ -133,7 +143,20 @@ class ChapterHandler
                 $newChapter->setStart($potentialChapterStart);
             }
 
-            $resultChapters[] = $newChapter;
+            // if there are no or no matching silences, do a hard split at desired length, if maxLength is exceeded
+            if ($newChapter->getLength()->milliseconds() > $this->maxLength->milliseconds() && $this->maxLength->milliseconds() > 0 && $desiredLength->milliseconds() > 0) {
+                while ($newChapter->getLength()->milliseconds() > $desiredLength->milliseconds()) {
+                    $hardSplitChapter = clone $newChapter;
+                    $hardSplitChapter->setLength($desiredLength);
+                    $newChapter->setStart($hardSplitChapter->getEnd());
+                    $newChapter->setLength(new TimeUnit($newChapter->getLength()->milliseconds() - $desiredLength->milliseconds()));
+                    $resultChapters[] = $hardSplitChapter;
+                }
+            }
+
+            if ($newChapter->getLength()->milliseconds() > 0) {
+                $resultChapters[] = $newChapter;
+            }
 
             if (!$nextChapter) {
                 break;
@@ -146,11 +169,11 @@ class ChapterHandler
 
     public function containsTooLongChapters($chapters)
     {
-        if ($this->maxLength === 0) {
+        if ($this->maxLength->milliseconds() === 0) {
             return false;
         }
         foreach ($chapters as $chapter) {
-            if ($chapter->getLength()->milliseconds() > $this->maxLength) {
+            if ($chapter->getLength()->milliseconds() > $this->maxLength->milliseconds()) {
                 return true;
             }
         }
