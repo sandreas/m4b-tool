@@ -278,7 +278,7 @@ class ChapterHandler
                 return true;
             });
             $lastIndex = end($indexes);
-            return $lastIndex === false ? "" : trim($lastIndex);
+            return $lastIndex === false ? "" : ltrim(trim($lastIndex), "0");
         }, $chapters);
     }
 
