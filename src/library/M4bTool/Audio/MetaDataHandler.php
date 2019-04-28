@@ -25,6 +25,10 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
     const FORMAT_MP3 = "mp3";
 
 
+    const CODEC_MP3 = "mp3";
+    const CODEC_AAC = "aac";
+    const CODEC_ALAC = "alac";
+
     const EXTENSION_FORMAT_MAPPING = [
         self::EXTENSION_M4A => self::FORMAT_MP4,
         self::EXTENSION_M4B => self::FORMAT_MP4,
@@ -57,10 +61,6 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
         return $this->ffmpeg->estimateDuration($file);
     }
 
-    public function detectExactDuration(SplFileInfo $file)
-    {
-
-    }
 
     public function detectFormat(SplFileInfo $file)
     {
@@ -78,10 +78,6 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
         return static::EXTENSION_FORMAT_MAPPING[$ext] ?? null;
     }
 
-
-//    public function detectCodec(SplFileInfo $file) {
-//
-//    }
 
     public function loadTag(SplFileInfo $file)
     {

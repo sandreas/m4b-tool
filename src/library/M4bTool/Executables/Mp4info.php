@@ -19,7 +19,7 @@ class Mp4info extends AbstractExecutable implements DurationDetectorInterface
 
     public function estimateDuration(SplFileInfo $file): ?TimeUnit
     {
-        $process = $this->createProcess([$file]);
+        $process = $this->runProcess([$file]);
         $output = $process->getOutput() . $process->getErrorOutput();
         preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
         if (!isset($matches[1])) {

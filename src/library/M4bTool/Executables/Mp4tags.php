@@ -60,7 +60,7 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
         }
 
         $command[] = $file;
-        $process = $this->createProcess($command);
+        $process = $this->runProcess($command);
 
         if ($process->getExitCode() !== 0) {
             throw new Exception(sprintf("Could not tag file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
@@ -74,7 +74,7 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
     private function doesMp4tagsSupportSorting()
     {
         $command = ["-help"];
-        $process = $this->createProcess($command);
+        $process = $this->runProcess($command);
         $result = $process->getOutput() . $process->getErrorOutput();
         $searchStrings = ["-sortname", "-sortartist", "-sortalbum"];
         foreach ($searchStrings as $searchString) {

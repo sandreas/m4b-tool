@@ -39,7 +39,7 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
         file_put_contents($chaptersFile, $this->chaptersToMp4v2Format($tag->chapters));
         $command[] = "-i";
         $command[] = $file;
-        $process = $this->createProcess($command);
+        $process = $this->runProcess($command);
 
         if ($process->getExitCode() !== 0) {
             unlink($chaptersFile);

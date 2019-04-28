@@ -15,11 +15,13 @@ use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use M4bTool\Executables\Ffmpeg;
+use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Executables\Mp4art;
 use M4bTool\Executables\Mp4chaps;
 use M4bTool\Executables\Mp4info;
 use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
+use M4bTool\Executables\Tasks\ConversionTask;
 use M4bTool\Filesystem\DirectoryLoader;
 use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Parser\FfmetaDataParser;
@@ -49,6 +51,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     const OPTION_NO_CONVERSION = "no-conversion";
     const OPTION_BATCH_PATTERN = "batch-pattern";
     const OPTION_DRY_RUN = "dry-run";
+    const OPTION_JOBS = "jobs";
 
 
     const MAPPING_OPTIONS_PLACEHOLDERS = [
@@ -130,6 +133,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title)", []);
         $this->addOption(static::OPTION_DRY_RUN, null, InputOption::VALUE_NONE, "perform a dry run without converting all the files in batch mode (requires --" . static::OPTION_BATCH_PATTERN . ")");
+        $this->addOption(static::OPTION_JOBS, null, InputOption::VALUE_OPTIONAL, "Specifies the number of jobs (commands) to run simultaneously", 1);
 
     }
 
@@ -604,6 +608,170 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
+     * @throws InvalidArgumentException
+     * @throws Exception
+     */
+    private function convertInputFiles()
+    {
+        $padLen = strlen(count($this->filesToConvert));
+        $this->adjustBitrateForIpod($this->filesToConvert);
+
+        $coverTargetFile = new SPLFileInfo($this->argInputFile . "/cover.jpg");
+
+
+        $baseFdkAacCommand = $this->buildFdkaacCommand();
+
+        $firstFile = reset($this->filesToConvert);
+        if ($firstFile) {
+            $this->extractCover($firstFile, $coverTargetFile, $this->optForce);
+        }
+
+        $outputTempDir = $this->createOutputTempDir();
+
+        if ($baseFdkAacCommand) {
+            foreach ($this->filesToConvert as $index => $file) {
+
+                $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
+                $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
+                $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
+
+                $this->filesToMerge[] = $finishedOutputFile;
+
+                if ($outputFile->isFile()) {
+                    unlink($outputFile);
+                }
+
+                if ($finishedOutputFile->isFile() && $finishedOutputFile->getSize() > 0) {
+                    $this->notice("output file " . $outputFile . " already exists, skipping");
+                    continue;
+                }
+
+
+                if ($baseFdkAacCommand) {
+                    $this->otherTmpFiles[] = $this->executeFdkaacCommand($baseFdkAacCommand, $file, $outputFile);
+                } else {
+                    $this->executeFfmpegCommand($file, $outputFile);
+                }
+
+
+                if (!$outputFile->isFile()) {
+                    throw new Exception("could not convert " . $file . " to " . $outputFile);
+                }
+
+                if ($outputFile->getSize() == 0) {
+                    unlink($outputFile);
+                    throw new Exception("could not convert " . $file . " to " . $outputFile);
+                }
+
+                rename($outputFile, $finishedOutputFile);
+            }
+        } else {
+            $ffmpeg = new Ffmpeg();
+            /** @var ConversionTask[] $conversionTasks */
+            $conversionTasks = [];
+
+            foreach ($this->filesToConvert as $index => $file) {
+
+                $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
+                $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
+                $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
+
+                $this->filesToMerge[] = $finishedOutputFile;
+
+                if ($outputFile->isFile()) {
+                    unlink($outputFile);
+                }
+
+
+                $options = new FileConverterOptions();
+                $options->source = $file;
+                $options->destination = $outputFile;
+                $options->tempDir = $outputTempDir;
+                $options->extension = $this->optAudioExtension;
+                $options->codec = $this->optAudioCodec;
+                $options->format = $this->optAudioFormat;
+                $options->channels = $this->optAudioChannels;
+                $options->sampleRate = $this->optAudioSampleRate;
+                $options->bitRate = $this->optAudioBitRate;
+                $options->force = $this->optForce;
+
+                $conversionTasks[] = new ConversionTask($ffmpeg, $options);
+            }
+
+            $jobs = $this->input->getOption(static::OPTION_JOBS) ? (int)$this->input->getOption(static::OPTION_JOBS) : 1;
+
+            // minimum 1 job, maximum count conversionTasks jobs
+            $jobs = max(min($jobs, count($conversionTasks)), 1);
+
+            $runningTaskCount = 0;
+            $conversionTaskQueue = $conversionTasks;
+            $runningTasks = [];
+            $start = microtime(true);
+            $increaseProgressBarSeconds = 5;
+            do {
+                $firstFailedTask = null;
+                if ($runningTaskCount > 0 && $firstFailedTask === null) {
+                    foreach ($runningTasks as $task) {
+                        if ($task->didFail()) {
+                            $firstFailedTask = $task;
+                            break;
+                        }
+                    }
+                }
+
+                // add new tasks, if no task did fail and jobs left
+                /** @var ConversionTask $task */
+                $task = null;
+                while ($firstFailedTask === null && $runningTaskCount < $jobs && $task = array_shift($conversionTaskQueue)) {
+                    $task->run();
+                    $runningTasks[] = $task;
+                    $runningTaskCount++;
+                }
+
+                usleep(250000);
+
+                $runningTasks = array_filter($runningTasks, function (ConversionTask $task) {
+                    return $task->isRunning();
+                });
+
+                $runningTaskCount = count($runningTasks);
+                $conversionQueueLength = count($conversionTaskQueue);
+
+                $time = microtime(true);
+                $progressBar = str_repeat("+", ceil(($time - $start) / $increaseProgressBarSeconds));
+                $this->output->write(sprintf("\r%d/%d remaining tasks running: %s", $runningTaskCount, ($conversionQueueLength + $runningTaskCount), $progressBar), false, OutputInterface::VERBOSITY_VERBOSE);
+
+            } while ($conversionQueueLength > 0 || $runningTaskCount > 0);
+            $this->output->writeln("", OutputInterface::VERBOSITY_VERBOSE);
+            /** @var ConversionTask $firstFailedTask */
+            if ($firstFailedTask !== null) {
+                throw new Exception("a task has failed", null, $firstFailedTask->getLastException());
+            }
+
+
+            /** @var ConversionTask $task */
+            foreach ($conversionTasks as $index => $task) {
+                $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
+                $file = $task->getOptions()->source;
+                $outputFile = $task->getOptions()->destination;
+                $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
+
+                if (!$outputFile->isFile()) {
+                    throw new Exception("could not convert " . $file . " to " . $outputFile);
+                }
+
+                if ($outputFile->getSize() == 0) {
+                    unlink($outputFile);
+                    throw new Exception("could not convert " . $file . " to " . $outputFile);
+                }
+
+                rename($outputFile, $finishedOutputFile);
+            }
+        }
+
+    }
+
+    /**
      * @return string
      * @throws Exception
      */
@@ -618,61 +786,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             throw new Exception($message);
         }
         return $dir;
-    }
-    /**
-     * @throws InvalidArgumentException
-     * @throws Exception
-     */
-    private function convertInputFiles()
-    {
-        $padLen = strlen(count($this->filesToConvert));
-        $this->adjustBitrateForIpod($this->filesToConvert);
-
-        $coverTargetFile = new SPLFileInfo($this->argInputFile . "/cover.jpg");
-        $forceExtractCover = $this->optForce;
-        $baseFdkAacCommand = $this->buildFdkaacCommand();
-
-        $outputTempDir = $this->createOutputTempDir();
-        foreach ($this->filesToConvert as $index => $file) {
-
-            // use "force" flag only once
-            $this->extractCover($file, $coverTargetFile, $forceExtractCover);
-            $forceExtractCover = false;
-
-            $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
-            $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
-            $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
-
-            $this->filesToMerge[] = $finishedOutputFile;
-
-            if ($outputFile->isFile()) {
-                unlink($outputFile);
-            }
-
-            if ($finishedOutputFile->isFile() && $finishedOutputFile->getSize() > 0) {
-                $this->notice("output file " . $outputFile . " already exists, skipping");
-                continue;
-            }
-
-
-            if ($baseFdkAacCommand) {
-                $this->otherTmpFiles[] = $this->executeFdkaacCommand($baseFdkAacCommand, $file, $outputFile);
-            } else {
-                $this->executeFfmpegCommand($file, $outputFile);
-            }
-
-
-            if (!$outputFile->isFile()) {
-                throw new Exception("could not convert " . $file . " to " . $outputFile);
-            }
-
-            if ($outputFile->getSize() == 0) {
-                unlink($outputFile);
-                throw new Exception("could not convert " . $file . " to " . $outputFile);
-            }
-
-            rename($outputFile, $finishedOutputFile);
-        }
     }
 
     /**
@@ -798,46 +911,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         return $outputTempFile;
     }
 
-    private function deleteTemporaryFiles()
-    {
-        if ($this->optDebug) {
-            return;
-        }
-
-        if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
-            return;
-        }
-
-        try {
-            $this->deleteFilesAndParentDir($this->filesToMerge);
-            $this->deleteFilesAndParentDir($this->otherTmpFiles);
-        } catch (Throwable $e) {
-            $this->error("could not delete temporary files: ", $e->getMessage());
-            $this->debug("trace:", $e->getTraceAsString());
-        }
-
-    }
-
-    private function deleteFilesAndParentDir(array $files)
-    {
-        $file = null;
-        foreach ($files as $file) {
-            unlink($file);
-        }
-        if ($file === null) {
-            return true;
-        }
-        $parentDir = dirname($file);
-        $recIt = new RecursiveDirectoryIterator($parentDir, FilesystemIterator::SKIP_DOTS);
-        $it = new IteratorIterator($recIt);
-        $filesToDelete = iterator_to_array($it);
-        if (count($filesToDelete) > 0) {
-            return false;
-        }
-        rmdir($parentDir);
-        return true;
-    }
-
     /**
      * @param SplFileInfo $outputFile
      * @throws InvalidArgumentException
@@ -907,6 +980,46 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         if ($sourceChaptersFile->isFile() && !rename($sourceChaptersFile, $destinationChaptersFile)) {
             throw new Exception(sprintf("Could not rename chapters file from %s to %s", $sourceChaptersFile, $destinationChaptersFile));
         }
+    }
+
+    private function deleteTemporaryFiles()
+    {
+        if ($this->optDebug) {
+            return;
+        }
+
+        if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
+            return;
+        }
+
+        try {
+            $this->deleteFilesAndParentDir($this->filesToMerge);
+            $this->deleteFilesAndParentDir($this->otherTmpFiles);
+        } catch (Throwable $e) {
+            $this->error("could not delete temporary files: ", $e->getMessage());
+            $this->debug("trace:", $e->getTraceAsString());
+        }
+
+    }
+
+    private function deleteFilesAndParentDir(array $files)
+    {
+        $file = null;
+        foreach ($files as $file) {
+            unlink($file);
+        }
+        if ($file === null) {
+            return true;
+        }
+        $parentDir = dirname($file);
+        $recIt = new RecursiveDirectoryIterator($parentDir, FilesystemIterator::SKIP_DOTS);
+        $it = new IteratorIterator($recIt);
+        $filesToDelete = iterator_to_array($it);
+        if (count($filesToDelete) > 0) {
+            return false;
+        }
+        rmdir($parentDir);
+        return true;
     }
 
 

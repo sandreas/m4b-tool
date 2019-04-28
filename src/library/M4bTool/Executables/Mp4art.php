@@ -31,7 +31,7 @@ class Mp4art extends AbstractExecutable implements TagWriterInterface
 
         $command = ["--add", $tag->cover, $file];
         // $this->appendParameterToCommand($command, "-f", $this->optForce);
-        $process = $this->createProcess($command);
+        $process = $this->runProcess($command);
 
         if ($process->getExitCode() !== 0) {
             throw new Exception(sprintf("Could not add cover to file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));

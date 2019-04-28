@@ -6,6 +6,7 @@ namespace M4bTool\Executables;
 
 use Exception;
 use M4bTool\Audio\Chapter;
+use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Audio\Tag;
 use M4bTool\Common\Flags;
 use M4bTool\Parser\FfmetaDataParser;
@@ -15,9 +16,10 @@ use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
 
 
-class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface
+class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
 {
     const AAC_FALLBACK_CODEC = "aac";
     const AAC_BEST_QUALITY_NON_FREE_CODEC = "libfdk_aac";
@@ -168,7 +170,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
     protected function ffmpeg($arguments)
     {
         array_unshift($arguments, "-hide_banner");
-        return $this->createProcess($arguments);
+        return $this->runProcess($arguments);
     }
 
     /**
@@ -208,27 +210,6 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
      * @return TimeUnit|void
      * @throws Exception
      */
-    public function estimateDuration(SplFileInfo $file): ?TimeUnit
-    {
-        $process = $this->ffmpeg([
-            "-hide_banner",
-            "-i", $file,
-            "-f", "ffmetadata",
-            "-"]);
-        $output = $process->getOutput() . $process->getErrorOutput();
-
-        preg_match("/\bDuration:[\s]+([0-9:\.]+)/", $output, $matches);
-        if (!isset($matches[1])) {
-            return null;
-        }
-        return TimeUnit::fromFormat($matches[1], TimeUnit::FORMAT_DEFAULT);
-    }
-
-    /**
-     * @param SplFileInfo $file
-     * @return TimeUnit|void
-     * @throws Exception
-     */
     public function inspectExactDuration(SplFileInfo $file): ?TimeUnit
     {
 
@@ -254,14 +235,25 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         ]);
     }
 
-    private function createMetaDataProcess(SplFileInfo $file)
+    /**
+     * @param SplFileInfo $file
+     * @return TimeUnit|void
+     * @throws Exception
+     */
+    public function estimateDuration(SplFileInfo $file): ?TimeUnit
     {
-        return $this->ffmpeg([
+        $process = $this->ffmpeg([
             "-hide_banner",
             "-i", $file,
             "-f", "ffmetadata",
-            "-"
-        ]);
+            "-"]);
+        $output = $process->getOutput() . $process->getErrorOutput();
+
+        preg_match("/\bDuration:[\s]+([0-9:\.]+)/", $output, $matches);
+        if (!isset($matches[1])) {
+            return null;
+        }
+        return TimeUnit::fromFormat($matches[1], TimeUnit::FORMAT_DEFAULT);
     }
 
     /**
@@ -284,6 +276,16 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         return $metaData->toTag();
     }
 
+    private function createMetaDataProcess(SplFileInfo $file)
+    {
+        return $this->ffmpeg([
+            "-hide_banner",
+            "-i", $file,
+            "-f", "ffmetadata",
+            "-"
+        ]);
+    }
+
     public function detectSilences(SplFileInfo $file, TimeUnit $silenceLength)
     {
         $process = $this->ffmpeg([
@@ -298,4 +300,53 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         return $silenceParser->parse($this->getAllProcessOutput($process));
     }
 
+
+    /**
+     * @param FileConverterOptions $options
+     * @return Process
+     */
+    public function convertFile(FileConverterOptions $options): Process
+    {
+        $inputFile = $options->source;
+        $command = [
+            "-i", $inputFile,
+            "-max_muxing_queue_size", "9999",
+            "-map_metadata", "0",
+        ];
+
+        // backwards compatibility: ffmpeg needed experimental flag in earlier versions
+        if ($options->codec == MetaDataHandler::CODEC_AAC) {
+            $command[] = "-strict";
+            $command[] = "experimental";
+        }
+
+
+        // Relocating moov atom to the beginning of the file can facilitate playback before the file is completely downloaded by the client.
+        $command[] = "-movflags";
+        $command[] = "+faststart";
+
+        // no video for files is required because chapters will not work if video is embedded and shorter than audio length
+        $command[] = "-vn";
+
+        $this->appendParameterToCommand($command, "-y", $options->force);
+        $this->appendParameterToCommand($command, "-ab", $options->bitRate);
+        $this->appendParameterToCommand($command, "-ar", $options->sampleRate);
+        $this->appendParameterToCommand($command, "-ac", $options->channels);
+        $this->appendParameterToCommand($command, "-acodec", $options->codec);
+
+        // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
+        if ($options->format && $options->codec !== MetaDataHandler::CODEC_ALAC) {
+            $this->appendParameterToCommand($command, "-f", $options->format);
+        }
+
+        $command[] = $options->destination;
+        $process = $this->createNonBlockingProcess($command);
+        $process->start();
+        return $process;
+    }
+
+    public function supportsConversion(FileConverterOptions $options): bool
+    {
+        return true;
+    }
 }

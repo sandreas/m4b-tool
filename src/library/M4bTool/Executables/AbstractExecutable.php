@@ -42,10 +42,16 @@ abstract class AbstractExecutable
     }
 
 
-    protected function createProcess(array $arguments, $messageInCaseOfError = null)
+    protected function runProcess(array $arguments, $messageInCaseOfError = null)
     {
         array_unshift($arguments, $this->pathToBinary);
         return $this->processHelper->run($this->output, $arguments, $messageInCaseOfError);
+    }
+
+    protected function createNonBlockingProcess(array $arguments)
+    {
+        array_unshift($arguments, $this->pathToBinary);
+        return new Process($arguments);
     }
 
     protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)
