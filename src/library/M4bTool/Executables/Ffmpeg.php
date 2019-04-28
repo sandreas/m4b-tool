@@ -341,6 +341,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
         $command[] = $options->destination;
         $process = $this->createNonBlockingProcess($command);
+        $process->setTimeout(0);
         $process->start();
         return $process;
     }

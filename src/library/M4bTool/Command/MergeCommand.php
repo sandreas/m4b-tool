@@ -14,6 +14,7 @@ use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
+use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Executables\Mp4art;
@@ -619,8 +620,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $coverTargetFile = new SPLFileInfo($this->argInputFile . "/cover.jpg");
 
 
-        $baseFdkAacCommand = $this->buildFdkaacCommand();
-
         $firstFile = reset($this->filesToConvert);
         if ($firstFile) {
             $this->extractCover($firstFile, $coverTargetFile, $this->optForce);
@@ -628,146 +627,111 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         $outputTempDir = $this->createOutputTempDir();
 
-        if ($baseFdkAacCommand) {
-            foreach ($this->filesToConvert as $index => $file) {
+        $ffmpeg = new Ffmpeg();
+        $fdkaac = new Fdkaac();
+        /** @var ConversionTask[] $conversionTasks */
+        $conversionTasks = [];
 
-                $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
-                $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
-                $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
+        foreach ($this->filesToConvert as $index => $file) {
 
-                $this->filesToMerge[] = $finishedOutputFile;
+            $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
+            $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
+            $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
 
-                if ($outputFile->isFile()) {
-                    unlink($outputFile);
-                }
+            $this->filesToMerge[] = $finishedOutputFile;
 
-                if ($finishedOutputFile->isFile() && $finishedOutputFile->getSize() > 0) {
-                    $this->notice("output file " . $outputFile . " already exists, skipping");
-                    continue;
-                }
-
-
-                if ($baseFdkAacCommand) {
-                    $this->otherTmpFiles[] = $this->executeFdkaacCommand($baseFdkAacCommand, $file, $outputFile);
-                } else {
-                    $this->executeFfmpegCommand($file, $outputFile);
-                }
-
-
-                if (!$outputFile->isFile()) {
-                    throw new Exception("could not convert " . $file . " to " . $outputFile);
-                }
-
-                if ($outputFile->getSize() == 0) {
-                    unlink($outputFile);
-                    throw new Exception("could not convert " . $file . " to " . $outputFile);
-                }
-
-                rename($outputFile, $finishedOutputFile);
-            }
-        } else {
-            $ffmpeg = new Ffmpeg();
-            /** @var ConversionTask[] $conversionTasks */
-            $conversionTasks = [];
-
-            foreach ($this->filesToConvert as $index => $file) {
-
-                $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
-                $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
-                $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
-
-                $this->filesToMerge[] = $finishedOutputFile;
-
-                if ($outputFile->isFile()) {
-                    unlink($outputFile);
-                }
-
-
-                $options = new FileConverterOptions();
-                $options->source = $file;
-                $options->destination = $outputFile;
-                $options->tempDir = $outputTempDir;
-                $options->extension = $this->optAudioExtension;
-                $options->codec = $this->optAudioCodec;
-                $options->format = $this->optAudioFormat;
-                $options->channels = $this->optAudioChannels;
-                $options->sampleRate = $this->optAudioSampleRate;
-                $options->bitRate = $this->optAudioBitRate;
-                $options->force = $this->optForce;
-
-                $conversionTasks[] = new ConversionTask($ffmpeg, $options);
+            if ($outputFile->isFile()) {
+                unlink($outputFile);
             }
 
-            $jobs = $this->input->getOption(static::OPTION_JOBS) ? (int)$this->input->getOption(static::OPTION_JOBS) : 1;
 
-            // minimum 1 job, maximum count conversionTasks jobs
-            $jobs = max(min($jobs, count($conversionTasks)), 1);
+            $options = new FileConverterOptions();
+            $options->source = $file;
+            $options->destination = $outputFile;
+            $options->tempDir = $outputTempDir;
+            $options->extension = $this->optAudioExtension;
+            $options->codec = $this->optAudioCodec;
+            $options->format = $this->optAudioFormat;
+            $options->channels = $this->optAudioChannels;
+            $options->sampleRate = $this->optAudioSampleRate;
+            $options->bitRate = $this->optAudioBitRate;
+            $options->force = $this->optForce;
+            $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
 
-            $runningTaskCount = 0;
-            $conversionTaskQueue = $conversionTasks;
-            $runningTasks = [];
-            $start = microtime(true);
-            $increaseProgressBarSeconds = 5;
-            do {
-                $firstFailedTask = null;
-                if ($runningTaskCount > 0 && $firstFailedTask === null) {
-                    foreach ($runningTasks as $task) {
-                        if ($task->didFail()) {
-                            $firstFailedTask = $task;
-                            break;
-                        }
+            $conversionTasks[] = new ConversionTask($ffmpeg, $fdkaac, $options);
+        }
+
+        $jobs = $this->input->getOption(static::OPTION_JOBS) ? (int)$this->input->getOption(static::OPTION_JOBS) : 1;
+
+        // minimum 1 job, maximum count conversionTasks jobs
+        $jobs = max(min($jobs, count($conversionTasks)), 1);
+
+        $runningTaskCount = 0;
+        $conversionTaskQueue = $conversionTasks;
+        $runningTasks = [];
+        $start = microtime(true);
+        $increaseProgressBarSeconds = 5;
+        do {
+            $firstFailedTask = null;
+            if ($runningTaskCount > 0 && $firstFailedTask === null) {
+                foreach ($runningTasks as $task) {
+                    if ($task->didFail()) {
+                        $firstFailedTask = $task;
+                        break;
                     }
                 }
-
-                // add new tasks, if no task did fail and jobs left
-                /** @var ConversionTask $task */
-                $task = null;
-                while ($firstFailedTask === null && $runningTaskCount < $jobs && $task = array_shift($conversionTaskQueue)) {
-                    $task->run();
-                    $runningTasks[] = $task;
-                    $runningTaskCount++;
-                }
-
-                usleep(250000);
-
-                $runningTasks = array_filter($runningTasks, function (ConversionTask $task) {
-                    return $task->isRunning();
-                });
-
-                $runningTaskCount = count($runningTasks);
-                $conversionQueueLength = count($conversionTaskQueue);
-
-                $time = microtime(true);
-                $progressBar = str_repeat("+", ceil(($time - $start) / $increaseProgressBarSeconds));
-                $this->output->write(sprintf("\r%d/%d remaining tasks running: %s", $runningTaskCount, ($conversionQueueLength + $runningTaskCount), $progressBar), false, OutputInterface::VERBOSITY_VERBOSE);
-
-            } while ($conversionQueueLength > 0 || $runningTaskCount > 0);
-            $this->output->writeln("", OutputInterface::VERBOSITY_VERBOSE);
-            /** @var ConversionTask $firstFailedTask */
-            if ($firstFailedTask !== null) {
-                throw new Exception("a task has failed", null, $firstFailedTask->getLastException());
             }
 
-
+            // add new tasks, if no task did fail and jobs left
             /** @var ConversionTask $task */
-            foreach ($conversionTasks as $index => $task) {
-                $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
-                $file = $task->getOptions()->source;
-                $outputFile = $task->getOptions()->destination;
-                $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
-
-                if (!$outputFile->isFile()) {
-                    throw new Exception("could not convert " . $file . " to " . $outputFile);
-                }
-
-                if ($outputFile->getSize() == 0) {
-                    unlink($outputFile);
-                    throw new Exception("could not convert " . $file . " to " . $outputFile);
-                }
-
-                rename($outputFile, $finishedOutputFile);
+            $task = null;
+            while ($firstFailedTask === null && $runningTaskCount < $jobs && $task = array_shift($conversionTaskQueue)) {
+                $task->run();
+                $runningTasks[] = $task;
+                $runningTaskCount++;
             }
+
+            usleep(250000);
+
+            $runningTasks = array_filter($runningTasks, function (ConversionTask $task) {
+                return $task->isRunning();
+            });
+
+            $runningTaskCount = count($runningTasks);
+            $conversionQueueLength = count($conversionTaskQueue);
+
+            $time = microtime(true);
+            $progressBar = str_repeat("+", ceil(($time - $start) / $increaseProgressBarSeconds));
+            $this->output->write(sprintf("\r%d/%d remaining tasks running: %s", $runningTaskCount, ($conversionQueueLength + $runningTaskCount), $progressBar), false, OutputInterface::VERBOSITY_VERBOSE);
+
+        } while ($conversionQueueLength > 0 || $runningTaskCount > 0);
+        $this->output->writeln("", OutputInterface::VERBOSITY_VERBOSE);
+        /** @var ConversionTask $firstFailedTask */
+        if ($firstFailedTask !== null) {
+            throw new Exception("a task has failed", null, $firstFailedTask->getLastException());
         }
+
+
+        /** @var ConversionTask $task */
+        foreach ($conversionTasks as $index => $task) {
+            $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
+            $file = $task->getOptions()->source;
+            $outputFile = $task->getOptions()->destination;
+            $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
+
+            if (!$outputFile->isFile()) {
+                throw new Exception("could not convert " . $file . " to " . $outputFile);
+            }
+
+            if ($outputFile->getSize() == 0) {
+                unlink($outputFile);
+                throw new Exception("could not convert " . $file . " to " . $outputFile);
+            }
+
+            rename($outputFile, $finishedOutputFile);
+            $task->cleanUp();
+        }
+//        }
 
     }
 

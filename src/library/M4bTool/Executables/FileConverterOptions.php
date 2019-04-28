@@ -15,6 +15,7 @@ class FileConverterOptions
     public $channels;
     public $format;
     public $extension;
+    public $profile;
 
 
     /** @var SplFileInfo */
