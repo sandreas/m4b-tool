@@ -94,7 +94,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     protected $filesToConvert = [];
     protected $filesToMerge = [];
-    protected $otherTmpFiles = [];
     protected $sameFormatFiles = [];
 
     /** @var SplFileInfo */
@@ -472,7 +471,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $this->chapters = $chapterParser->parse($chaptersFileContent);
         } else {
             $this->notice("rebuilding chapters from converted files title tags");
-            $this->buildChaptersFromConvertedFileDurations();
+            $this->chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge);
             $this->replaceChaptersWithMusicBrainz();
             $this->addTrackMarkers();
         }
@@ -500,14 +499,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         /** @var FfmetaDataParser $metaData */
         $metaData = $this->readFileMetaData($file);
-        $this->setOptionIfUndefined("name", $metaData->getProperty("album"));
-        $this->setOptionIfUndefined("artist", $metaData->getProperty("artist"));
-        $this->setOptionIfUndefined("albumartist", $metaData->getProperty("album_artist"));
-        $this->setOptionIfUndefined("year", $metaData->getProperty("date"));
-        $this->setOptionIfUndefined("genre", $metaData->getProperty("genre"));
-        $this->setOptionIfUndefined("writer", $metaData->getProperty("writer"));
-        $this->setOptionIfUndefined("description", $metaData->getProperty("description"));
-        $this->setOptionIfUndefined("longdesc", $metaData->getProperty("longdesc"));
+        $this->setMissingCommandLineOptionsFromTag($metaData->toTag());
     }
 
     private function lookupAndAddCover()
@@ -752,21 +744,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         return $dir;
     }
 
-    /**
-     * @throws Exception
-     */
-    private function buildChaptersFromConvertedFileDurations()
-    {
-        $this->debug("== build chapters ==");
-
-
-//        $autoSplitMilliSeconds = (int)$this->input->getOption(static::OPTION_AUTO_SPLIT_SECONDS) * 1000;
-//
-//        $chapterBuilder = new ChapterTitleBuilder($this);
-//        $this->chapters = $chapterBuilder->buildChapters($this->filesToMerge, $autoSplitMilliSeconds);
-
-        $this->chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge);
-    }
 
     /**
      * @throws Exception
@@ -958,7 +935,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         try {
             $this->deleteFilesAndParentDir($this->filesToMerge);
-            $this->deleteFilesAndParentDir($this->otherTmpFiles);
         } catch (Throwable $e) {
             $this->error("could not delete temporary files: ", $e->getMessage());
             $this->debug("trace:", $e->getTraceAsString());

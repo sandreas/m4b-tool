@@ -327,6 +327,9 @@ class FfmetaDataParser
     {
         $tag = new Tag();
         $tag->album = $this->getProperty("album");
+        $tag->sortAlbum = $this->getProperty("sort_album");
+        $tag->sortTitle = $this->getProperty("sort_name");
+        $tag->sortArtist = $this->getProperty("sort_artist");
         $tag->writer = $this->getProperty("writer") ?? $this->getProperty("composer");
         $tag->genre = $this->getProperty("genre");
         $tag->copyright = $this->getProperty("copyright");
