@@ -12,7 +12,7 @@ use Symfony\Component\Process\Process;
 use Throwable;
 
 
-class ConversionTask implements Runnable
+class ConversionTask extends AbstractTask
 {
     /**
      * @var Ffmpeg
@@ -33,9 +33,7 @@ class ConversionTask implements Runnable
     /** @var Process */
     protected $process;
 
-    /** @var Throwable */
-    protected $lastException;
-
+    /** @var SplFileInfo[] */
     protected $tmpFilesToCleanUp = [];
 
     public function __construct(Ffmpeg $ffmpeg, Fdkaac $fdkaac, FileConverterOptions $options)
@@ -76,16 +74,6 @@ class ConversionTask implements Runnable
             return $this->process->isRunning();
         }
         return false;
-    }
-
-    public function didFail()
-    {
-        return $this->lastException instanceof Throwable;
-    }
-
-    public function getLastException()
-    {
-        return $this->lastException;
     }
 
     public function getOptions()

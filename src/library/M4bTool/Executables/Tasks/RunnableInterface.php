@@ -4,7 +4,7 @@
 namespace M4bTool\Executables\Tasks;
 
 
-interface Runnable
+interface RunnableInterface
 {
     public function run();
 }

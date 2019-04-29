@@ -23,6 +23,7 @@ use M4bTool\Executables\Mp4info;
 use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Executables\Tasks\ConversionTask;
+use M4bTool\Executables\Tasks\Pool;
 use M4bTool\Filesystem\DirectoryLoader;
 use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Parser\FfmetaDataParser;
@@ -621,8 +622,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         $ffmpeg = new Ffmpeg();
         $fdkaac = new Fdkaac();
-        /** @var ConversionTask[] $conversionTasks */
-        $conversionTasks = [];
+
+        $jobs = $this->input->getOption(static::OPTION_JOBS) ? (int)$this->input->getOption(static::OPTION_JOBS) : 1;
+        $taskPool = new Pool($jobs);
 
         foreach ($this->filesToConvert as $index => $file) {
 
@@ -635,7 +637,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             if ($outputFile->isFile()) {
                 unlink($outputFile);
             }
-
 
             $options = new FileConverterOptions();
             $options->source = $file;
@@ -650,62 +651,35 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $options->force = $this->optForce;
             $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
 
-            $conversionTasks[] = new ConversionTask($ffmpeg, $fdkaac, $options);
+            $taskPool->submit(new ConversionTask($ffmpeg, $fdkaac, $options));
         }
 
-        $jobs = $this->input->getOption(static::OPTION_JOBS) ? (int)$this->input->getOption(static::OPTION_JOBS) : 1;
-
-        // minimum 1 job, maximum count conversionTasks jobs
-        $jobs = max(min($jobs, count($conversionTasks)), 1);
-
-        $runningTaskCount = 0;
-        $conversionTaskQueue = $conversionTasks;
-        $runningTasks = [];
-        $start = microtime(true);
         $increaseProgressBarSeconds = 5;
-        do {
-            $firstFailedTask = null;
-            if ($runningTaskCount > 0 && $firstFailedTask === null) {
-                foreach ($runningTasks as $task) {
-                    if ($task->didFail()) {
-                        $firstFailedTask = $task;
-                        break;
-                    }
-                }
-            }
 
-            // add new tasks, if no task did fail and jobs left
-            /** @var ConversionTask $task */
-            $task = null;
-            while ($firstFailedTask === null && $runningTaskCount < $jobs && $task = array_shift($conversionTaskQueue)) {
-                $task->run();
-                $runningTasks[] = $task;
-                $runningTaskCount++;
-            }
+        $this->notice(sprintf("preparing conversion with %d simultaneous %s, which may seem unresponsive, be patient...", $jobs, $jobs === 1 ? "job" : "jobs"));
 
-            usleep(250000);
-
-            $runningTasks = array_filter($runningTasks, function (ConversionTask $task) {
-                return $task->isRunning();
-            });
-
+        $taskPool->process(function ($runningTasks, $conversionQueue, $runtime) use ($increaseProgressBarSeconds, $jobs) {
             $runningTaskCount = count($runningTasks);
-            $conversionQueueLength = count($conversionTaskQueue);
-
-            $time = microtime(true);
-            $progressBar = str_repeat("+", ceil(($time - $start) / $increaseProgressBarSeconds));
-            $this->output->write(sprintf("\r%d/%d remaining tasks running: %s", $runningTaskCount, ($conversionQueueLength + $runningTaskCount), $progressBar), false, OutputInterface::VERBOSITY_VERBOSE);
-
-        } while ($conversionQueueLength > 0 || $runningTaskCount > 0);
+            $conversionQueueLength = count($conversionQueue);
+            $remainingTaskCount = $conversionQueueLength + $runningTaskCount;
+            $progressBarLength = ceil($runtime / $increaseProgressBarSeconds);
+            $progressBar = str_repeat("+", $progressBarLength);
+            if ($remainingTaskCount === 0) {
+                $message = sprintf("\rfinished all tasks, preparing next step");
+            } else if ($runningTaskCount === 0) {
+                $message = sprintf("\r%d remaining tasks are beeing prepared: %s", $remainingTaskCount, $progressBar);
+            } else if ($runningTaskCount > 0) {
+                $message = sprintf("\r%d remaining converting tasks are running: %s", $remainingTaskCount, $progressBar);
+            } else {
+                $message = sprintf("\rpreparing conversion: %s", $progressBar);
+            }
+            $this->output->write($message, false, OutputInterface::VERBOSITY_VERBOSE);
+        });
         $this->output->writeln("", OutputInterface::VERBOSITY_VERBOSE);
-        /** @var ConversionTask $firstFailedTask */
-        if ($firstFailedTask !== null) {
-            throw new Exception("a task has failed", null, $firstFailedTask->getLastException());
-        }
 
 
         /** @var ConversionTask $task */
-        foreach ($conversionTasks as $index => $task) {
+        foreach ($taskPool->getTasks() as $index => $task) {
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
             $file = $task->getOptions()->source;
             $outputFile = $task->getOptions()->destination;
@@ -721,10 +695,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             }
 
             rename($outputFile, $finishedOutputFile);
-            $task->cleanUp();
         }
-//        }
-
     }
 
     /**
