@@ -43,20 +43,23 @@ or if it is a series
 `input/<main genre>/<author>/<series>/<series-part> - <title>`
 
 Examples:
-`input/Fantasy/J.K. Rowling/Quidditch Through the Ages`
-`input/Fantasy/J.K. Rowling/Harry Potter/1 - Harry Potter and the Philosopher's Stone`
-
+```
+input/Fantasy/J.K. Rowling/Quidditch Through the Ages
+input/Fantasy/J.K. Rowling/Harry Potter/1 - Harry Potter and the Philosopher's Stone
+```
 > Note: If your audiobook title contains invalid path characters like `/`, just replace them with a dash `-`.
 
-#### Step 2 - add cover and a description
+### Step 2 - add cover and a description
 Now, because you almost always want a cover and a description for your audiobook, you should add the following files in the main directory:
 
 - `cover.jpg` 
 - `description.txt` (Be sure to use `UTF-8` text file encoding for the contents)
 
 Examples:
-`input/Fantasy/J.K. Rowling/Quidditch Through the Ages/cover.jpg`
-`input/Fantasy/J.K. Rowling/Quidditch Through the Ages/description.txt`
+```
+input/Fantasy/J.K. Rowling/Quidditch Through the Ages/cover.jpg
+input/Fantasy/J.K. Rowling/Quidditch Through the Ages/description.txt
+```
 
 > Note: `m4b-tool` will find and embed these files automatically but does not fail, if they are not present
 
@@ -64,7 +67,7 @@ Examples:
 
 Chapters are nice to add *waypoints* for your audiobook. They help to remember the last position and improve the experience in general. 
 
-*fixed chapters*
+#### fixed chapters
 If you would like to adjust chapters manually, you can add a `chapters.txt` (same location as `cover.jpg`) with following contents (`<chapter-start>` `<chapter-title>`):
 ```
 00:00:00.000 Intro
@@ -73,10 +76,10 @@ If you would like to adjust chapters manually, you can add a `chapters.txt` (sam
 00:14:34.500 Chapters manually
 ```
 
-*by tag*
+#### by tag
 If your input files are tagged, these tags will be used to create the metadata - (`title`, `name`, `composer`, even a `cover` will be extracted and embedded if you did not place it in the main directory). So if you tag your input files with valid chapter names as track title, this will result in a nice and clean `m4b`-file with real chapter names.
 
-*by length*
+#### by length
 Another great feature since `m4b-tool v.0.4.0` is the `--max-chapter-length` parameter. Often the individual input files are too big which results in chapters with a very long duration. This can be annoying, if you want to jump at a certain point, since you have to rewind or fast-forward and hold the button for a long time, instead of just tipping previous or next a few times. To automatically add sub-chapters, you could provide 
 
 `--max-chapter-length=300,900`
