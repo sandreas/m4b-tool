@@ -35,24 +35,29 @@ class ConversionTask extends AbstractTask
 
     /** @var SplFileInfo[] */
     protected $tmpFilesToCleanUp = [];
+    /**
+     * @var SplFileInfo
+     */
+    protected $finishedOutputFile;
 
     public function __construct(Ffmpeg $ffmpeg, Fdkaac $fdkaac, FileConverterOptions $options)
     {
         $this->ffmpeg = $ffmpeg;
         $this->fdkaac = $fdkaac;
         $this->options = $options;
-        $pad = uniqid("", true);
-        $file = $this->options->source;
-        $options = clone $this->options;
-        $options->destination = new SplFileInfo($this->options->tempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->options->extension);
+
+        $this->finishedOutputFile = new SplFileInfo(str_replace("-converting", "-finished", $options->destination));
     }
 
     public function run()
     {
         try {
             $this->lastException = null;
+            if ($this->finishedOutputFile->isFile()) {
+                $this->skip();
+                return;
+            }
             if ($this->fdkaac->supportsConversion($this->options)) {
-
                 $preparedOutputFile = new SplFileInfo($this->options->destination . ".fdkaac-input");
                 $this->fdkaac->prepareConversion($this->ffmpeg, $this->options, $preparedOutputFile);
                 $options = clone $this->options;
@@ -81,10 +86,16 @@ class ConversionTask extends AbstractTask
         return $this->options;
     }
 
-    public function cleanUp()
+    public function finish()
     {
+        if (file_exists($this->options->destination)) {
+            rename($this->options->destination, $this->finishedOutputFile);
+        }
+        $this->options->destination = $this->finishedOutputFile;
+
         foreach ($this->tmpFilesToCleanUp as $file) {
             @unlink($file);
         }
+        parent::finish();
     }
 }

@@ -24,6 +24,97 @@ m4b-tool split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio
 m4b-tool chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"
 ``` 
 
+## Best practices
+
+Since the most used subcommand of `m4b-tool` seems to be `merge`, lets talk about best practice...
+
+### Step 0 - Take a look at the docker image - even if its experimental
+Unfortunately `m4b-tool` has many dependencies. Not only one-liners, if you would like to get the best quality and tagging support, many dependencies have to be compiled manually with extra options. Thats why you should take a look at the [docker image](#docker-experimental), which comes with all the bells and whistles of top audio quality, top tagging support and easy installation and has almost no disadvantages.
+
+> Note: If you are on windows, it might be difficult to make it work
+
+### Step 1 - Organizing your audiobooks in directories
+When merging audiobooks, you should prepare them - the following directory structure helps a lot, even if you only merge one single audiobook:
+
+`input/<main genre>/<author>/<title>`
+
+or if it is a series
+
+`input/<main genre>/<author>/<series>/<series-part> - <title>`
+
+Examples:
+`input/Fantasy/J.K. Rowling/Quidditch Through the Ages`
+`input/Fantasy/J.K. Rowling/Harry Potter/1 - Harry Potter and the Philosopher's Stone`
+
+> Note: If your audiobook title contains invalid path characters like `/`, just replace them with a dash `-`.
+
+#### Step 2 - add cover and a description
+Now, because you almost always want a cover and a description for your audiobook, you should add the following files in the main directory:
+
+- `cover.jpg` 
+- `description.txt` (Be sure to use `UTF-8` text file encoding for the contents)
+
+Examples:
+`input/Fantasy/J.K. Rowling/Quidditch Through the Ages/cover.jpg`
+`input/Fantasy/J.K. Rowling/Quidditch Through the Ages/description.txt`
+
+> Note: `m4b-tool` will find and embed these files automatically but does not fail, if they are not present
+
+### Step 3 - chapters
+
+Chapters are nice to add *waypoints* for your audiobook. They help to remember the last position and improve the experience in general. 
+
+*fixed chapters*
+If you would like to adjust chapters manually, you can add a `chapters.txt` (same location as `cover.jpg`) with following contents (`<chapter-start>` `<chapter-title>`):
+```
+00:00:00.000 Intro
+00:04:19.153 This is
+00:09:24.078 A way to add
+00:14:34.500 Chapters manually
+```
+
+*by tag*
+If your input files are tagged, these tags will be used to create the metadata - (`title`, `name`, `composer`, even a `cover` will be extracted and embedded if you did not place it in the main directory). So if you tag your input files with valid chapter names as track title, this will result in a nice and clean `m4b`-file with real chapter names.
+
+*by length*
+Another great feature since `m4b-tool v.0.4.0` is the `--max-chapter-length` parameter. Often the individual input files are too big which results in chapters with a very long duration. This can be annoying, if you want to jump at a certain point, since you have to rewind or fast-forward and hold the button for a long time, instead of just tipping previous or next a few times. To automatically add sub-chapters, you could provide 
+
+`--max-chapter-length=300,900`
+
+, which will cause `m4b-tool`
+- Trying to preserve original chapters as long as they are not longer than 15 minutes (900 seconds)
+- If a track is longer than 15 minutes
+    - Perform a silence detection and try to add sub-chapters at every silence every 5 minutes (300 seconds)
+    - If no silence is detected, add a hard cut sub-chapter every 15 minutes
+
+Sub-chapters are named like the original and get an additional index. This is a nice way to keep the real names but not having too long chapters.
+
+
+### Step 4 (optional) - for iPod owners
+
+If you own an iPod, there might be a problem with too long audiobooks, since iPods only support 32bit sampling rates. If your audiobook is longer than 27 hours, you could provide `--adjust-for-ipod`, to automatically downsample your audiobook, which results in lower quality, but at least its working on your good old iPod...
+
+### Step 5 - Use the `--batch-pattern` feature to batch-convert multiple audiobooks at once
+
+In `m4b-tool v.0.4.0` the `--batch-pattern` feature was added, so that you can create tags from a directory structure - `output-file` has to be a directory though. Also multiple `--batch-pattern` parameters are supported, while the first match will be used first. So if you created the directory structure as described above, the final command would look like this:
+
+```
+m4b-tool merge -v --output-file="output/" --max-chapter-length=300,900 --adjust-for-ipod --batch-pattern="input/%g/%a/%s/%p - %n/"  --batch-pattern="input/%g/%a/%n/" "input/" 
+```
+
+> While in --batch-pattern mode, existing files are ignored by default
+
+### Result
+If you performed the above steps with the docker image or installed and compiled all dependencies, you should get the following result:
+
+- Top quality audio by using `libfdk_aac` encoder
+- Series and single audiobooks have valid tags for `genre`, `author`, `title`, `sorttitle`, etc. from `--batch-pattern` usage
+- If the files `cover.jpg` and `description.txt` exist in the main directories, a `cover`, a `description` and a `longdesc` are embedded
+- If you tagged the input files, real chapter names should appear in your player
+- No more chapters longer than 15 minutes
+- Working iPod versions for long audiobooks
+
+
 ## Installation
 
 ### MacOS
@@ -55,7 +146,7 @@ m4b-tool --version
 sudo apt install ffmpeg mp4v2-utils fdkaac php-cli
 
 # install / upgrade m4b-tool
-sudo wget https://github.com/sandreas/m4b-tool/releases/download/v.0.3.3/m4b-tool.phar -O /usr/local/bin/m4b-tool && sudo chmod +x /usr/local/bin/m4b-tool
+sudo wget https://github.com/sandreas/m4b-tool/releases/download/v.0.4.0/m4b-tool.phar -O /usr/local/bin/m4b-tool && sudo chmod +x /usr/local/bin/m4b-tool
 
 # check installed m4b-tool version 
 m4b-tool --version
@@ -87,6 +178,42 @@ m4b-tool --version
 
 > Note: If you use the alias above, keep in mind that you cannot use absolute paths (e.g. `/tmp/data/audiobooks/harry potter 1`) or symlinks. You must change into the directory and use relative paths (e.g. `cd /tmp/data && m4b-tool merge "audiobooks/harry potter 1" --output-file harry.m4b`)
 
+### Custom `mp4v2` for accurate sorting order
+
+Most audiobooks are not released in alphabetical order. A prominent example is Harry Potter. So if you have all the Harry Potter audiobooks, it depends on your player, but probably they are not listed in the correct order... let's see, what the alphabetical order would be:
+
+- Harry Potter and the Chamber of Secrets (Part 2)
+- Harry Potter and the Philosopher's Stone (Part 1)
+- Harry Potter and the Prisoner of Azkaban (Part 3)
+
+And the correct order would have been:
+
+- Harry Potter and the Philosopher's Stone (Part 1)
+- Harry Potter and the Chamber of Secrets (Part 2)
+- Harry Potter and the Prisoner of Azkaban (Part 3)
+
+Well, there is a solution for this. You have to tag the audiobook with a custom `sortname` and / or `sortalbum`. If your player supports these tags, the order is now correct, even when the title is still the original title. To achieve this, i had to build a custom version of `mp4v2` (more accurate `mp4tags`), to add options for these tags and add the pseudo tags `--series` and `--series-part`. 
+
+So if you do the following:
+
+```
+m4b-tool merge --name="Harry Potter and the Chamber of Secrets" --series="Harry Potter" --series-part="2" --output-file="output/Harry Potter and the Chamber of Secrets.m4b" "input/Harry Potter and the Chamber of Secrets"
+```
+
+It would result in:
+- Name: `Harry Potter and the Chamber of Secrets`
+- Sortname: `Harry Potter 2 - Harry Potter and the Chamber of Secrets`
+
+#### Install custom `mp4v2`
+
+> In the docker image, the custom version is already installed
+
+```
+git clone https://github.com/sandreas/mp4v2
+cd mp4v2
+./configure
+make && sudo make install
+```
 
 ### Manual installation (only recommended on Windows systems)
 
@@ -163,7 +290,7 @@ Error: Cannot embed cover, cover is not a valid image file
 Attached files: cover.png
 ```
 
-## Known Issues
+## Known issues
 
 If you are getting PHP Exceptions, it is a configuration issue with PHP in most cases. If are not familiar with PHP configuration, 
 you could follow these instructions, to fix a few known issues:
@@ -215,27 +342,33 @@ the tag-title of every file for generating chapters.
 
 If there is a file `data/my-audio-book/cover.jpg`, it will be used as cover for the resulting m4b file.
 
-***Note*** If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](#chapter) for more info.
+***Note*** If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](#chapters) for more info.
 
 ### Reference
 For all options, see `m4b-tool merge --help`:
 
 ```
+Description:
+  Merges a set of files to one single file
+
 Usage:
-  merge [options] [--] <input> [<more-input-files>]...
+  merge [options] [--] <input> [<more-input-files>...]
 
 Arguments:
   input                                          Input file or folder
   more-input-files                               Other Input files or folders
 
 Options:
-  -d, --debug                                    file to dump debugging info
-      --debug-filename[=DEBUG-FILENAME]          file to dump debugging info [default: "m4b-tool_debug.log"]
+      --logfile[=LOGFILE]                        file to dump all output [default: ""]
+      --debug                                    enable debug mode - sets verbosity to debug, logfile to m4b-tool.log and temporary files are not deleted
   -f, --force                                    force overwrite of existing files
       --no-cache                                 do not use cached values and clear cache completely
       --ffmpeg-threads[=FFMPEG-THREADS]          specify -threads parameter for ffmpeg [default: ""]
-      --convert-charset[=CONVERT-CHARSET]        Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --platform-charset[=PLATFORM-CHARSET]      Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
       --ffmpeg-param[=FFMPEG-PARAM]              Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
+  -a, --silence-min-length[=SILENCE-MIN-LENGTH]  silence minimum length in milliseconds [default: 1750]
+  -b, --silence-max-length[=SILENCE-MAX-LENGTH]  silence maximum length in milliseconds [default: 0]
+      --max-chapter-length[=MAX-CHAPTER-LENGTH]  maximum chapter length in seconds - its also possible to provide a desired chapter length in form of 300,900 where 300 is desired and 900 is max - if the max chapter length is exceeded, the chapter is placed on the first silence between desired and max chapter length [default: "0"]
       --audio-format[=AUDIO-FORMAT]              output format, that ffmpeg will use to create files [default: "m4b"]
       --audio-channels[=AUDIO-CHANNELS]          audio channels, e.g. 1, 2 [default: ""]
       --audio-bitrate[=AUDIO-BITRATE]            audio bitrate, e.g. 64k, 128k, ... [default: ""]
@@ -244,24 +377,33 @@ Options:
       --audio-profile[=AUDIO-PROFILE]            audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2  [default: ""]
       --adjust-for-ipod                          auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)
       --name[=NAME]                              provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
+      --sortname[=SORTNAME]                      provide a custom audiobook name, that is used only for sorting purposes [default: ""]
       --album[=ALBUM]                            provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
+      --sortalbum[=SORTALBUM]                    provide a custom audiobook album, that is used only for sorting purposes [default: ""]
       --artist[=ARTIST]                          provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
+      --sortartist[=SORTARTIST]                  provide a custom audiobook artist, that is used only for sorting purposes [default: ""]
       --genre[=GENRE]                            provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
       --writer[=WRITER]                          provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
       --albumartist[=ALBUMARTIST]                provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
       --year[=YEAR]                              provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
       --cover[=COVER]                            provide a custom audiobook cover, otherwise the existing metadata will be used
       --description[=DESCRIPTION]                provide a custom audiobook short description, otherwise the existing metadata will be used
+      --longdesc[=LONGDESC]                      provide a custom audiobook long description, otherwise the existing metadata will be used
       --comment[=COMMENT]                        provide a custom audiobook comment, otherwise the existing metadata will be used
       --copyright[=COPYRIGHT]                    provide a custom audiobook copyright, otherwise the existing metadata will be used
       --encoded-by[=ENCODED-BY]                  provide a custom audiobook encoded-by, otherwise the existing metadata will be used
+      --series[=SERIES]                          provide a custom audiobook series, this pseudo tag will be used to auto create sort order (e.g. Harry Potter or The Kingkiller Chronicles)
+      --series-part[=SERIES-PART]                provide a custom audiobook series part, this pseudo tag will be used to auto create sort order (e.g. 1 or 2.5)
       --skip-cover                               skip extracting and embedding covers
-      --output-file=OUTPUT-FILE                  output file
+      --fix-mime-type                            try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent video window
+  -o, --output-file=OUTPUT-FILE                  output file
       --include-extensions[=INCLUDE-EXTENSIONS]  comma separated list of file extensions to include (others are skipped) [default: "aac,alac,flac,m4a,m4b,mp3,oga,ogg,wav,wma,mp4"]
   -m, --musicbrainz-id=MUSICBRAINZ-ID            musicbrainz id so load chapters from
       --mark-tracks                              add chapter marks for each track
-      --auto-split-seconds[=AUTO-SPLIT-SECONDS]  auto split chapters after x seconds, if track is too long
       --no-conversion                            skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)
+      --batch-pattern[=BATCH-PATTERN]            multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title) (multiple values allowed)
+      --dry-run                                  perform a dry run without converting all the files in batch mode (requires --batch-pattern)
+      --jobs[=JOBS]                              Specifies the number of jobs (commands) to run simultaneously [default: 1]
   -h, --help                                     Display this help message
   -q, --quiet                                    Do not output any message
   -V, --version                                  Display this application version
@@ -269,11 +411,30 @@ Options:
       --no-ansi                                  Disable ANSI output
   -n, --no-interaction                           Do not ask any interactive question
   -v|vv|vvv, --verbose                           Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
-
-Help:
-  Merges a set of files to one single file
 ```
 
+
+### Placeholder reference for `--batch-pattern`
+
+If you use the `--batch-pattern` parameter, the following placeholders are supported
+
+- `title` / `name`: `%n`
+- `sort_name`: `%N`
+- `album`: `%m`,
+- `sort_album`: `%m`,
+- `artist`: `%a`,
+- `sort_artist`: `%a`,
+- `genre`: `%g`,
+- `writer`: `%w`,
+- `album_artist`: `%t`,
+- `year`: `%y`,
+- `description`: `%d`,
+- `long_description`: `%d`,
+- `comment`: `%c`,
+- `copyright`: `%c`,
+- `encoded_by`: `%e`,
+- `series`: `%s`,
+- `series_part`: `%p`,
 
 ## split
 
@@ -290,50 +451,63 @@ This splits the file `data/my-audio-book.m4b into` an mp3 file for each chapter,
 For all options, see `m4b-tool split --help`:
 
 ```
+Description:
+  Splits an m4b file into parts
+
 Usage:
   split [options] [--] <input>
 
 Arguments:
-  input                                        Input file or folder
+  input                                          Input file or folder
 
 Options:
-  -d, --debug                                  file to dump debugging info
-      --debug-filename[=DEBUG-FILENAME]        file to dump debugging info [default: "m4b-tool_debug.log"]
-  -f, --force                                  force overwrite of existing files
-      --no-cache                               do not use cached values and clear cache completely
-      --ffmpeg-threads[=FFMPEG-THREADS]        specify -threads parameter for ffmpeg [default: ""]
-      --convert-charset[=CONVERT-CHARSET]      Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
-      --ffmpeg-param[=FFMPEG-PARAM]            Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
-      --audio-format[=AUDIO-FORMAT]            output format, that ffmpeg will use to create files [default: "m4b"]
-      --audio-channels[=AUDIO-CHANNELS]        audio channels, e.g. 1, 2 [default: ""]
-      --audio-bitrate[=AUDIO-BITRATE]          audio bitrate, e.g. 64k, 128k, ... [default: ""]
-      --audio-samplerate[=AUDIO-SAMPLERATE]    audio samplerate, e.g. 22050, 44100, ... [default: ""]
-      --audio-codec[=AUDIO-CODEC]              audio codec, e.g. libmp3lame, aac, ... [default: ""]
-      --audio-profile[=AUDIO-PROFILE]          audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2  [default: ""]
-      --adjust-for-ipod                        auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)
-      --name[=NAME]                            provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
-      --album[=ALBUM]                          provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
-      --artist[=ARTIST]                        provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
-      --genre[=GENRE]                          provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
-      --writer[=WRITER]                        provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
-      --albumartist[=ALBUMARTIST]              provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
-      --year[=YEAR]                            provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
-      --cover[=COVER]                          provide a custom audiobook cover, otherwise the existing metadata will be used
-      --description[=DESCRIPTION]              provide a custom audiobook short description, otherwise the existing metadata will be used
-      --comment[=COMMENT]                      provide a custom audiobook comment, otherwise the existing metadata will be used
-      --copyright[=COPYRIGHT]                  provide a custom audiobook copyright, otherwise the existing metadata will be used
-      --encoded-by[=ENCODED-BY]                provide a custom audiobook encoded-by, otherwise the existing metadata will be used
-      --skip-cover                             skip extracting and embedding covers
-  -o, --output-dir[=OUTPUT-DIR]                output directory [default: ""]
-      --filename-template[=FILENAME-TEMPLATE]  filename twig-template for output file naming [default: "{{\"%03d\"|format(track)}}-{{title}}"]
-      --use-existing-chapters-file             use an existing manually edited chapters file <audiobook-name>.chapters.txt instead of embedded chapters for splitting
-  -h, --help                                   Display this help message
-  -q, --quiet                                  Do not output any message
-  -V, --version                                Display this application version
-      --ansi                                   Force ANSI output
-      --no-ansi                                Disable ANSI output
-  -n, --no-interaction                         Do not ask any interactive question
-  -v|vv|vvv, --verbose                         Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
+      --logfile[=LOGFILE]                        file to dump all output [default: ""]
+      --debug                                    enable debug mode - sets verbosity to debug, logfile to m4b-tool.log and temporary files are not deleted
+  -f, --force                                    force overwrite of existing files
+      --no-cache                                 do not use cached values and clear cache completely
+      --ffmpeg-threads[=FFMPEG-THREADS]          specify -threads parameter for ffmpeg [default: ""]
+      --platform-charset[=PLATFORM-CHARSET]      Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --ffmpeg-param[=FFMPEG-PARAM]              Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
+  -a, --silence-min-length[=SILENCE-MIN-LENGTH]  silence minimum length in milliseconds [default: 1750]
+  -b, --silence-max-length[=SILENCE-MAX-LENGTH]  silence maximum length in milliseconds [default: 0]
+      --max-chapter-length[=MAX-CHAPTER-LENGTH]  maximum chapter length in seconds - its also possible to provide a desired chapter length in form of 300,900 where 300 is desired and 900 is max - if the max chapter length is exceeded, the chapter is placed on the first silence between desired and max chapter length [default: "0"]
+      --audio-format[=AUDIO-FORMAT]              output format, that ffmpeg will use to create files [default: "m4b"]
+      --audio-channels[=AUDIO-CHANNELS]          audio channels, e.g. 1, 2 [default: ""]
+      --audio-bitrate[=AUDIO-BITRATE]            audio bitrate, e.g. 64k, 128k, ... [default: ""]
+      --audio-samplerate[=AUDIO-SAMPLERATE]      audio samplerate, e.g. 22050, 44100, ... [default: ""]
+      --audio-codec[=AUDIO-CODEC]                audio codec, e.g. libmp3lame, aac, ... [default: ""]
+      --audio-profile[=AUDIO-PROFILE]            audio profile, when using extra low bitrate - valid values (mono, stereo): aac_he, aac_he_v2  [default: ""]
+      --adjust-for-ipod                          auto adjust bitrate and sampling rate for ipod, if track is to long (may lead to poor quality)
+      --name[=NAME]                              provide a custom audiobook name, otherwise the existing metadata will be used [default: ""]
+      --sortname[=SORTNAME]                      provide a custom audiobook name, that is used only for sorting purposes [default: ""]
+      --album[=ALBUM]                            provide a custom audiobook album, otherwise the existing metadata for name will be used [default: ""]
+      --sortalbum[=SORTALBUM]                    provide a custom audiobook album, that is used only for sorting purposes [default: ""]
+      --artist[=ARTIST]                          provide a custom audiobook artist, otherwise the existing metadata will be used [default: ""]
+      --sortartist[=SORTARTIST]                  provide a custom audiobook artist, that is used only for sorting purposes [default: ""]
+      --genre[=GENRE]                            provide a custom audiobook genre, otherwise the existing metadata will be used [default: ""]
+      --writer[=WRITER]                          provide a custom audiobook writer, otherwise the existing metadata will be used [default: ""]
+      --albumartist[=ALBUMARTIST]                provide a custom audiobook albumartist, otherwise the existing metadata will be used [default: ""]
+      --year[=YEAR]                              provide a custom audiobook year, otherwise the existing metadata will be used [default: ""]
+      --cover[=COVER]                            provide a custom audiobook cover, otherwise the existing metadata will be used
+      --description[=DESCRIPTION]                provide a custom audiobook short description, otherwise the existing metadata will be used
+      --longdesc[=LONGDESC]                      provide a custom audiobook long description, otherwise the existing metadata will be used
+      --comment[=COMMENT]                        provide a custom audiobook comment, otherwise the existing metadata will be used
+      --copyright[=COPYRIGHT]                    provide a custom audiobook copyright, otherwise the existing metadata will be used
+      --encoded-by[=ENCODED-BY]                  provide a custom audiobook encoded-by, otherwise the existing metadata will be used
+      --series[=SERIES]                          provide a custom audiobook series, this pseudo tag will be used to auto create sort order (e.g. Harry Potter or The Kingkiller Chronicles)
+      --series-part[=SERIES-PART]                provide a custom audiobook series part, this pseudo tag will be used to auto create sort order (e.g. 1 or 2.5)
+      --skip-cover                               skip extracting and embedding covers
+      --fix-mime-type                            try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent video window
+  -o, --output-dir[=OUTPUT-DIR]                  output directory [default: ""]
+  -p, --filename-template[=FILENAME-TEMPLATE]    filename twig-template for output file naming [default: "{{\"%03d\"|format(track)}}-{{title}}"]
+      --use-existing-chapters-file               use an existing manually edited chapters file <audiobook-name>.chapters.txt instead of embedded chapters for splitting
+  -h, --help                                     Display this help message
+  -q, --quiet                                    Do not output any message
+  -V, --version                                  Display this application version
+      --ansi                                     Force ANSI output
+      --no-ansi                                  Disable ANSI output
+  -n, --no-interaction                           Do not ask any interactive question
+  -v|vv|vvv, --verbose                           Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
 
 Help:
   Split an m4b into multiple m4b or mp3 files by chapter
@@ -369,7 +543,7 @@ If you would like to use a custom filename template, the [Twig](https://twig.sym
 - It is not recommended to use `{{description}}` or `{{longdescription}}` for filenames but they are also provided, if the field contains other information than intended
 - Special chars, that are forbidden in filenames are removed automatically
 
-## chapter
+## chapters
 
 Many m4b audiobook files do not contain valid chapters for different reasons. `m4b-tool` can handle two cases:
 
@@ -473,6 +647,9 @@ If none of the chapters are detected correctly, this can have different reasons:
 For all options, see `m4b-tool chapters --help`:
 
 ```
+Description:
+  Adds chapters to m4b file
+
 Usage:
   chapters [options] [--] <input>
 
@@ -480,16 +657,17 @@ Arguments:
   input                                                      Input file or folder
 
 Options:
-  -d, --debug                                                file to dump debugging info
-      --debug-filename[=DEBUG-FILENAME]                      file to dump debugging info [default: "m4b-tool_debug.log"]
+      --logfile[=LOGFILE]                                    file to dump all output [default: ""]
+      --debug                                                enable debug mode - sets verbosity to debug, logfile to m4b-tool.log and temporary files are not deleted
   -f, --force                                                force overwrite of existing files
       --no-cache                                             do not use cached values and clear cache completely
       --ffmpeg-threads[=FFMPEG-THREADS]                      specify -threads parameter for ffmpeg [default: ""]
-      --convert-charset[=CONVERT-CHARSET]                    Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
+      --platform-charset[=PLATFORM-CHARSET]                  Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems) [default: ""]
       --ffmpeg-param[=FFMPEG-PARAM]                          Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --ffmpeg-param="-max_muxing_queue_size" --ffmpeg-param="1000" for ffmpeg [...] -max_muxing_queue_size 1000) (multiple values allowed)
-  -m, --musicbrainz-id=MUSICBRAINZ-ID                        musicbrainz id so load chapters from
   -a, --silence-min-length[=SILENCE-MIN-LENGTH]              silence minimum length in milliseconds [default: 1750]
   -b, --silence-max-length[=SILENCE-MAX-LENGTH]              silence maximum length in milliseconds [default: 0]
+      --max-chapter-length[=MAX-CHAPTER-LENGTH]              maximum chapter length in seconds - its also possible to provide a desired chapter length in form of 300,900 where 300 is desired and 900 is max - if the max chapter length is exceeded, the chapter is placed on the first silence between desired and max chapter length [default: "0"]
+  -m, --musicbrainz-id=MUSICBRAINZ-ID                        musicbrainz id so load chapters from
   -s, --merge-similar                                        merge similar chapter names
   -o, --output-file[=OUTPUT-FILE]                            write chapters to this output file [default: ""]
       --adjust-by-silence                                    will try to adjust chapters of a file by silence detection and existing chapter marks

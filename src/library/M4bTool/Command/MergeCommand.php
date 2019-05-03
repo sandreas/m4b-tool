@@ -132,7 +132,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->addOption(static::OPTION_MARK_TRACKS, null, InputOption::VALUE_NONE, "add chapter marks for each track");
         $this->addOption(static::OPTION_NO_CONVERSION, null, InputOption::VALUE_NONE, "skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)");
 
-        $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title)", []);
+        $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title) - parameter --output-file must be a directory", []);
         $this->addOption(static::OPTION_DRY_RUN, null, InputOption::VALUE_NONE, "perform a dry run without converting all the files in batch mode (requires --" . static::OPTION_BATCH_PATTERN . ")");
         $this->addOption(static::OPTION_JOBS, null, InputOption::VALUE_OPTIONAL, "Specifies the number of jobs (commands) to run simultaneously", 1);
 
@@ -627,7 +627,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $taskPool = new Pool($jobs);
 
         foreach ($this->filesToConvert as $index => $file) {
-
+//            $estimatedDuration = $this->metaHandler->estimateDuration($file);
+//            $taskWeight = $estimatedDuration ? $estimatedDuration->milliseconds() / 1000 : 1;
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
             $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
             $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
@@ -651,28 +652,53 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $options->force = $this->optForce;
             $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
 
-            $taskPool->submit(new ConversionTask($ffmpeg, $fdkaac, $options));
+            $taskPool->submit(new ConversionTask($ffmpeg, $fdkaac, $options)/*, $taskWeight*/);
         }
 
-        $increaseProgressBarSeconds = 5;
 
-        $this->notice(sprintf("preparing conversion with %d simultaneous %s, which may seem unresponsive, be patient...", $jobs, $jobs === 1 ? "job" : "jobs"));
+        $this->notice(sprintf("preparing conversion with %d simultaneous %s, please wait...", $jobs, $jobs === 1 ? "job" : "jobs"));
 
-        $taskPool->process(function ($runningTasks, $conversionQueue, $runtime) use ($increaseProgressBarSeconds, $jobs) {
-            $runningTaskCount = count($runningTasks);
-            $conversionQueueLength = count($conversionQueue);
-            $remainingTaskCount = $conversionQueueLength + $runningTaskCount;
-            $progressBarLength = ceil($runtime / $increaseProgressBarSeconds);
-            $progressBar = str_repeat("+", $progressBarLength);
-            if ($remainingTaskCount === 0) {
-                $message = sprintf("\rfinished all tasks, preparing next step");
-            } else if ($runningTaskCount === 0) {
-                $message = sprintf("\r%d remaining tasks are beeing prepared: %s", $remainingTaskCount, $progressBar);
-            } else if ($runningTaskCount > 0) {
-                $message = sprintf("\r%d remaining converting tasks are running: %s", $remainingTaskCount, $progressBar);
-            } else {
-                $message = sprintf("\rpreparing conversion: %s", $progressBar);
+
+        $taskPool->process(function (Pool $taskPool) {
+            static $counter = 0;
+            static $spinnerPosition = 0;
+            static $maxMessageLength = 0;
+
+            $queueLength = count($taskPool->getProcessingQueue());
+            if ($counter++ % 4 !== 0 && $queueLength > 0) {
+                return;
             }
+
+            $taskCount = count($taskPool->getTasks());
+            $runningTaskCount = count($taskPool->getRunningTasks());
+            $remainingTaskCount = $queueLength + $runningTaskCount;
+//            $remainingTime = $taskPool->calculateRemainingTime();
+//            if ($remainingTime instanceof TimeUnit) {
+//                $runTimeAsString = $remainingTime->format("%H:%M:%S");
+//            } else {
+//                $runTimeAsString = " - ";
+//            }
+
+
+            if ($taskPool === 0) {
+                $message = sprintf("\rfinished %4d tasks, preparing next step", $taskCount);
+            } else if ($runningTaskCount === 0) {
+                $message = sprintf("\r%4d remaining / %4d total, preparing next task", $remainingTaskCount, $taskCount);
+            } else if ($runningTaskCount > 0) {
+                $message = sprintf("\r%4d remaining / %4d total", $remainingTaskCount, $taskCount);
+            } else {
+                $message = sprintf("\rpreparing conversion");
+            }
+            // $message .= ", proc: " . $processedTaskCount . ", skip: " . $skippedTaskCount . ", run: " . $runningTaskCount;
+
+            $chars = ['|', '/', '-', '\\'];
+            $charCount = count($chars);
+            $spinner = $chars[$spinnerPosition++ % $charCount];
+            $message .= " " . $spinner;
+
+            $maxMessageLength = max(mb_strlen($message), $maxMessageLength);
+            $message = str_pad($message, $maxMessageLength);
+
             $this->output->write($message, false, OutputInterface::VERBOSITY_VERBOSE);
         });
         $this->output->writeln("", OutputInterface::VERBOSITY_VERBOSE);
@@ -680,10 +706,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         /** @var ConversionTask $task */
         foreach ($taskPool->getTasks() as $index => $task) {
-            $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
             $file = $task->getOptions()->source;
             $outputFile = $task->getOptions()->destination;
-            $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
 
             if (!$outputFile->isFile()) {
                 throw new Exception("could not convert " . $file . " to " . $outputFile);
@@ -693,8 +717,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 unlink($outputFile);
                 throw new Exception("could not convert " . $file . " to " . $outputFile);
             }
-
-            rename($outputFile, $finishedOutputFile);
         }
     }
 

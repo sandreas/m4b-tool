@@ -5,6 +5,7 @@ namespace M4bTool\Executables\Tasks;
 
 
 use Exception;
+use Sandreas\Time\TimeUnit;
 
 class Pool
 {
@@ -18,19 +19,112 @@ class Pool
      */
     protected $tasks = [];
 
+    /** @var float */
+    protected $processStartTime;
+    /**
+     * @var AbstractTask[]
+     */
+    protected $procesingQueue = [];
+
+    /** @var float[] */
+    protected $weightSum = 0;
+
     public function __construct($size)
     {
         $this->size = $size;
     }
 
-    public function submit(AbstractTask $task)
+    public function submit(AbstractTask $task, $weight = 1)
     {
+        $task->setWeight($weight);
         $this->tasks[] = $task;
+        $this->weightSum += $weight;
+    }
+
+    public function calculateRemainingTime()
+    {
+        $taskCount = count($this->getTasks());
+        $conversionQueueLength = count($this->getProcessingQueue());
+        $runningTaskCount = count($this->getRunningTasks());
+        $skippedTaskCount = count($this->getSkippedTasks());
+        $processedTaskCount = ($taskCount - $runningTaskCount - $conversionQueueLength - $skippedTaskCount);
+
+
+        $elapsedTime = microtime(true) - $this->processStartTime;
+        $totalProgress = $this->getTotalProgress();
+        $remainingProgress = 1 - $this->getTotalProgress();
+        $skippedProgress = $this->getSkippedProgress();
+        $progressInTime = $totalProgress - $skippedProgress;
+
+        // if progress is less than 0.01%, remaining time is not reliable
+        if ($progressInTime < 0.0001 || $processedTaskCount < 1) {
+            return null;
+        }
+        $progressPerSecond = $progressInTime / $elapsedTime;
+        $remainingTimeSeconds = $remainingProgress / $progressPerSecond;
+        return new TimeUnit($remainingTimeSeconds, TimeUnit::SECOND);
     }
 
     public function getTasks()
     {
         return $this->tasks;
+    }
+
+    public function getProcessingQueue()
+    {
+        return $this->procesingQueue;
+    }
+
+    public function getRunningTasks()
+    {
+        return array_filter($this->tasks, function (AbstractTask $task) {
+            return $task->isRunning();
+        });
+    }
+
+    public function getSkippedTasks()
+    {
+        return array_filter($this->tasks, function (AbstractTask $task) {
+            return $task->isSkipped();
+        });
+    }
+
+    public function getTotalProgress()
+    {
+        $remainingProgress = $this->calculateProgressRatioForTasks($this->procesingQueue, $this->getRunningTasks());
+        return 1 - $remainingProgress;
+    }
+
+    public function getSkippedProgress()
+    {
+        return $this->calculateProgressRatioForTasks($this->getSkippedTasks());
+    }
+
+    protected function calculateProgressRatioForTasks(...$taskContainer)
+    {
+        $remainingWeightSum = 0;
+        foreach ($taskContainer as $tasks) {
+            foreach ($tasks as $task) {
+                $remainingWeightSum += $task->getWeight();
+            }
+        }
+
+        if ($this->weightSum <= 0) {
+            return 0;
+        }
+
+        if ($remainingWeightSum <= 0) {
+            return 0;
+        }
+
+        return 1 / $this->weightSum * $remainingWeightSum;
+    }
+
+    public function getFinishedTasks()
+    {
+        return array_filter($this->tasks, function (AbstractTask $task) {
+            return $task->isFinished();
+        });
     }
 
     /**
@@ -44,15 +138,15 @@ class Pool
         $progressCallback = $progressCallback ?? function () {
             };
         $runningTaskCount = 0;
-        $conversionTaskQueue = $this->tasks;
+        $this->procesingQueue = $this->tasks;
         $runningTasks = [];
-        $start = microtime(true);
+        $this->processStartTime = microtime(true);
 //        $increaseProgressBarSeconds = 5;
         do {
             $firstFailedTask = null;
             if ($runningTaskCount > 0 && $firstFailedTask === null) {
                 foreach ($runningTasks as $task) {
-                    if ($task->didFail()) {
+                    if ($task->isFailed()) {
                         $firstFailedTask = $task;
                         break;
                     }
@@ -64,7 +158,7 @@ class Pool
             $task = null;
 
 
-            while ($firstFailedTask === null && $runningTaskCount < $jobs && $task = array_shift($conversionTaskQueue)) {
+            while ($firstFailedTask === null && $runningTaskCount < $jobs && $task = array_shift($this->procesingQueue)) {
                 $task->run();
                 $runningTasks[] = $task;
                 $runningTaskCount++;
@@ -72,14 +166,20 @@ class Pool
 
             usleep(250000);
 
+            /** @var ConversionTask $runningTask */
+            foreach ($runningTasks as $runningTask) {
+                if (!$runningTask->isRunning()) {
+                    $runningTask->finish();
+                }
+            }
+
             $runningTasks = array_filter($runningTasks, function (ConversionTask $task) {
                 return $task->isRunning();
             });
 
             $runningTaskCount = count($runningTasks);
-            $conversionQueueLength = count($conversionTaskQueue);
-            $time = microtime(true);
-            $progressCallback($conversionTaskQueue, $runningTasks, $time - $start);
+            $conversionQueueLength = count($this->procesingQueue);
+            $progressCallback($this);
 
             //            $progressBar = str_repeat("+", ceil(($time - $start) / $increaseProgressBarSeconds));
 //            $this->output->write(sprintf("\r%d/%d remaining tasks running: %s", $runningTaskCount, ($conversionQueueLength + $runningTaskCount), $progressBar), false, OutputInterface::VERBOSITY_VERBOSE);
@@ -87,12 +187,21 @@ class Pool
         } while ($conversionQueueLength > 0 || $runningTaskCount > 0);
 
         foreach ($this->tasks as $task) {
-            $task->cleanUp();
+            $task->finish();
         }
 
         if ($firstFailedTask !== null) {
             throw new Exception("a task has failed", null, $firstFailedTask->getLastException());
         }
+
+    }
+
+    public function getProcessingTime()
+    {
+        if ($this->processStartTime === null) {
+            return new TimeUnit(0);
+        }
+        return new TimeUnit(microtime(true) - $this->processStartTime, TimeUnit::SECOND);
 
     }
 
