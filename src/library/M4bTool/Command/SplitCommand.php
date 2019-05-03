@@ -16,10 +16,10 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
 use Twig\Error\LoaderError;
 use Twig\Error\SyntaxError;
-use Twig_Environment;
-use Twig_Error_Loader;
-use Twig_Error_Syntax;
-use Twig_Loader_Array;
+use Twig\Environment as Twig_Environment;
+use Twig\Error\LoaderError as Twig_Error_Loader;
+use Twig\Error\SyntaxError as Twig_Error_Syntax;
+use Twig\Loader\ArrayLoader as Twig_Loader_Array;
 
 class SplitCommand extends AbstractConversionCommand
 {
