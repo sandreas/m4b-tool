@@ -55,6 +55,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     const OPTION_DRY_RUN = "dry-run";
     const OPTION_JOBS = "jobs";
 
+    const OPTION_CHAPTER_NO_REINDEXING = "no-chapter-reindexing";
+    const OPTION_CHAPTER_USE_FILENAMES = "use-filenames-as-chapters";
 
     const MAPPING_OPTIONS_PLACEHOLDERS = [
         self::OPTION_TAG_NAME => "n",
@@ -136,6 +138,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->addOption(static::OPTION_DRY_RUN, null, InputOption::VALUE_NONE, "perform a dry run without converting all the files in batch mode (requires --" . static::OPTION_BATCH_PATTERN . ")");
         $this->addOption(static::OPTION_JOBS, null, InputOption::VALUE_OPTIONAL, "Specifies the number of jobs (commands) to run simultaneously", 1);
 
+        $this->addOption(static::OPTION_CHAPTER_USE_FILENAMES, null, InputOption::VALUE_NONE, "Use filenames for chapter titles instead of tag contents");
+        $this->addOption(static::OPTION_CHAPTER_NO_REINDEXING, null, InputOption::VALUE_NONE, "Do not perform any reindexing for index-only chapter names (by default m4b-tool will try to detect index-only chapters like Chapter 1, Chapter 2 and reindex it with its numbers only)");
+
     }
 
     /**
@@ -158,6 +163,17 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             );
             $this->metaHandler = new MetaDataHandler($ffmpeg, $mp4v2);
             $this->chapterHandler = new ChapterHandler($this->metaHandler);
+
+            $flags = 0;
+            if ($input->getOption(static::OPTION_CHAPTER_NO_REINDEXING)) {
+                $flags |= ChapterHandler::NO_REINDEXING;
+            }
+            if ($input->getOption(static::OPTION_CHAPTER_USE_FILENAMES)) {
+                $flags |= ChapterHandler::USE_FILENAMES;
+            }
+            $this->chapterHandler->setFlags($flags);
+
+
 
             $batchPatterns = $input->getOption(static::OPTION_BATCH_PATTERN);
             if ($this->isBatchMode($input)) {
@@ -472,7 +488,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $this->chapters = $chapterParser->parse($chaptersFileContent);
         } else {
             $this->notice("rebuilding chapters from converted files title tags");
-            $this->chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge);
+            $this->chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge, $this->filesToConvert);
             $this->replaceChaptersWithMusicBrainz();
             $this->addTrackMarkers();
         }

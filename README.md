@@ -44,8 +44,8 @@ or if it is a series
 
 Examples:
 ```
-input/Fantasy/J.K. Rowling/Quidditch Through the Ages
-input/Fantasy/J.K. Rowling/Harry Potter/1 - Harry Potter and the Philosopher's Stone
+input/Fantasy/J.K. Rowling/Quidditch Through the Ages/
+input/Fantasy/J.K. Rowling/Harry Potter/1 - Harry Potter and the Philosopher's Stone/
 ```
 > Note: If your audiobook title contains invalid path characters like `/`, just replace them with a dash `-`.
 
@@ -77,14 +77,14 @@ If you would like to adjust chapters manually, you can add a `chapters.txt` (sam
 ```
 
 #### by tag
-If your input files are tagged, these tags will be used to create the metadata - (`title`, `name`, `composer`, even a `cover` will be extracted and embedded if you did not place it in the main directory). So if you tag your input files with valid chapter names as track title, this will result in a nice and clean `m4b`-file with real chapter names.
+If your input files are tagged, these tags will be used to create the chapter metadata by its `title`. So if you tag your input files with valid chapter names as track `title`, this will result in a nice and clean `m4b`-file with valid chapter names.
 
 #### by length
-Another great feature since `m4b-tool v.0.4.0` is the `--max-chapter-length` parameter. Often the individual input files are too big which results in chapters with a very long duration. This can be annoying, if you want to jump at a certain point, since you have to rewind or fast-forward and hold the button for a long time, instead of just tipping previous or next a few times. To automatically add sub-chapters, you could provide 
+Another great feature since `m4b-tool` *v.0.4.0* is the `--max-chapter-length` parameter. Often the individual input files are too big which results in chapters with a very long duration. This can be annoying, if you want to jump at a certain point, since you have to rewind or fast-forward and hold the button for a long time, instead of just tipping previous or next a few times. To automatically add sub-chapters, you could provide:
 
 `--max-chapter-length=300,900`
 
-, which will cause `m4b-tool`
+This will cause `m4b-tool`
 - Trying to preserve original chapters as long as they are not longer than 15 minutes (900 seconds)
 - If a track is longer than 15 minutes
     - Perform a silence detection and try to add sub-chapters at every silence every 5 minutes (300 seconds)
@@ -97,15 +97,19 @@ Sub-chapters are named like the original and get an additional index. This is a 
 
 If you own an iPod, there might be a problem with too long audiobooks, since iPods only support 32bit sampling rates. If your audiobook is longer than 27 hours, you could provide `--adjust-for-ipod`, to automatically downsample your audiobook, which results in lower quality, but at least its working on your good old iPod...
 
-### Step 5 - Use the `--batch-pattern` feature to batch-convert multiple audiobooks at once
+### Step 5 - Use the `--batch-pattern` feature
 
-In `m4b-tool v.0.4.0` the `--batch-pattern` feature was added, so that you can create tags from a directory structure - `output-file` has to be a directory though. Also multiple `--batch-pattern` parameters are supported, while the first match will be used first. So if you created the directory structure as described above, the final command would look like this:
+In `m4b-tool v.0.4.0` the `--batch-pattern` feature was added. It can be used to batch-convert multiple audiobooks at once, but also to just convert one single audiobook - because you can create tags from an existing directory structure. 
+
+> Hint: The `output-file` parameter has to be a directory, when using `--batch-pattern`. 
+
+Even multiple `--batch-pattern` parameters are supported, while the first match will be used first. So if you created the directory structure as described above, the final command would look like this:
 
 ```
 m4b-tool merge -v --output-file="output/" --max-chapter-length=300,900 --adjust-for-ipod --batch-pattern="input/%g/%a/%s/%p - %n/"  --batch-pattern="input/%g/%a/%n/" "input/" 
 ```
 
-> While in --batch-pattern mode, existing files are ignored by default
+> While in --batch-pattern mode, existing files are skipped by default
 
 ### Result
 If you performed the above steps with the docker image or installed and compiled all dependencies, you should get the following result:
@@ -119,6 +123,31 @@ If you performed the above steps with the docker image or installed and compiled
 
 
 ## Installation
+
+
+### Docker (experimental)
+
+To use docker with `m4b-tool`, you first have to build a custom image located in the `docker` directory. Since this image is compiling every third party library from scratch to get the best possible audio quality, it can take a long time for the first build.
+
+```
+# clone m4b-tool repository
+git clone https://github.com/sandreas/m4b-tool.git
+
+# change directory
+cd m4b-tool
+
+# build docker image - this will take a while
+docker build docker -t m4b-tool
+
+# create an alias for m4b-tool running docker
+alias m4b-tool='docker run -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
+
+# testing the command
+m4b-tool --version
+```
+
+> Note: If you use the alias above, keep in mind that you cannot use absolute paths (e.g. `/tmp/data/audiobooks/harry potter 1`) or symlinks. You must change into the directory and use relative paths (e.g. `cd /tmp/data && m4b-tool merge "audiobooks/harry potter 1" --output-file harry.m4b`)
+
 
 ### MacOS
 
@@ -158,28 +187,40 @@ m4b-tool --version
 > Note: If you would like to get the [best possible audio quality](#about-audio-quality), you have to compile `ffmpeg` with the high quality encoder `fdk-aac` (`--enable-libfdk_aac`) - see https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu for a step-by-step guide to compile `ffmpeg`.
 
 
-### Docker (experimental)
+### Manual installation (only recommended on Windows systems)
 
-To use docker with `m4b-tool`, you first have to build a custom image located in the `docker` directory. Since this image is compiling every third party library from scratch to get the best possible audio quality, it can take a long time for the first build.
+`m4b-tool` is written in `PHP` and uses `ffmpeg`, `mp4v2` and optionally `fdkaac` for high efficiency codecs to perform conversions. Therefore you will need the following tools in your %PATH%:
+
+- `php` >= 7.0 with `mbstring` extension enabled (https://php.net)
+- `ffmpeg` (https://www.ffmpeg.org)
+- `mp4v2` (`mp4chaps`, `mp4art`, etc. https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip)
+- `fdkaac` (optional, only if you need high efficiency for low bitrates <= 32k, http://wlc.io/2015/06/20/fdk-aac/ - caution: not official!)
+
+To check the dependencies, running following commands via command line should show similar output:
 
 ```
-# clone m4b-tool repository
-git clone https://github.com/sandreas/m4b-tool.git
+$ php -v
+Copyright (c) 1997-2018 The PHP Group [...]
 
-# change directory
-cd m4b-tool
+$ ffmpeg -version
+ffmpeg version 4.1.1 Copyright (c) 2000-2019 the FFmpeg developers [...]
 
-# build docker image - this will take a while
-docker build docker -t m4b-tool
+$ mp4chaps --version
+mp4chaps - MP4v2 2.0.0
 
-# create an alias for m4b-tool running docker
-alias m4b-tool='docker run -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
+$ fdkaac
+fdkaac 1.0.0 [...]
 
-# testing the command
-m4b-tool --version
 ```
 
-> Note: If you use the alias above, keep in mind that you cannot use absolute paths (e.g. `/tmp/data/audiobooks/harry potter 1`) or symlinks. You must change into the directory and use relative paths (e.g. `cd /tmp/data && m4b-tool merge "audiobooks/harry potter 1" --output-file harry.m4b`)
+If you are sure, all dependencies are installed, the next step is to download the latest release of `m4b-tool` from
+
+https://github.com/sandreas/m4b-tool/releases
+
+Depending on the operating system, you can rename `m4b-tool.phar` to `m4b-tool` and run `m4b-tool --version` directly from the command line. If you are not sure, you can always use the command `php m4b-tool.phar --version` to check if the installation was successful. This should work on every system.
+
+If you would like to use the latest source code with all new features and fixes, you could also [build from source](#building-from-source). The current build might be in  unstable and should only be used for testing purposes or if you need a specific feature that has not been released.
+
 
 ### Custom `mp4v2` for accurate sorting order
 
@@ -217,40 +258,6 @@ cd mp4v2
 ./configure
 make && sudo make install
 ```
-
-### Manual installation (only recommended on Windows systems)
-
-`m4b-tool` is written in `PHP` and uses `ffmpeg`, `mp4v2` and optionally `fdkaac` for high efficiency codecs to perform conversions. Therefore you will need the following tools in your %PATH%:
-
-- `php` >= 7.0 with `mbstring` extension enabled (https://php.net)
-- `ffmpeg` (https://www.ffmpeg.org)
-- `mp4v2` (`mp4chaps`, `mp4art`, etc. https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip)
-- `fdkaac` (optional, only if you need high efficiency for low bitrates <= 32k, http://wlc.io/2015/06/20/fdk-aac/ - caution: not official!)
-
-To check the dependencies, running following commands via command line should show similar output:
-
-```
-$ php -v
-Copyright (c) 1997-2018 The PHP Group [...]
-
-$ ffmpeg -version
-ffmpeg version 4.1.1 Copyright (c) 2000-2019 the FFmpeg developers [...]
-
-$ mp4chaps --version
-mp4chaps - MP4v2 2.0.0
-
-$ fdkaac
-fdkaac 1.0.0 [...]
-
-```
-
-If you are sure, all dependencies are installed, the next step is to download the latest release of `m4b-tool` from
-
-https://github.com/sandreas/m4b-tool/releases
-
-Depending on the operating system, you can rename `m4b-tool.phar` to `m4b-tool` and run `m4b-tool --version` directly from the command line. If you are not sure, you can always use the command `php m4b-tool.phar --version` to check if the installation was successful. This should work on every system.
-
-If you would like to use the latest source code with all new features and fixes, you could also [build from source](#building-from-source). The current build might be in  unstable and should only be used for testing purposes or if you need a specific feature that has not been released.
 
 ## About audio quality
 

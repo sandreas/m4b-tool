@@ -8,12 +8,16 @@ use M4bTool\Audio\Chapter;
 use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Audio\Silence;
 use Sandreas\Time\TimeUnit;
+use SplFileInfo;
 
 class ChapterHandler
 {
     // chapters are seen as numbered consecutively, if this ratio of all chapter names only differs by numeric values
     const CHAPTER_REINDEX_RATIO = 0.75;
     const CHAPTER_START_MAX_OFFSET_MS = 25;
+
+    const NO_REINDEXING = 1 << 0;
+    const USE_FILENAMES = 1 << 1;
     /**
      * @var MetaDataHandler
      */
@@ -25,11 +29,18 @@ class ChapterHandler
 
     protected $removeChars;
 
+    protected $flags = 0;
+
     public function __construct(MetaDataHandler $meta)
     {
         $this->meta = $meta;
         $this->maxLength = new TimeUnit();
         $this->desiredLength = new TimeUnit();
+    }
+
+    public function setFlags($flags)
+    {
+        $this->flags = $flags;
     }
 
     /**
@@ -49,28 +60,42 @@ class ChapterHandler
     }
 
     /**
-     * @param array $files
+     * @param SplFileInfo[] $files
+     * @param array $fileNames
      * @return array
      * @throws \Exception
      */
-    public function buildChaptersFromFiles(array $files)
+    public function buildChaptersFromFiles(array $files, array $fileNames = [])
     {
         $chapters = [];
         $lastStart = new TimeUnit();
-        foreach ($files as $file) {
-            $tag = $this->meta->readTag($file);
-            if (count($tag->chapters) > 0) {
-                $chapters = array_merge($chapters, $tag->chapters);
-                continue;
+
+        foreach ($files as $index => $file) {
+
+            if ($file instanceof SplFileInfo) {
+                $file = new SplFileInfo($file);
+            }
+
+            if ($this->hasFlag(static::USE_FILENAMES) && isset($fileNames[$index])) {
+                $fileName = $fileNames[$index];
+                if ($fileName instanceof SplFileInfo) {
+                    $fileName = new SplFileInfo($fileName);
+                }
+                $chapterName = $fileName->getBasename("." . $fileName->getExtension());
+            } else {
+                $tag = $this->meta->readTag($file);
+                if (count($tag->chapters) > 0) {
+                    $chapters = array_merge($chapters, $tag->chapters);
+                    continue;
+                }
+                $chapterName = $tag->title ?? "";
             }
 
             $duration = $this->meta->inspectExactDuration($file);
-            $chapter = new Chapter($lastStart, $duration, $tag->title ?? "");
+            $chapter = new Chapter($lastStart, $duration, $chapterName);
             $chapters[] = $chapter;
             $lastStart = $chapter->getEnd();
         }
-
-
         return $this->adjustChapters($chapters);
     }
 
@@ -86,7 +111,6 @@ class ChapterHandler
 
         return $this->adjustChapterNames($chapters);
     }
-
 
     /**
      * @param Chapter[] $chapters
@@ -189,6 +213,8 @@ class ChapterHandler
         if (count($chapters) === 0) {
             return $chapters;
         }
+
+
         if ($this->areChaptersNumberedConsecutively($chapters)) {
             return $this->adjustNumberedChapters($chapters);
         }
@@ -198,6 +224,10 @@ class ChapterHandler
 
     private function areChaptersNumberedConsecutively($chapters)
     {
+        if ($this->hasFlag(static::NO_REINDEXING)) {
+            return false;
+        }
+
         $chapterCount = count($chapters);
         $chapterNamesWithoutIndexes = array_map(function (Chapter $chapter) {
             return $this->normalizeChapterName($chapter->getName());
@@ -313,5 +343,10 @@ class ChapterHandler
         }
 
         return $newChapters;
+    }
+
+    private function hasFlag($flag)
+    {
+        return $this->flags & $flag;
     }
 }
