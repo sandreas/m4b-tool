@@ -2,7 +2,7 @@
 `m4b-tool` is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manipulate audiobook files with chapters. Although `m4b-tool` is designed to handle m4b files, nearly all audio formats should be supported, e.g. mp3, aac, ogg, alac and flac.
 
 
-## <span style="color:red;">Request for help - especially german users</span>
+## Request for help - especially german users
 Right now, I'm experimenting with speech recognition and *speech to text* using [this project](https://github.com/gooofy/zamia-speech)
 
 This is for a feature to automatically add chapter names by speech recognition. I'm not sure this will be ever working as expected, but right now I'm pretty confident, it is possible to do the following, if there are enough speech samples in a specific language:
@@ -12,10 +12,11 @@ This is for a feature to automatically add chapter names by speech recognition. 
 - Perform a speech to text for the first 30 seconds after the silence
 - Compare it with the text parts of the ebook, mark the chapter positions and add real chapters names
 
+<span style="color:red;">
 To do that, I would really appreciate *YOUR* help on:
  
 **https://voice.mozilla.org/de (german)**
- 
+</span>
 You can support mozilla DeepSpeech to better support german speech recognition by just verifying sentences after listening or, even more important, reading out loud and uploading sentences. I try to add a few ones every day, its really easy and quite fun. At the moment the german speech recognition is not good enough for the algorithm, but I will check out every now and then - as soon the recognition is working good enough, I'll go on with this feature.
 
 ## Features
