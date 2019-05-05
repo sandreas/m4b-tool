@@ -13,7 +13,7 @@ This is for a feature to automatically add chapter names by speech recognition. 
 - Compare it with the text parts of the ebook, mark the chapter positions and add real chapters names
 
 
-![#f03c15](https://placehold.it/15/f03c15/000000?text=+) To do that and improve the german speech recognition, I would really appreciate *YOUR* help on:
+To do that and improve the german speech recognition, I would really appreciate *YOUR* help on:
 
  
 **https://voice.mozilla.org/de (german)**
