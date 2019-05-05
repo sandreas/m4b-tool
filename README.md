@@ -13,9 +13,12 @@ This is for a feature to automatically add chapter names by speech recognition. 
 - Compare it with the text parts of the ebook, mark the chapter positions and add real chapters names
 
 <span style="color:red;">
-To do that, I would really appreciate *YOUR* help on:
+To do that and improve the german speech recognition, I would really appreciate *YOUR* help on:
  
 **https://voice.mozilla.org/de (german)**
+
+> No account is needed to help
+
 </span>
 You can support mozilla DeepSpeech to better support german speech recognition by just verifying sentences after listening or, even more important, reading out loud and uploading sentences. I try to add a few ones every day, its really easy and quite fun. At the moment the german speech recognition is not good enough for the algorithm, but I will check out every now and then - as soon the recognition is working good enough, I'll go on with this feature.
 
