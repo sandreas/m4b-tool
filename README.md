@@ -140,7 +140,7 @@ cd m4b-tool
 docker build docker -t m4b-tool
 
 # create an alias for m4b-tool running docker
-alias m4b-tool='docker run -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool m4b-tool'
+alias m4b-tool='docker run -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool'
 
 # testing the command
 m4b-tool --version
