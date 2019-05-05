@@ -1,28 +1,6 @@
 # m4b-tool
 `m4b-tool` is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manipulate audiobook files with chapters. Although `m4b-tool` is designed to handle m4b files, nearly all audio formats should be supported, e.g. mp3, aac, ogg, alac and flac.
 
-
-## ![#f03c15](https://placehold.it/15/f03c15/000000?text=+) Request for help - especially german users
-Right now, I'm experimenting with speech recognition and *speech to text* using [this project](https://github.com/gooofy/zamia-speech)
-
-This is for a feature to automatically add chapter names by speech recognition. I'm not sure this will be ever working as expected, but right now I'm pretty confident, it is possible to do the following, if there are enough speech samples in a specific language:
-
-- Extract chapter names and first sentences of a chapter from an ebook
-- Detect all silences in the audiobook
-- Perform a speech to text for the first 30 seconds after the silence
-- Compare it with the text parts of the ebook, mark the chapter positions and add real chapters names
-
-
-To do that and improve the german speech recognition, I would really appreciate *YOUR* help on:
-
- 
-**https://voice.mozilla.org/de (german)**
-
-> No account is needed to help
-
-
-You can support mozilla DeepSpeech to better support german speech recognition by just verifying sentences after listening or, even more important, reading out loud and uploading sentences. I try to add a few ones every day, its really easy and quite fun. At the moment the german speech recognition is not good enough for the algorithm, but I will check out every now and then - as soon the recognition is working good enough, I'll go on with this feature.
-
 ## Features
 
 - `merge` a set of audio files (e.g. MP3 or AAC) into a single m4b file
@@ -45,6 +23,29 @@ m4b-tool split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio
 ```
 m4b-tool chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"
 ``` 
+
+
+## ![#f03c15](https://placehold.it/15/f03c15/000000?text=+) Request for help - especially german users
+Right now, I'm experimenting with speech recognition and *speech to text* using [this project](https://github.com/gooofy/zamia-speech)
+
+This is for a feature to automatically add chapter names by speech recognition. I'm not sure this will be ever working as expected, but right now I'm pretty confident, it is possible to do the following, if there are enough speech samples in a specific language:
+
+- Extract chapter names and first sentences of a chapter from an ebook
+- Detect all silences in the audiobook
+- Perform a speech to text for the first 30 seconds after the silence
+- Compare it with the text parts of the ebook, mark the chapter positions and add real chapters names
+
+
+To do that and improve the german speech recognition, I would really appreciate *YOUR* help on:
+
+ 
+**https://voice.mozilla.org/de (german)**
+
+> No account is needed to help
+
+
+You can support mozilla DeepSpeech to better support german speech recognition by just verifying sentences after listening or, even more important, reading out loud and uploading sentences. I try to add a few ones every day, its really easy and quite fun. At the moment the german speech recognition is not good enough for the algorithm, but I will check out every now and then - as soon the recognition is working good enough, I'll go on with this feature.
+
 
 ## Best practices
 
