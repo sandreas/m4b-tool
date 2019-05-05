@@ -1,6 +1,23 @@
 # m4b-tool
 `m4b-tool` is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manipulate audiobook files with chapters. Although `m4b-tool` is designed to handle m4b files, nearly all audio formats should be supported, e.g. mp3, aac, ogg, alac and flac.
 
+
+## <span style="color:red;">Request for help - especially german users</span>
+Right now, I'm experimenting with speech recognition and *speech to text* using [this project](https://github.com/gooofy/zamia-speech)
+
+This is for a feature to automatically add chapter names by speech recognition. I'm not sure this will be ever working as expected, but right now I'm pretty confident, it is possible to do the following, if there are enough speech samples in a specific language:
+
+- Extract chapter names and first sentences of a chapter from an ebook
+- Detect all silences in the audiobook
+- Perform a speech to text for the first 30 seconds after the silence
+- Compare it with the text parts of the ebook, mark the chapter positions and add real chapters names
+
+To do that, I would really appreciate *YOUR* help on:
+ 
+**https://voice.mozilla.org/de (german)**
+ 
+You can support mozilla DeepSpeech to better support german speech recognition by just verifying sentences after listening or, even more important, reading out loud and uploading sentences. I try to add a few ones every day, its really easy and quite fun. At the moment the german speech recognition is not good enough for the algorithm, but I will check out every now and then - as soon the recognition is working good enough, I'll go on with this feature.
+
 ## Features
 
 - `merge` a set of audio files (e.g. MP3 or AAC) into a single m4b file
@@ -80,7 +97,7 @@ If you would like to adjust chapters manually, you can add a `chapters.txt` (sam
 If your input files are tagged, these tags will be used to create the chapter metadata by its `title`. So if you tag your input files with valid chapter names as track `title`, this will result in a nice and clean `m4b`-file with valid chapter names.
 
 #### by length
-Another great feature since `m4b-tool` *v.0.4.0* is the `--max-chapter-length` parameter. Often the individual input files are too big which results in chapters with a very long duration. This can be annoying, if you want to jump at a certain point, since you have to rewind or fast-forward and hold the button for a long time, instead of just tipping previous or next a few times. To automatically add sub-chapters, you could provide:
+Another great feature since `m4b-tool` *v.0.4.0* is the `--max-chapter-length` parameter. Often the individual input files are too big which results in chapters with a very long duration. This can be annoying, if you would like to jump to a certain point, since you have to rewind or fast-forward and hold the button for a long time, instead of just tipping previous or next a few times. To automatically add sub-chapters, you could provide:
 
 `--max-chapter-length=300,900`
 
@@ -90,12 +107,12 @@ This will cause `m4b-tool`
     - Perform a silence detection and try to add sub-chapters at every silence every 5 minutes (300 seconds)
     - If no silence is detected, add a hard cut sub-chapter every 15 minutes
 
-Sub-chapters are named like the original and get an additional index. This is a nice way to keep the real names but not having too long chapters.
+Sub-chapters are named like the original and get an additional index. This is a nice way to keep the real names but not having chapters with a too long duration.
 
 
 ### Step 4 (optional) - for iPod owners
 
-If you own an iPod, there might be a problem with too long audiobooks, since iPods only support 32bit sampling rates. If your audiobook is longer than 27 hours, you could provide `--adjust-for-ipod`, to automatically downsample your audiobook, which results in lower quality, but at least its working on your good old iPod...
+If you own an iPod, there might be a problem with too long audiobooks, since iPods only support 32bit sampling rates. If your audiobook is longer than 27 hours with 22050Hz sampling rate, you could provide `--adjust-for-ipod`, to automatically downsample your audiobook, which results in lower quality, but at least its working on your good old iPod...
 
 ### Step 5 - Use the `--batch-pattern` feature
 
@@ -103,13 +120,13 @@ In `m4b-tool v.0.4.0` the `--batch-pattern` feature was added. It can be used to
 
 > Hint: The `output-file` parameter has to be a directory, when using `--batch-pattern`. 
 
-Even multiple `--batch-pattern` parameters are supported, while the first match will be used first. So if you created the directory structure as described above, the final command would look like this:
+Even multiple `--batch-pattern` parameters are supported, while the first match will be used first. So if you created the directory structure as described above, the final command to merge `input/Fantasy/Harry Potter/1 - Harry Potter and the Philosopher's Stone/` to `output/Fantasy/Harry Potter/1 - Harry Potter and the Philosopher's Stone.m4b` would look like this:
 
 ```
 m4b-tool merge -v --output-file="output/" --max-chapter-length=300,900 --adjust-for-ipod --batch-pattern="input/%g/%a/%s/%p - %n/"  --batch-pattern="input/%g/%a/%n/" "input/" 
 ```
 
-> While in --batch-pattern mode, existing files are skipped by default
+>In `--batch-pattern` mode, existing files are skipped by default
 
 ### Result
 If you performed the above steps with the docker image or installed and compiled all dependencies, you should get the following result:
@@ -119,7 +136,7 @@ If you performed the above steps with the docker image or installed and compiled
 - If the files `cover.jpg` and `description.txt` exist in the main directories, a `cover`, a `description` and a `longdesc` are embedded
 - If you tagged the input files, real chapter names should appear in your player
 - No more chapters longer than 15 minutes
-- Working iPod versions for long audiobooks
+- Working iPod versions for audiobooks longer than 27 hours
 
 
 ## Installation
