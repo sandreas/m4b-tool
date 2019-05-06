@@ -1,15 +1,20 @@
 <?php
-// https://github.com/erusev/parsedown
-require_once __DIR__ . "/Parsedown.php";
+
+$url = "https://github.com/sandreas/m4b-tool";
+$html = file_get_contents($url);
+
+
+libxml_use_internal_errors(true);
+$doc = new DOMDocument();
+$doc->loadHTML($html);
+
+$xpath = new DOMXPath($doc);
+$bodyNode = $xpath->query('//article')->item(0);
+
+$readmeHtml = $doc->saveHTML($bodyNode);
 
 $templateFile = __DIR__ . "/build-homepage-template.html";
-$readmeFile = __DIR__ . "/../README.md";
-
 $template = file_get_contents($templateFile);
-$readme = file_get_contents($readmeFile);
-
-$p = new Parsedown();
-$readmeHtml = $p->parse($readme);
 
 $replacements = [
     "<div class=\"m4b-tool\">" => "<div class=\"m4b-tool\">" . $readmeHtml,

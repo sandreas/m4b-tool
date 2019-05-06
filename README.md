@@ -375,7 +375,7 @@ the tag-title of every file for generating chapters.
 
 If there is a file `data/my-audio-book/cover.jpg`, it will be used as cover for the resulting m4b file.
 
-***Note*** If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](#chapters) for more info.
+> Note: If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](#chapters) for more info.
 
 ### Reference
 For all options, see `m4b-tool merge --help`:
