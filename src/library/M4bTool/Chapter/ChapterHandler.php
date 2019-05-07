@@ -14,11 +14,10 @@ class ChapterHandler
 {
     // chapters are seen as numbered consecutively, if this ratio of all chapter names only differs by numeric values
     const CHAPTER_REINDEX_RATIO = 0.75;
-    const CHAPTER_START_MAX_OFFSET_MS = 25;
+    const MIN_CHAPTER_LENGTH_MILLISECONDS = 60000;
 
     const NO_REINDEXING = 1 << 0;
     const USE_FILENAMES = 1 << 1;
-    const MIN_CHAPTER_LENGTH_MS = 600000;
     /**
      * @var MetaDataHandler
      */
@@ -204,16 +203,16 @@ class ChapterHandler
                 continue;
             }
             $halfSilenceLengthMs = $silence->getLength()->milliseconds() / 2;
-            $chapterEndMs = $silence->getStart()->milliseconds() + min(static::CHAPTER_START_MAX_OFFSET_MS, $halfSilenceLengthMs);
+            $chapterCutPositionInMilliseconds = $silence->getStart()->milliseconds() + floor($halfSilenceLengthMs);
 
-            if ($chapterEndMs - $lastChapter->getStart()->milliseconds() < $desiredLength->milliseconds()) {
+            if ($chapterCutPositionInMilliseconds - $lastChapter->getStart()->milliseconds() < $desiredLength->milliseconds()) {
                 continue;
             }
 
-            $lastChapter->setEnd(new TimeUnit($chapterEndMs));
+            $lastChapter->setEnd(new TimeUnit($chapterCutPositionInMilliseconds));
             $splitChapters[] = $lastChapter;
             $lastChapter = clone $chapter;
-            $lastChapter->setStart(clone $silence->getEnd());
+            $lastChapter->setStart(new TimeUnit($chapterCutPositionInMilliseconds));
         }
         $lastChapter->setEnd($chapter->getEnd());
         $splitChapters[] = $lastChapter;
@@ -231,7 +230,7 @@ class ChapterHandler
         }
         $last = $fixedSplitChapters[$lastKey];
 
-        if ($last->getLength()->milliseconds() > static::MIN_CHAPTER_LENGTH_MS) {
+        if ($last->getLength()->milliseconds() > static::MIN_CHAPTER_LENGTH_MILLISECONDS) {
             return $fixedSplitChapters;
         }
 
