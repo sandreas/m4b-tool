@@ -18,6 +18,7 @@ class ChapterHandler
 
     const NO_REINDEXING = 1 << 0;
     const USE_FILENAMES = 1 << 1;
+    const MIN_CHAPTER_LENGTH_MS = 600000;
     /**
      * @var MetaDataHandler
      */
@@ -130,17 +131,20 @@ class ChapterHandler
 
 
         $resultChapters = [];
-        $clonedSilences = $silences;
         foreach ($chapters as $chapter) {
             if ($chapter->getLength()->milliseconds() <= $this->maxLength->milliseconds()) {
                 $resultChapters[] = clone $chapter;
                 continue;
             }
-            $matchingSilences = $this->findMatchingSilencesForChapter($chapter, $clonedSilences);
-            $splitChapters = $this->splitChapterBySilence($chapter, $matchingSilences);
-            foreach ($splitChapters as $splitChapter) {
-                $resultChapters = array_merge($resultChapters, $this->splitChapterByFixedLength($splitChapter));
+            $matchingSilences = $this->findMatchingSilencesForChapter($chapter, $silences);
+            $splitSilenceChapters = $this->splitChapterBySilence($chapter, $matchingSilences);
+            $splitSilenceChapters = $this->mergeNeedlessSplits($splitSilenceChapters);
+            $splitFixedLengthChapters = [];
+            foreach ($splitSilenceChapters as $splitChapter) {
+                $splitFixedLengthChapters = array_merge($splitFixedLengthChapters, $this->splitChapterByFixedLength($splitChapter));
             }
+            $splitFixedLengthChapters = $this->mergeNeedlessSplits($splitFixedLengthChapters);
+            $resultChapters = array_merge($resultChapters, $splitFixedLengthChapters);
         }
 
         return $resultChapters;
@@ -181,6 +185,11 @@ class ChapterHandler
         return $matchingSilences;
     }
 
+    private function getNormalizedDesiredLength()
+    {
+        return $this->desiredLength->milliseconds() === 0 || $this->desiredLength->milliseconds() > $this->maxLength->milliseconds() ? $this->maxLength : $this->desiredLength;
+    }
+
     private function splitChapterBySilence(Chapter $chapter, array $matchingSilences)
     {
         $lastChapter = clone $chapter;
@@ -197,6 +206,10 @@ class ChapterHandler
             $halfSilenceLengthMs = $silence->getLength()->milliseconds() / 2;
             $chapterEndMs = $silence->getStart()->milliseconds() + min(static::CHAPTER_START_MAX_OFFSET_MS, $halfSilenceLengthMs);
 
+            if ($chapterEndMs - $lastChapter->getStart()->milliseconds() < $desiredLength->milliseconds()) {
+                continue;
+            }
+
             $lastChapter->setEnd(new TimeUnit($chapterEndMs));
             $splitChapters[] = $lastChapter;
             $lastChapter = clone $chapter;
@@ -204,7 +217,33 @@ class ChapterHandler
         }
         $lastChapter->setEnd($chapter->getEnd());
         $splitChapters[] = $lastChapter;
+
         return $splitChapters;
+    }
+
+    private function mergeNeedlessSplits(array $fixedSplitChapters)
+    {
+        end($fixedSplitChapters);
+        $lastKey = key($fixedSplitChapters);
+
+        if (!isset($fixedSplitChapters[$lastKey]) || !isset($fixedSplitChapters[$lastKey - 1])) {
+            return $fixedSplitChapters;
+        }
+        $last = $fixedSplitChapters[$lastKey];
+
+        if ($last->getLength()->milliseconds() > static::MIN_CHAPTER_LENGTH_MS) {
+            return $fixedSplitChapters;
+        }
+
+        $secondLast = $fixedSplitChapters[$lastKey - 1];
+
+        if ($last->getLength()->milliseconds() + $secondLast->getLength()->milliseconds() > $this->maxLength->milliseconds()) {
+            return $fixedSplitChapters;
+        }
+
+        $fixedSplitChapters[$lastKey - 1]->setEnd($last->getEnd());
+        unset($fixedSplitChapters[$lastKey]);
+        return $fixedSplitChapters;
     }
 
     private function splitChapterByFixedLength(Chapter $chapter)
@@ -226,6 +265,19 @@ class ChapterHandler
             $lastChapter->setEnd(clone $chapter->getEnd());
         }
         $lastChapter->setEnd($chapter->getEnd());
+
+        if (count($splitChapters) > 0) {
+            $secondLastChapter = end($splitChapters);
+            $lastMs = $lastChapter->getLength()->milliseconds();
+            $secondLastMs = $secondLastChapter->getLength()->milliseconds();
+            if ($lastMs < $desiredLength->milliseconds() && $lastMs + $secondLastMs < $this->maxLength->milliseconds()) {
+                $secondLastChapter->setEnd($chapter->getEnd());
+                return $splitChapters;
+            }
+
+        }
+
+
         $splitChapters[] = $lastChapter;
         return $splitChapters;
     }
@@ -369,10 +421,5 @@ class ChapterHandler
         }
 
         return $newChapters;
-    }
-
-    private function getNormalizedDesiredLength()
-    {
-        return $this->desiredLength->milliseconds() === 0 || $this->desiredLength->milliseconds() > $this->maxLength->milliseconds() ? $this->maxLength : $this->desiredLength;
     }
 }
