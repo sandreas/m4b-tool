@@ -99,6 +99,11 @@ class ChapterHandler
         return $this->adjustChapters($chapters);
     }
 
+    private function hasFlag($flag)
+    {
+        return $this->flags & $flag;
+    }
+
     public function adjustChapters(array $chapters, array $silences = [])
     {
         usort($chapters, function (Chapter $a, Chapter $b) {
@@ -123,69 +128,19 @@ class ChapterHandler
             return $chapters;
         }
 
-        // normalize desired length, since it has to be set > 0 and <= maxLength
-        $desiredLength = $this->desiredLength->milliseconds() === 0 || $this->desiredLength->milliseconds() > $this->maxLength->milliseconds() ? $this->maxLength : $this->desiredLength;
 
         $resultChapters = [];
-        while ($chapter = current($chapters)) {
-            $nextChapter = next($chapters);
+        $clonedSilences = $silences;
+        foreach ($chapters as $chapter) {
             if ($chapter->getLength()->milliseconds() <= $this->maxLength->milliseconds()) {
                 $resultChapters[] = clone $chapter;
                 continue;
             }
-
-            $newChapter = clone $chapter;
-            /** @var Silence $silence */
-            foreach ($silences as $position => $silence) {
-                // place subchapter after the silence
-                $potentialChapterStart = new TimeUnit($silence->getStart()->milliseconds() + min(static::CHAPTER_START_MAX_OFFSET_MS, $silence->getLength()->milliseconds()));
-
-                // if silence end is later in timeline than next chapter start, break the loop
-                if ($nextChapter instanceof Chapter && $nextChapter->getStart()->milliseconds() <= $silence->getEnd()->milliseconds()) {
-                    break;
-                }
-
-                // skip all silences that are before the chapter start
-                if ($silence->getStart()->milliseconds() < $newChapter->getStart()->milliseconds()) {
-                    continue;
-                }
-
-                // skip all silences that are after chapter start but before the desired length of a chapter
-                if ($silence->getStart()->milliseconds() - $newChapter->getStart()->milliseconds() < $desiredLength->milliseconds()) {
-                    continue;
-                }
-
-                if ($silence->getStart()->milliseconds() > $newChapter->getStart()->milliseconds() + $this->maxLength->milliseconds()) {
-                    $newChapter->setLength(new TimeUnit($this->maxLength->milliseconds()));
-                } else {
-                    $newChapter->setEnd($potentialChapterStart);
-                }
-
-
-                $resultChapters[] = $newChapter;
-                $newChapter = clone $chapter;
-                $newChapter->setStart($potentialChapterStart);
+            $matchingSilences = $this->findMatchingSilencesForChapter($chapter, $clonedSilences);
+            $splitChapters = $this->splitChapterBySilence($chapter, $matchingSilences);
+            foreach ($splitChapters as $splitChapter) {
+                $resultChapters = array_merge($resultChapters, $this->splitChapterByFixedLength($splitChapter));
             }
-
-            // if there are no or no matching silences, do a hard split at desired length, if maxLength is exceeded
-            if ($newChapter->getLength()->milliseconds() > $this->maxLength->milliseconds() && $this->maxLength->milliseconds() > 0 && $desiredLength->milliseconds() > 0) {
-                while ($newChapter->getLength()->milliseconds() > $desiredLength->milliseconds()) {
-                    $hardSplitChapter = clone $newChapter;
-                    $hardSplitChapter->setLength($desiredLength);
-                    $newChapter->setStart($hardSplitChapter->getEnd());
-                    $newChapter->setLength(new TimeUnit($newChapter->getLength()->milliseconds() - $desiredLength->milliseconds()));
-                    $resultChapters[] = $hardSplitChapter;
-                }
-            }
-
-            if ($newChapter->getLength()->milliseconds() > 0) {
-                $resultChapters[] = $newChapter;
-            }
-
-            if (!$nextChapter) {
-                break;
-            }
-
         }
 
         return $resultChapters;
@@ -202,6 +157,77 @@ class ChapterHandler
             }
         }
         return false;
+    }
+
+    private function findMatchingSilencesForChapter(Chapter $chapter, &$silences)
+    {
+        /** @var Silence $silence */
+        $matchingSilences = [];
+        $silence = null;
+        $desiredLength = $this->getNormalizedDesiredLength();
+        while ($silence = array_shift($silences)) {
+            // silence is after chapter end, put back on stack
+            if ($silence->getEnd()->milliseconds() >= $chapter->getEnd()->milliseconds()) {
+                array_unshift($silences, $silence);
+                break;
+            }
+
+            // silence is before chapterStart+desiredLength, ignore
+            if ($silence->getStart()->milliseconds() < $chapter->getStart()->milliseconds() + $desiredLength->milliseconds()) {
+                continue;
+            }
+            $matchingSilences[] = $silence;
+        }
+        return $matchingSilences;
+    }
+
+    private function splitChapterBySilence(Chapter $chapter, array $matchingSilences)
+    {
+        $lastChapter = clone $chapter;
+        if ($lastChapter->getLength()->milliseconds() <= $this->maxLength->milliseconds()) {
+            return [$lastChapter];
+        }
+        $desiredLength = $this->getNormalizedDesiredLength();
+
+        $splitChapters = [];
+        foreach ($matchingSilences as $silence) {
+            if ($silence->getStart()->milliseconds() < $lastChapter->getStart()->milliseconds() + $desiredLength->milliseconds()) {
+                continue;
+            }
+            $halfSilenceLengthMs = $silence->getLength()->milliseconds() / 2;
+            $chapterEndMs = $silence->getStart()->milliseconds() + min(static::CHAPTER_START_MAX_OFFSET_MS, $halfSilenceLengthMs);
+
+            $lastChapter->setEnd(new TimeUnit($chapterEndMs));
+            $splitChapters[] = $lastChapter;
+            $lastChapter = clone $chapter;
+            $lastChapter->setStart(clone $silence->getEnd());
+        }
+        $lastChapter->setEnd($chapter->getEnd());
+        $splitChapters[] = $lastChapter;
+        return $splitChapters;
+    }
+
+    private function splitChapterByFixedLength(Chapter $chapter)
+    {
+        $lastChapter = clone $chapter;
+        if ($lastChapter->getLength()->milliseconds() <= $this->maxLength->milliseconds()) {
+            return [$lastChapter];
+        }
+        $desiredLength = $this->getNormalizedDesiredLength();
+
+        $splitChapters = [];
+
+        while ($lastChapter->getLength()->milliseconds() > $desiredLength->milliseconds()) {
+            $lastChapter->setLength(clone $desiredLength);
+            $splitChapters[] = $lastChapter;
+            $nextStart = clone $lastChapter->getEnd();
+            $lastChapter = clone $chapter;
+            $lastChapter->setStart($nextStart);
+            $lastChapter->setEnd(clone $chapter->getEnd());
+        }
+        $lastChapter->setEnd($chapter->getEnd());
+        $splitChapters[] = $lastChapter;
+        return $splitChapters;
     }
 
     /**
@@ -345,8 +371,8 @@ class ChapterHandler
         return $newChapters;
     }
 
-    private function hasFlag($flag)
+    private function getNormalizedDesiredLength()
     {
-        return $this->flags & $flag;
+        return $this->desiredLength->milliseconds() === 0 || $this->desiredLength->milliseconds() > $this->maxLength->milliseconds() ? $this->maxLength : $this->desiredLength;
     }
 }
