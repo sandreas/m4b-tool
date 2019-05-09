@@ -6,9 +6,18 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Chapter;
+use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Audio\Tag;
+use M4bTool\Chapter\ChapterHandler;
+use M4bTool\Executables\Ffmpeg;
+use M4bTool\Executables\Mp4art;
+use M4bTool\Executables\Mp4chaps;
+use M4bTool\Executables\Mp4info;
+use M4bTool\Executables\Mp4tags;
+use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use Psr\Cache\InvalidArgumentException;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -26,6 +35,8 @@ class SplitCommand extends AbstractConversionCommand
     const OPTION_USE_EXISTING_CHAPTERS_FILE = "use-existing-chapters-file";
     const OPTION_OUTPUT_DIRECTORY = "output-dir";
     const OPTION_FILENAME_TEMPLATE = "filename-template";
+    const OPTION_FIXED_LENGTH = "fixed-length";
+    const OPTION_REINDEX_CHAPTERS = "reindex-chapters";
 
     /**
      * @var SplFileInfo
@@ -43,6 +54,14 @@ class SplitCommand extends AbstractConversionCommand
     protected $outputDirectory;
 
     protected $meta = [];
+    /**
+     * @var MetaDataHandler
+     */
+    protected $metaHandler;
+    /**
+     * @var TimeUnit|void|null
+     */
+    protected $estimatedTotalDuration;
 
     protected function configure()
     {
@@ -54,6 +73,8 @@ class SplitCommand extends AbstractConversionCommand
         $this->addOption(static::OPTION_FILENAME_TEMPLATE, "p", InputOption::VALUE_OPTIONAL, "filename twig-template for output file naming", "{{\"%03d\"|format(track)}}-{{title}}");
 
         $this->addOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE, null, InputOption::VALUE_NONE, "use an existing manually edited chapters file <audiobook-name>.chapters.txt instead of embedded chapters for splitting");
+        $this->addOption(static::OPTION_REINDEX_CHAPTERS, null, InputOption::VALUE_NONE, "use a numeric index instead of the real chapter name for splitting");
+        $this->addOption(static::OPTION_FIXED_LENGTH, null, InputOption::VALUE_OPTIONAL, "split file by a fixed length seconds (float numbers, e.g. 10.583 are allowed, too)", "");
 
     }
 
@@ -72,8 +93,25 @@ class SplitCommand extends AbstractConversionCommand
         $this->initExecution($input, $output);
         $this->ensureInputFileIsFile();
 
+        $this->metaHandler = new MetaDataHandler(new Ffmpeg(), new Mp4v2Wrapper(new Mp4art(), new Mp4chaps(), new Mp4info(), new Mp4tags()));
+        $this->estimatedTotalDuration = $this->metaHandler->estimateDuration($this->argInputFile);
+
+
         $this->detectChapters();
         $this->parseChapters();
+
+        if ($this->input->getOption(static::OPTION_FIXED_LENGTH)) {
+            $this->cutChaptersToFixedLength();
+        }
+
+        if ($this->input->getOption(static::OPTION_REINDEX_CHAPTERS)) {
+            $index = 1;
+            foreach ($this->chapters as $chapter) {
+                $chapter->setName((string)$index);
+                $index++;
+            }
+        }
+
 
         $this->splitChapters();
     }
@@ -120,6 +158,10 @@ class SplitCommand extends AbstractConversionCommand
 
         $chapterParser = new Mp4ChapsChapterParser();
         $this->chapters = $chapterParser->parse(file_get_contents($this->chaptersFile));
+        if (count($this->chapters) > 0) {
+            $lastChapter = end($this->chapters);
+            $lastChapter->setEnd(clone $this->estimatedTotalDuration);
+        }
     }
 
     /**
@@ -320,5 +362,68 @@ class SplitCommand extends AbstractConversionCommand
         $command[] = $outputFile;
         $this->ffmpeg($command, "splitting file " . $this->argInputFile . " with ffmpeg into " . $this->outputDirectory);
         return $outputFile;
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function cutChaptersToFixedLength()
+    {
+        $fixedLengthValue = $this->input->getOption(static::OPTION_FIXED_LENGTH);
+        $fixedLengthSeconds = (int)$fixedLengthValue;
+        if ($fixedLengthSeconds <= 0) {
+            throw new Exception(sprintf("Invalid value for %s: %s", static::OPTION_FIXED_LENGTH, $fixedLengthValue));
+        }
+
+        $fixedLength = new TimeUnit($fixedLengthSeconds, TimeUnit::SECOND);
+
+        if (!($this->estimatedTotalDuration instanceof TimeUnit)) {
+            throw new Exception(sprintf("Could not estimate duration for file %s, but this is needed for fixed length chapters", $this->argInputFile));
+        }
+        $fixedLengthChapters = [];
+
+        $index = 1;
+        for ($i = 0; $i < $this->estimatedTotalDuration->milliseconds(); $i += $fixedLength->milliseconds()) {
+            $chapterStart = new TimeUnit($i);
+
+            $chapterLength = new TimeUnit(min($fixedLength->milliseconds(), $this->estimatedTotalDuration->milliseconds() - $i));
+            $chapter = $this->makeFixedLengthChapter($index, $chapterStart, $chapterLength);
+            $index++;
+
+            $fixedLengthChapters[] = $chapter;
+        }
+
+        if ($i < $this->estimatedTotalDuration->milliseconds()) {
+            $lastChapter = $this->makeFixedLengthChapter($index, new TimeUnit($i), new TimeUnit(0));
+            $lastChapter->setEnd($this->estimatedTotalDuration);
+            $fixedLengthChapters[] = $lastChapter;
+        }
+
+        $chapterHandler = new ChapterHandler($this->metaHandler);
+        $this->chapters = $chapterHandler->adjustChapters($fixedLengthChapters);
+    }
+
+    private function makeFixedLengthChapter(int $index, TimeUnit $start, TimeUnit $length)
+    {
+        $chapterName = (string)$index;
+
+        $matchingChapter = $this->getChapterAtTime($start);
+        if ($matchingChapter instanceof Chapter) {
+            $chapterName = $matchingChapter->getName();
+        }
+        return new Chapter($start, $length, $chapterName);
+
+    }
+
+    private function getChapterAtTime(TimeUnit $timeUnit)
+    {
+        $matchingChapter = null;
+        foreach ($this->chapters as $chapter) {
+            if ($chapter->getStart()->milliseconds() <= $timeUnit->milliseconds() && $chapter->getEnd()->milliseconds() >= $timeUnit->milliseconds()) {
+                $matchingChapter = $chapter;
+                break;
+            }
+        }
+        return $matchingChapter;
     }
 }

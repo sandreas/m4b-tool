@@ -110,8 +110,8 @@ Another great feature since `m4b-tool` *v.0.4.0* is the `--max-chapter-length` p
 This will cause `m4b-tool`
 - Trying to preserve original chapters as long as they are not longer than 15 minutes (900 seconds)
 - If a track is longer than 15 minutes
-    - Perform a silence detection and try to add sub-chapters at every silence every 5 minutes (300 seconds)
-    - If no silence is detected, add a hard cut sub-chapter every 15 minutes
+    - Perform a silence detection and try to add sub-chapters at every silence between 5 minutes (300 seconds) and 15 minutes (900 seconds)
+    - If no silence is detected, add a hard cut sub-chapter every 5 minutes
 
 Sub-chapters are named like the original and get an additional index. This is a nice way to keep the real names but not having chapters with a too long duration.
 
