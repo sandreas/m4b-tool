@@ -160,7 +160,7 @@ git clone https://github.com/sandreas/m4b-tool.git
 cd m4b-tool
 
 # build docker image - this will take a while
-docker build docker -t m4b-tool
+docker build . -t m4b-tool
 
 # create an alias for m4b-tool running docker
 alias m4b-tool='docker run -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool'
@@ -532,7 +532,7 @@ Options:
       --skip-cover                               skip extracting and embedding covers
       --fix-mime-type                            try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent video window
   -o, --output-dir[=OUTPUT-DIR]                  output directory [default: ""]
-  -p, --filename-template[=FILENAME-TEMPLATE]    filename twig-template for output file naming [default: "{{\"%03d\"|format(track)}}-{{title}}"]
+  -p, --filename-template[=FILENAME-TEMPLATE]    filename twig-template for output file naming [default: "{{\"%03d\"|format(track)}}-{{title|raw}}"]
       --use-existing-chapters-file               use an existing manually edited chapters file <audiobook-name>.chapters.txt instead of embedded chapters for splitting
   -h, --help                                     Display this help message
   -q, --quiet                                    Do not output any message

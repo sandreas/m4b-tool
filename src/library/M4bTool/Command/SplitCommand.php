@@ -6,6 +6,7 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Chapter;
+use M4bTool\Audio\CueSheet;
 use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Audio\Tag;
 use M4bTool\Chapter\ChapterHandler;
@@ -17,6 +18,7 @@ use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use Psr\Cache\InvalidArgumentException;
+use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
@@ -33,6 +35,7 @@ use Twig\Loader\ArrayLoader as Twig_Loader_Array;
 class SplitCommand extends AbstractConversionCommand
 {
     const OPTION_USE_EXISTING_CHAPTERS_FILE = "use-existing-chapters-file";
+    const OPTION_CHAPTERS_FILENAME = "chapters-filename";
     const OPTION_OUTPUT_DIRECTORY = "output-dir";
     const OPTION_FILENAME_TEMPLATE = "filename-template";
     const OPTION_FIXED_LENGTH = "fixed-length";
@@ -70,11 +73,12 @@ class SplitCommand extends AbstractConversionCommand
         $this->setDescription('Splits an m4b file into parts');
         $this->setHelp('Split an m4b into multiple m4b or mp3 files by chapter');
         $this->addOption(static::OPTION_OUTPUT_DIRECTORY, "o", InputOption::VALUE_OPTIONAL, "output directory", "");
-        $this->addOption(static::OPTION_FILENAME_TEMPLATE, "p", InputOption::VALUE_OPTIONAL, "filename twig-template for output file naming", "{{\"%03d\"|format(track)}}-{{title}}");
+        $this->addOption(static::OPTION_FILENAME_TEMPLATE, "p", InputOption::VALUE_OPTIONAL, "filename twig-template for output file naming", "{{\"%03d\"|format(track)}}-{{title|raw}}");
 
         $this->addOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE, null, InputOption::VALUE_NONE, "use an existing manually edited chapters file <audiobook-name>.chapters.txt instead of embedded chapters for splitting");
         $this->addOption(static::OPTION_REINDEX_CHAPTERS, null, InputOption::VALUE_NONE, "use a numeric index instead of the real chapter name for splitting");
         $this->addOption(static::OPTION_FIXED_LENGTH, null, InputOption::VALUE_OPTIONAL, "split file by a fixed length seconds (float numbers, e.g. 10.583 are allowed, too)", "");
+        $this->addOption(static::OPTION_CHAPTERS_FILENAME, null, InputOption::VALUE_OPTIONAL, "provide a filename that contains chapters", "");
 
     }
 
@@ -97,7 +101,7 @@ class SplitCommand extends AbstractConversionCommand
         $this->estimatedTotalDuration = $this->metaHandler->estimateDuration($this->argInputFile);
 
 
-        $this->detectChapters();
+        $this->loadChaptersFile();
         $this->parseChapters();
 
         if ($this->input->getOption(static::OPTION_FIXED_LENGTH)) {
@@ -135,33 +139,118 @@ class SplitCommand extends AbstractConversionCommand
     /**
      * @throws Exception
      */
-    private function detectChapters()
+    private function loadChaptersFile()
     {
-        $this->chaptersFile = $this->audioFileToChaptersFile($this->argInputFile);
+        $chaptersFile = $this->input->getOption(static::OPTION_CHAPTERS_FILENAME);
+        if ($chaptersFile === "") {
+            if (!$this->input->getOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE) && $this->hasMp4AudioFileExtension($this->argInputFile)) {
+                $this->mp4chaps([
+                    "-x", $this->argInputFile
 
-        if (!$this->input->getOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE)) {
-            $this->mp4chaps([
-                "-x", $this->argInputFile
+                ], "export chapter list of " . $this->argInputFile);
+                $this->chaptersFile = $this->audioFileToChaptersFile($this->argInputFile);
+            } else {
+                // chapters.txt
+                $this->chaptersFile = new SplFileInfo($this->argInputFile->getPath() . "/chapters.txt");
+            }
 
-            ], "export chapter list of " . $this->argInputFile);
-
+            if ($this->chaptersFile === null || !$this->chaptersFile->isFile()) {
+                $this->chaptersFile = new SplFileInfo(Strings::trimSuffix($this->argInputFile, $this->argInputFile->getExtension()) . "cue");
+                $this->notice("found cue sheet " . $this->chaptersFile->getBasename());
+            }
+        } else {
+            $this->chaptersFile = new SplFileInfo($chaptersFile);
         }
+
 
         if (!$this->chaptersFile->isFile()) {
             throw new Exception("split command assumes that file " . $this->chaptersFile . " exists and is readable");
         }
-        return;
     }
 
+    /**
+     * @throws Exception
+     */
     private function parseChapters()
     {
+        $chapterFileContents = file_get_contents($this->chaptersFile);
 
-        $chapterParser = new Mp4ChapsChapterParser();
-        $this->chapters = $chapterParser->parse(file_get_contents($this->chaptersFile));
+        $cueSheet = new CueSheet();
+        if ($cueSheet->guessSupport($chapterFileContents, $this->chaptersFile)) {
+            $tag = $cueSheet->parse($chapterFileContents);
+            $this->chapters = $tag->chapters;
+        } else {
+            $chapterParser = new Mp4ChapsChapterParser();
+            $this->chapters = $chapterParser->parse(file_get_contents($this->chaptersFile));
+        }
+
         if (count($this->chapters) > 0) {
             $lastChapter = end($this->chapters);
             $lastChapter->setEnd(clone $this->estimatedTotalDuration);
         }
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function cutChaptersToFixedLength()
+    {
+        $fixedLengthValue = $this->input->getOption(static::OPTION_FIXED_LENGTH);
+        $fixedLengthSeconds = (int)$fixedLengthValue;
+        if ($fixedLengthSeconds <= 0) {
+            throw new Exception(sprintf("Invalid value for %s: %s", static::OPTION_FIXED_LENGTH, $fixedLengthValue));
+        }
+
+        $fixedLength = new TimeUnit($fixedLengthSeconds, TimeUnit::SECOND);
+
+        if (!($this->estimatedTotalDuration instanceof TimeUnit)) {
+            throw new Exception(sprintf("Could not estimate duration for file %s, but this is needed for fixed length chapters", $this->argInputFile));
+        }
+        $fixedLengthChapters = [];
+
+        $index = 1;
+        for ($i = 0; $i < $this->estimatedTotalDuration->milliseconds(); $i += $fixedLength->milliseconds()) {
+            $chapterStart = new TimeUnit($i);
+
+            $chapterLength = new TimeUnit(min($fixedLength->milliseconds(), $this->estimatedTotalDuration->milliseconds() - $i));
+            $chapter = $this->makeFixedLengthChapter($index, $chapterStart, $chapterLength);
+            $index++;
+
+            $fixedLengthChapters[] = $chapter;
+        }
+
+        if ($i < $this->estimatedTotalDuration->milliseconds()) {
+            $lastChapter = $this->makeFixedLengthChapter($index, new TimeUnit($i), new TimeUnit(0));
+            $lastChapter->setEnd($this->estimatedTotalDuration);
+            $fixedLengthChapters[] = $lastChapter;
+        }
+
+        $chapterHandler = new ChapterHandler($this->metaHandler);
+        $this->chapters = $chapterHandler->adjustChapters($fixedLengthChapters);
+    }
+
+    private function makeFixedLengthChapter(int $index, TimeUnit $start, TimeUnit $length)
+    {
+        $chapterName = (string)$index;
+
+        $matchingChapter = $this->getChapterAtTime($start);
+        if ($matchingChapter instanceof Chapter) {
+            $chapterName = $matchingChapter->getName();
+        }
+        return new Chapter($start, $length, $chapterName);
+
+    }
+
+    private function getChapterAtTime(TimeUnit $timeUnit)
+    {
+        $matchingChapter = null;
+        foreach ($this->chapters as $chapter) {
+            if ($chapter->getStart()->milliseconds() <= $timeUnit->milliseconds() && $chapter->getEnd()->milliseconds() >= $timeUnit->milliseconds()) {
+                $matchingChapter = $chapter;
+                break;
+            }
+        }
+        return $matchingChapter;
     }
 
     /**
@@ -235,7 +324,7 @@ class SplitCommand extends AbstractConversionCommand
      */
     private function extractChapter(Chapter $chapter, SplFileInfo $outputFile, Tag $tag)
     {
-        // mp3 has to be splitted via tempfile
+        // non mp4 audio has to be splitted via tempfile
         if ($this->optAudioFormat !== static::AUDIO_FORMAT_MP4) {
             return $this->extractChapterNonMp4($chapter, $outputFile, $tag);
         }
@@ -277,9 +366,6 @@ class SplitCommand extends AbstractConversionCommand
             $command[] = "a";
             $command[] = "-acodec";
             $command[] = "copy";
-            $command[] = "-f";
-            $command[] = "mp4";
-
 
             $this->appendParameterToCommand($command, "-y", $this->optForce);
 
@@ -313,7 +399,7 @@ class SplitCommand extends AbstractConversionCommand
         $command[] = $outputFile;
         $this->ffmpeg($command);
 
-        if ($outputFile->isFile()) {
+        if ($outputFile->isFile() && $outputFile->getSize() > 0) {
             unlink($tmpOutputFile);
         }
 
@@ -362,68 +448,5 @@ class SplitCommand extends AbstractConversionCommand
         $command[] = $outputFile;
         $this->ffmpeg($command, "splitting file " . $this->argInputFile . " with ffmpeg into " . $this->outputDirectory);
         return $outputFile;
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function cutChaptersToFixedLength()
-    {
-        $fixedLengthValue = $this->input->getOption(static::OPTION_FIXED_LENGTH);
-        $fixedLengthSeconds = (int)$fixedLengthValue;
-        if ($fixedLengthSeconds <= 0) {
-            throw new Exception(sprintf("Invalid value for %s: %s", static::OPTION_FIXED_LENGTH, $fixedLengthValue));
-        }
-
-        $fixedLength = new TimeUnit($fixedLengthSeconds, TimeUnit::SECOND);
-
-        if (!($this->estimatedTotalDuration instanceof TimeUnit)) {
-            throw new Exception(sprintf("Could not estimate duration for file %s, but this is needed for fixed length chapters", $this->argInputFile));
-        }
-        $fixedLengthChapters = [];
-
-        $index = 1;
-        for ($i = 0; $i < $this->estimatedTotalDuration->milliseconds(); $i += $fixedLength->milliseconds()) {
-            $chapterStart = new TimeUnit($i);
-
-            $chapterLength = new TimeUnit(min($fixedLength->milliseconds(), $this->estimatedTotalDuration->milliseconds() - $i));
-            $chapter = $this->makeFixedLengthChapter($index, $chapterStart, $chapterLength);
-            $index++;
-
-            $fixedLengthChapters[] = $chapter;
-        }
-
-        if ($i < $this->estimatedTotalDuration->milliseconds()) {
-            $lastChapter = $this->makeFixedLengthChapter($index, new TimeUnit($i), new TimeUnit(0));
-            $lastChapter->setEnd($this->estimatedTotalDuration);
-            $fixedLengthChapters[] = $lastChapter;
-        }
-
-        $chapterHandler = new ChapterHandler($this->metaHandler);
-        $this->chapters = $chapterHandler->adjustChapters($fixedLengthChapters);
-    }
-
-    private function makeFixedLengthChapter(int $index, TimeUnit $start, TimeUnit $length)
-    {
-        $chapterName = (string)$index;
-
-        $matchingChapter = $this->getChapterAtTime($start);
-        if ($matchingChapter instanceof Chapter) {
-            $chapterName = $matchingChapter->getName();
-        }
-        return new Chapter($start, $length, $chapterName);
-
-    }
-
-    private function getChapterAtTime(TimeUnit $timeUnit)
-    {
-        $matchingChapter = null;
-        foreach ($this->chapters as $chapter) {
-            if ($chapter->getStart()->milliseconds() <= $timeUnit->milliseconds() && $chapter->getEnd()->milliseconds() >= $timeUnit->milliseconds()) {
-                $matchingChapter = $chapter;
-                break;
-            }
-        }
-        return $matchingChapter;
     }
 }

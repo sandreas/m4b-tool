@@ -3,6 +3,8 @@
 namespace M4bTool\Audio;
 
 
+use ArrayAccess;
+
 /**
  * Class Tag
  * @package M4bTool\Audio
@@ -46,7 +48,7 @@ namespace M4bTool\Audio;
  * -X  -crating     STR  Add content rating tag. "Inoffensive", "Clean", "Explicit"
  * -r, -remove      STR  Remove tags by code (e.g. "-r cs" removes the comment and song tags)
  */
-class Tag implements \ArrayAccess
+class Tag implements ArrayAccess
 {
     const MP4_STIK_AUDIOBOOK = 2;
 

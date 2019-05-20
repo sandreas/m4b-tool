@@ -1,7 +1,8 @@
 FROM alpine:3.9.2
 
 ENV WORKDIR /mnt
-ARG M4B_TOOL_VERSION=0.4.1
+ARG M4B_TOOL_DOWNLOAD_LINK="https://github.com/sandreas/m4b-tool/releases/latest/download/m4b-tool.phar"
+
 ARG FFMPEG_VERSION=4.1
 ARG PREFIX=/ffmpeg_build
 
@@ -99,7 +100,12 @@ RUN cd /tmp/ \
    && cd fdkaac-1.0.0 \
    && autoreconf -i && ./configure && make && make install && rm -rf /tmp/*
 
-RUN wget https://github.com/sandreas/m4b-tool/releases/download/v.${M4B_TOOL_VERSION}/m4b-tool.phar -O /usr/local/bin/m4b-tool \
+# workaround to copy a local m4b-tool.phar IF it exists
+ADD ./Dockerfile ./dist/m4b-tool.phar* /tmp/
+
+
+RUN if [ ! -f /tmp/m4b-tool.phar ]; then wget "${M4B_TOOL_DOWNLOAD_LINK}" -O /tmp/m4b-tool.phar ; fi
+RUN mv /tmp/m4b-tool.phar /usr/local/bin/m4b-tool \
     && chmod +x /usr/local/bin/m4b-tool
 
 

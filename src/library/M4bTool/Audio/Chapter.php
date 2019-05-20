@@ -14,10 +14,16 @@ use Sandreas\Time\TimeUnit;
 class Chapter extends AbstractPart
 {
     protected $name;
+    /**
+     * @var Tag
+     */
+    protected $tag;
 
-    public function __construct(TimeUnit $start, TimeUnit $length, $name) {
+    public function __construct(TimeUnit $start, TimeUnit $length, $name = "", Tag $tag = null)
+    {
         parent::__construct($start, $length);
         $this->name = $name;
+        $this->tag = $tag;
     }
 
     /**
@@ -34,4 +40,19 @@ class Chapter extends AbstractPart
         $this->name = $name;
     }
 
+    /**
+     * @return string
+     */
+    public function getTag()
+    {
+        return $this->tag;
+    }
+
+    /**
+     * @param string $tag
+     */
+    public function setTag($tag)
+    {
+        $this->tag = $tag;
+    }
 }

@@ -78,12 +78,6 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
         return static::EXTENSION_FORMAT_MAPPING[$ext] ?? null;
     }
 
-
-    public function loadTag(SplFileInfo $file)
-    {
-
-    }
-
     /**
      * @param SplFileInfo $file
      * @param Tag $tag
