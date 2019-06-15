@@ -29,6 +29,7 @@ ARG M4B_TOOL_DOWNLOAD_LINK="https://github.com/sandreas/m4b-tool/releases/latest
 
 RUN apk add --update \
   php7-cli \
+  php7-json \
   php7-mbstring \
   php7-phar \
   wget
