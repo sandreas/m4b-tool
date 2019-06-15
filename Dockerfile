@@ -1,4 +1,4 @@
-FROM FROM d2dyno/ffmpeg-docker:alpine AS ffmpeg
+FROM d2dyno/ffmpeg-docker:alpine AS ffmpeg
 
 FROM alpine:3.9 AS build
 
