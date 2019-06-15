@@ -28,9 +28,9 @@ FROM alpine:3.9
 ARG M4B_TOOL_DOWNLOAD_LINK="https://github.com/sandreas/m4b-tool/releases/latest/download/m4b-tool.phar"
 
 RUN apk add --update \
-  php-cli \
-  php7-common \
+  php7-cli \
   php7-mbstring \
+  php7-phar \
   wget
   
 RUN echo http://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories && \
