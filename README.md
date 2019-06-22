@@ -120,7 +120,13 @@ Sub-chapters are named like the original and get an additional index. This is a 
 
 If you own an iPod, there might be a problem with too long audiobooks, since iPods only support 32bit sampling rates. If your audiobook is longer than 27 hours with 22050Hz sampling rate, you could provide `--adjust-for-ipod`, to automatically downsample your audiobook, which results in lower quality, but at least its working on your good old iPod...
 
-### Step 5 - Use the `--batch-pattern` feature
+### Step 5 (optional) - more cpu cores, faster conversion
+
+`m4b-tool` supports multiple conversion tasks in parallel with the `--jobs` parameter (e.g. `--jobs=2`). If you have to convert more than one file, which is the common case, you nearly double the merge speed by providing the `--jobs=2` parameter (or quadruplicate with `--jobs=4`, if you have a quad core system, etc.). Don't provide a number higher than the number of cores on your system - this will slow down the merge...
+
+> Note: If you run the conversion on all your cores, it will result in almost 100% CPU usage, which may lead to slower system performance
+
+### Step 6 - Use the `--batch-pattern` feature
 
 In `m4b-tool v.0.4.0` the `--batch-pattern` feature was added. It can be used to batch-convert multiple audiobooks at once, but also to just convert one single audiobook - because you can create tags from an existing directory structure. 
 
@@ -129,7 +135,7 @@ In `m4b-tool v.0.4.0` the `--batch-pattern` feature was added. It can be used to
 Even multiple `--batch-pattern` parameters are supported, while the first match will be used first. So if you created the directory structure as described above, the final command to merge `input/Fantasy/Harry Potter/1 - Harry Potter and the Philosopher's Stone/` to `output/Fantasy/Harry Potter/1 - Harry Potter and the Philosopher's Stone.m4b` would look like this:
 
 ```
-m4b-tool merge -v --output-file="output/" --max-chapter-length=300,900 --adjust-for-ipod --batch-pattern="input/%g/%a/%s/%p - %n/"  --batch-pattern="input/%g/%a/%n/" "input/" 
+m4b-tool merge -v --jobs=2 --output-file="output/" --max-chapter-length=300,900 --adjust-for-ipod --batch-pattern="input/%g/%a/%s/%p - %n/"  --batch-pattern="input/%g/%a/%n/" "input/" 
 ```
 
 >In `--batch-pattern` mode, existing files are skipped by default
