@@ -99,6 +99,10 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
      */
     public function inspectExactDuration(SplFileInfo $file): ?TimeUnit
     {
+        if ($this->detectFormat($file) === static::FORMAT_MP4) {
+            return $this->mp4v2->inspectExactDuration($file);
+        }
+
         return $this->ffmpeg->inspectExactDuration($file);
     }
 
