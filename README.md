@@ -4,7 +4,7 @@
 ## Features
 
 - `merge` a set of audio files (e.g. MP3 or AAC) into a single m4b file
-- `split` a single m4b file into several output files by chapters
+- `split` a single m4b file into several output files by chapters or a `flac` encoded album into single tracks via cue sheet
 - Add or adjust `chapters` for an existing m4b file via silence detection or musicbrainz
 
 ## TL;DR - examples for the most common tasks
@@ -477,7 +477,7 @@ If you use the `--batch-pattern` parameter, the following placeholders are suppo
 
 ## split
 
-`m4b-tool` can be used to split a single m4b into a file per chapter.
+`m4b-tool` can be used to split a single `m4b` into a file per chapter or a `flac` encoded album into single tracks via cue sheet.
 
 ### Example:
 ```
@@ -485,6 +485,17 @@ m4b-tool split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio
 ```
 
 This splits the file `data/my-audio-book.m4b into` an mp3 file for each chapter, writing the files into `data/my-audio-book_splitted/`.
+
+
+### Cue sheet splitting (experimental)
+If you would like to split a `flac` file containing multiple tracks, a cue sheet with the exact filename of the `flac` is
+required (`my-album.flac` requires `my-album.cue`):
+
+```
+# my-album.cue is automatically found and used for splitting
+m4b-tool split --audio-format=mp3 --audio-bitrate=192k --audio-channels=2 --audio-samplerate=48000 "data/my-album.flac"
+```
+
 
 ### Reference
 For all options, see `m4b-tool split --help`:
