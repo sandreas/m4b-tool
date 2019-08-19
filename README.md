@@ -204,7 +204,7 @@ m4b-tool --version
 
 ```
 # install all dependencies
-sudo apt install ffmpeg mp4v2-utils fdkaac php-cli
+sudo apt install ffmpeg mp4v2-utils fdkaac php-cli php-intl php-json php-mbstring php-xml
 
 # install / upgrade m4b-tool
 sudo wget https://github.com/sandreas/m4b-tool/releases/download/v.0.4.0/m4b-tool.phar -O /usr/local/bin/m4b-tool && sudo chmod +x /usr/local/bin/m4b-tool
