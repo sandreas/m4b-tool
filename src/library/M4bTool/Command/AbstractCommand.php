@@ -6,6 +6,14 @@ namespace M4bTool\Command;
 use DateTime;
 use Exception;
 use M4bTool\Audio\Chapter;
+use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Chapter\ChapterHandler;
+use M4bTool\Executables\Ffmpeg;
+use M4bTool\Executables\Mp4art;
+use M4bTool\Executables\Mp4chaps;
+use M4bTool\Executables\Mp4info;
+use M4bTool\Executables\Mp4tags;
+use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Parser\FfmetaDataParser;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
@@ -135,6 +143,26 @@ class AbstractCommand extends Command
     /** @var int */
     protected $logLevel;
 
+
+    /** @var MetaDataHandler */
+    protected $metaHandler;
+
+    /** @var ChapterHandler */
+    protected $chapterHandler;
+
+
+    public function __construct(string $name = null) {
+        parent::__construct($name);
+        $ffmpeg = new Ffmpeg();
+        $mp4v2 = new Mp4v2Wrapper(
+            new Mp4art(),
+            new Mp4chaps(),
+            new Mp4info(),
+            new Mp4tags()
+        );
+        $this->metaHandler = new MetaDataHandler($ffmpeg, $mp4v2);
+        $this->chapterHandler = new ChapterHandler($this->metaHandler);
+    }
 
     /**
      * @param SplFileInfo $file

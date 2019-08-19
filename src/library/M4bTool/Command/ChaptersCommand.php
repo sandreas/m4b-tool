@@ -174,7 +174,12 @@ class ChaptersCommand extends AbstractCommand
     {
         $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
         $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
-        $this->chapters = $chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $this->silenceParser->getDuration());
+        $duration = $this->metaHandler->estimateDuration($this->filesToProcess);
+        if(!($duration instanceof TimeUnit)) {
+            throw new Exception(sprintf("Could not detect duration for file %s", $this->filesToProcess));
+        }
+        $this->notice(sprintf("found %s musicbrainz chapters and %s silences within length %s", count($mbChapters), count($this->silences), $duration->format()));
+        $this->chapters = $chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $duration);
     }
 
     /**

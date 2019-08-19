@@ -113,11 +113,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     protected $alreadyProcessedBatchDirs = [];
 
 
-    /** @var MetaDataHandler */
-    protected $metaHandler;
-
-    /** @var ChapterHandler */
-    protected $chapterHandler;
 
     protected function configure()
     {
@@ -154,15 +149,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     {
 
         try {
-            $ffmpeg = new Ffmpeg();
-            $mp4v2 = new Mp4v2Wrapper(
-                new Mp4art(),
-                new Mp4chaps(),
-                new Mp4info(),
-                new Mp4tags()
-            );
-            $this->metaHandler = new MetaDataHandler($ffmpeg, $mp4v2);
-            $this->chapterHandler = new ChapterHandler($this->metaHandler);
 
             $flags = 0;
             if ($input->getOption(static::OPTION_CHAPTER_NO_REINDEXING)) {
