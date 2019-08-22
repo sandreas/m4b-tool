@@ -9,7 +9,7 @@ use DirectoryIterator;
 use Exception;
 use FilesystemIterator;
 use IteratorIterator;
-use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Audio\TagLoaderOpenPackagingFormat;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
@@ -17,11 +17,6 @@ use M4bTool\Audio\Silence;
 use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterOptions;
-use M4bTool\Executables\Mp4art;
-use M4bTool\Executables\Mp4chaps;
-use M4bTool\Executables\Mp4info;
-use M4bTool\Executables\Mp4tags;
-use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Executables\Tasks\ConversionTask;
 use M4bTool\Executables\Tasks\Pool;
 use M4bTool\Filesystem\DirectoryLoader;
@@ -887,11 +882,21 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      * @param SplFileInfo $outputTmpFile
      * @param Chapter[] $chapters
      * @throws InvalidArgumentException
+     * @throws Exception
      */
     private function tagMergedFile(SplFileInfo $outputTmpFile, array $chapters)
     {
         $tag = $this->inputOptionsToTag();
         $tag->chapters = $chapters;
+
+        $openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf");
+        if ($openPackagingFormatContent) {
+            $tagLoader = new TagLoaderOpenPackagingFormat($openPackagingFormatContent);
+            $enhancingTag = $tagLoader->load();
+            $enhancingTag->merge($tag);
+            $tag = $enhancingTag;
+        }
+
         $this->tagFile($outputTmpFile, $tag);
     }
 

@@ -91,7 +91,7 @@ class Tag implements ArrayAccess
     public function merge(Tag $tag)
     {
         foreach ($this as $propertyName => $propertyValue) {
-            if ($this->$propertyName === null || $this->$propertyName === "") {
+            if ($this->$propertyName === null || $this->$propertyName === "" || $this->$propertyName === []) {
                 $this->$propertyName = $tag->$propertyName;
             }
         }
