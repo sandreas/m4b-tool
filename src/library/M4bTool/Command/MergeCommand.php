@@ -167,7 +167,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
             } else {
                 $this->ensureValidInputForSingleFileMode($input);
-
                 $this->processFiles($input, $output);
             }
         } catch (Throwable $e) {
@@ -510,6 +509,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         $this->deleteTemporaryFiles();
 
+        $this->notice(sprintf("successfully merged %d files to %s", count($this->filesToMerge), $this->outputFile));
     }
 
     protected function loadInputMetadataFromFirstFile()
@@ -915,6 +915,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         $openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf");
         if ($openPackagingFormatContent) {
+            $this->notice("enhancing tag with additional metadata from metadata.opf");
             $tagLoader = new TagLoaderOpenPackagingFormat($openPackagingFormatContent);
             $enhancingTag = $tagLoader->load();
             $enhancingTag->merge($tag);
@@ -922,6 +923,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
 
         $this->tagFile($outputTmpFile, $tag);
+        $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputTmpFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
     }
 
     /**
@@ -945,6 +947,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         if ($sourceChaptersFile->isFile() && !rename($sourceChaptersFile, $destinationChaptersFile)) {
             throw new Exception(sprintf("Could not rename chapters file from %s to %s", $sourceChaptersFile, $destinationChaptersFile));
         }
+
+        $this->notice(sprintf("moved temporary %s to %s", $outputTempFile->getBasename(), $outputFile));
     }
 
     private function deleteTemporaryFiles()

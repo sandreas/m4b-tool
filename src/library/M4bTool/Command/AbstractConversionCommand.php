@@ -10,6 +10,7 @@ use M4bTool\Audio\TagBuilder;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Executables\Ffmpeg;
 use M4bTool\Tags\StringBuffer;
+use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputOption;
@@ -262,12 +263,12 @@ Codecs:
     /**
      * @param SplFileInfo $file
      * @param Tag $tag
-     * @throws \Exception
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws Exception
+     * @throws InvalidArgumentException
      */
     protected function tagFile(SplFileInfo $file, Tag $tag)
     {
-        $this->debug(sprintf("tagging file %s with tag:\n%s", $file, print_r($tag, true)));
+        $this->debug(sprintf("tagFile - filename: %s\nfull tag:\n%s", $file, print_r($tag, true)));
         if ($this->input->getOption(static::OPTION_FIX_MIME_TYPE)) {
             // todo: https://dbojan.github.io/howto_pc/media,%20How%20to%20add%20chapter%20marks%20to%20audio%20books,%20using%20opus%20codec.htm
             // -> see mimetype options and do this in one command when using ffmpeg below
@@ -599,7 +600,7 @@ Codecs:
      * @param SplFileInfo $coverTargetFile
      * @param bool $force
      * @return SplFileInfo|null
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
      * @throws Exception
      */
     protected function extractCover(SplFileInfo $file, SplFileInfo $coverTargetFile, $force = false)
@@ -707,8 +708,8 @@ Codecs:
 
     /**
      * @param $filesToConvert
-     * @throws \Exception
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws Exception
+     * @throws InvalidArgumentException
      */
     protected function adjustBitrateForIpod($filesToConvert)
     {

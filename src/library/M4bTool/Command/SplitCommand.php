@@ -293,6 +293,7 @@ class SplitCommand extends AbstractConversionCommand
             $outputFile = $this->extractChapter($chapter, $outputFile, $tag);
             if ($outputFile) {
                 $this->tagFile($outputFile, $tag);
+                $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
             }
             $index++;
         }
