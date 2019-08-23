@@ -108,7 +108,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     protected $alreadyProcessedBatchDirs = [];
 
 
-
     protected function configure()
     {
         parent::configure();
@@ -155,14 +154,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $this->chapterHandler->setFlags($flags);
 
 
-
             $batchPatterns = $input->getOption(static::OPTION_BATCH_PATTERN);
             if ($this->isBatchMode($input)) {
-                $inputFile = new SplFileInfo($input->getArgument(static::ARGUMENT_INPUT));
-                $inputFiles = $input->getArgument(static::ARGUMENT_MORE_INPUT_FILES);
-                if (count($inputFiles) > 0 || !is_dir($inputFile)) {
-                    throw new Exception("The use of --" . static::OPTION_BATCH_PATTERN . " assumes that exactly one directory is processed - please provide a valid and existing directory");
-                }
+                $this->ensureValidInputForBatchMode($input);
 
                 $batchJobs = [];
                 foreach ($batchPatterns as $batchPattern) {
@@ -172,6 +166,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 $this->processBatchJobs(clone $this, clone $output, $batchJobs);
 
             } else {
+                $this->ensureValidInputForSingleFileMode($input);
+
                 $this->processFiles($input, $output);
             }
         } catch (Throwable $e) {
@@ -185,6 +181,24 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     private function isBatchMode(InputInterface $input)
     {
         return count($input->getOption(static::OPTION_BATCH_PATTERN));
+    }
+
+    /**
+     * @param $input
+     * @throws Exception
+     */
+    private function ensureValidInputForBatchMode(InputInterface $input)
+    {
+        $inputFile = new SplFileInfo($input->getArgument(static::ARGUMENT_INPUT));
+        $inputFiles = $input->getArgument(static::ARGUMENT_MORE_INPUT_FILES);
+        if (count($inputFiles) > 0 || !is_dir($inputFile)) {
+            throw new Exception(sprintf("The use of --%s assumes that exactly one directory is processed - please provide a valid and existing directory", static::OPTION_BATCH_PATTERN));
+        }
+
+        $outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
+        if ($outputFile->isFile()) {
+            throw new Exception(sprintf("The use of --%s assumes that --%s is a directory", static::OPTION_BATCH_PATTERN, static::OPTION_OUTPUT_FILE));
+        }
     }
 
     /**
@@ -319,6 +333,18 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 $this->error(sprintf("processing failed for %s: %s", $baseDir, $e->getMessage()));
                 $this->debug(sprintf("error on %s: %s", $baseDir, $e->getTraceAsString()));
             }
+        }
+    }
+
+    /**
+     * @param $input
+     * @throws Exception
+     */
+    private function ensureValidInputForSingleFileMode(InputInterface $input)
+    {
+        $outputFile = new SplFileInfo($input->getOption(static::OPTION_OUTPUT_FILE));
+        if ($outputFile->isDir()) {
+            throw new Exception(sprintf("Without --%s it is assumed that --%s is a file and NOT an existing directory", static::OPTION_BATCH_PATTERN, static::OPTION_OUTPUT_FILE));
         }
     }
 
@@ -873,8 +899,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $silenceDetectionOutput = $this->detectSilencesForChapterGuessing($outputFile);
         $silenceParser = new SilenceParser();
         $silences = $silenceParser->parse($silenceDetectionOutput);
-
-
         $this->chapters = $this->chapterHandler->adjustChapters($this->chapters, $silences);
     }
 
