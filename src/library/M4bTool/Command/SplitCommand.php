@@ -282,7 +282,7 @@ class SplitCommand extends AbstractConversionCommand
             $tag->title = $chapter->getName();
             $tag->track = $index + 1;
             $tag->tracks = count($this->chapters);
-            $tag->merge($metaDataTag);
+            $tag->mergeMissing($metaDataTag);
 
             $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($tag));
 

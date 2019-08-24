@@ -88,12 +88,22 @@ class Tag implements ArrayAccess
     public $seriesPart;
 
 
-    public function merge(Tag $tag)
+    public function mergeMissing(Tag $tag)
     {
         foreach ($this as $propertyName => $propertyValue) {
             if ($this->$propertyName === null || $this->$propertyName === "" || $this->$propertyName === []) {
                 $this->$propertyName = $tag->$propertyName;
             }
+        }
+    }
+
+    public function mergeOverwrite(Tag $tag)
+    {
+        foreach ($this as $propertyName => $propertyValue) {
+            if ($tag->$propertyName === null || $tag->$propertyName === "" || $tag->$propertyName === []) {
+                continue;
+            }
+            $this->$propertyName = $tag->$propertyName;
         }
     }
 

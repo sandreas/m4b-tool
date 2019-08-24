@@ -6,7 +6,8 @@ namespace M4bTool\Command;
 use Exception;
 use FilesystemIterator;
 use IteratorIterator;
-use M4bTool\Audio\OpenPackagingFormat;
+use M4bTool\Audio\TagLoader\OpenPackagingFormat;
+use M4bTool\Audio\TagLoader\TagLoaderComposite;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
@@ -490,7 +491,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
 
         if ($this->input->getOption(static::OPTION_COVER)) {
-            $this->notice("using cover ", $this->input->getOption("cover"));
+            $this->notice(sprintf("using cover %s", $this->input->getOption("cover")));
         } else {
             $this->notice("cover not found or not specified");
         }
@@ -844,16 +845,13 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $tag = $this->inputOptionsToTag();
         $tag->chapters = $chapters;
 
-        $openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf");
-        if ($openPackagingFormatContent) {
+        $tagLoaderComposite = new TagLoaderComposite($tag);
+        if ($openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf")) {
             $this->notice("enhancing tag with additional metadata from metadata.opf");
-            $tagLoader = new OpenPackagingFormat($openPackagingFormatContent);
-            $enhancingTag = $tagLoader->load();
-            $enhancingTag->merge($tag);
-            $tag = $enhancingTag;
+            $tagLoaderComposite->add(new OpenPackagingFormat($openPackagingFormatContent));
         }
 
-        $this->tagFile($outputTmpFile, $tag);
+        $this->tagFile($outputTmpFile, $tagLoaderComposite->load());
         $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputTmpFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
     }
 
