@@ -3,13 +3,10 @@
 
 namespace M4bTool\Command;
 
-
-use CallbackFilterIterator;
-use DirectoryIterator;
 use Exception;
 use FilesystemIterator;
 use IteratorIterator;
-use M4bTool\Audio\TagLoaderOpenPackagingFormat;
+use M4bTool\Audio\OpenPackagingFormat;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
@@ -21,13 +18,13 @@ use M4bTool\Executables\Tasks\ConversionTask;
 use M4bTool\Executables\Tasks\Pool;
 use M4bTool\Filesystem\DirectoryLoader;
 use M4bTool\Chapter\ChapterMarker;
+use M4bTool\Filesystem\FileLoader;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use M4bTool\Parser\SilenceParser;
 use Psr\Cache\InvalidArgumentException;
 use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
 use Sandreas\Strings\Format\FormatParser;
 use Sandreas\Strings\Format\PlaceHolder;
 use Sandreas\Time\TimeUnit;
@@ -83,6 +80,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         'chapter-pattern' => "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i",
         'chapter-remove-chars' => "„“”",
     ];
+    const COVER_EXTENSIONS = ["jpg", "jpeg", "png"];
 
     protected $outputDirectory;
 
@@ -152,7 +150,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 $flags |= ChapterHandler::USE_FILENAMES;
             }
             $this->chapterHandler->setFlags($flags);
-
 
             $batchPatterns = $input->getOption(static::OPTION_BATCH_PATTERN);
             if ($this->isBatchMode($input)) {
@@ -390,77 +387,20 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
 
         $this->debug("== load input files ==");
+        $inputFiles = $this->input->getArgument(static::ARGUMENT_MORE_INPUT_FILES);
         $includeExtensions = $this->parseIncludeExtensions();
 
-
-        $this->filesToConvert = [];
-        $this->handleInputFile($this->argInputFile, $includeExtensions);
-        $inputFiles = $this->input->getArgument(static::ARGUMENT_MORE_INPUT_FILES);
+        $loader = new FileLoader();
+        $loader->setIncludeExtensions($includeExtensions);
+        $loader->add($this->argInputFile);
         foreach ($inputFiles as $fileLink) {
-            $this->handleInputFile($fileLink, $includeExtensions);
-        }
-        // natsort($this->filesToConvert);
-
-
-    }
-
-    protected function handleInputFile($f, $includeExtensions)
-    {
-        if (!($f instanceof SplFileInfo)) {
-            $f = new SplFileInfo($f);
-            if (!$f->isReadable()) {
-                $this->notice("skipping " . $f . " (does not exist)");
-                return;
-            }
+            $loader->add(new SplFileInfo($fileLink));
         }
 
-        if ($f->isDir()) {
-            $files = [];
-            $dir = new RecursiveDirectoryIterator($f, FilesystemIterator::SKIP_DOTS);
-            $it = new RecursiveIteratorIterator($dir, RecursiveIteratorIterator::CHILD_FIRST);
-            $filtered = new CallbackFilterIterator($it, function (SplFileInfo $current /*, $key, $iterator*/) use ($includeExtensions) {
-                return in_array(mb_strtolower($current->getExtension()), $includeExtensions, true);
-            });
-            foreach ($filtered as $itFile) {
-                if ($itFile->isDir()) {
-                    continue;
-                }
-                if (!$itFile->isReadable() || $itFile->isLink()) {
-                    continue;
-                }
-                $files[] = new SplFileInfo($itFile->getRealPath());
-            }
-
-            $this->filesToConvert = array_merge($this->filesToConvert, $this->sortFilesByName($files));
-        } else {
-            $this->filesToConvert[] = new SplFileInfo($f->getRealPath());
+        $this->filesToConvert = $loader->getFiles();
+        foreach ($loader->getSkippedFiles() as $fileName => $skipReason) {
+            $this->notice(sprintf("skipping %s (%s)", $fileName, $skipReason));
         }
-    }
-
-    private function sortFilesByName($files)
-    {
-        usort($files, function (SplFileInfo $a, SplFileInfo $b) {
-            if ($a->getPath() == $b->getPath()) {
-                return strnatcmp($a->getBasename(), $b->getBasename());
-            }
-
-            $aParts = explode(DIRECTORY_SEPARATOR, $a);
-            $aCount = count($aParts);
-            $bParts = explode(DIRECTORY_SEPARATOR, $b);
-            $bCount = count($bParts);
-            if ($aCount != $bCount) {
-                return $aCount - $bCount;
-            }
-
-            foreach ($aParts as $index => $part) {
-                if ($aParts[$index] != $bParts[$index]) {
-                    return strnatcmp($aParts[$index], $bParts[$index]);
-                }
-            }
-
-            return strnatcmp($a, $b);
-        });
-        return $files;
     }
 
     /**
@@ -528,36 +468,27 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     private function lookupAndAddCover()
     {
+        if ($this->input->getOption(static::OPTION_SKIP_COVER)) {
+            return;
+        }
         $coverDir = $this->argInputFile->isDir() ? $this->argInputFile : new SplFileInfo($this->argInputFile->getPath());
 
-        if (!$this->input->getOption(static::OPTION_SKIP_COVER) && !$this->input->getOption(static::OPTION_COVER)) {
-            $this->notice("searching for cover in " . $coverDir);
+        if (!$this->input->getOption(static::OPTION_COVER)) {
+            $this->notice(sprintf("searching for cover in %s", $coverDir));
+
             $autoCoverFile = new SplFileInfo($coverDir . DIRECTORY_SEPARATOR . "cover.jpg");
-            if ($autoCoverFile->isFile()) {
-                $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
-            } else {
-                $autoCoverFile = null;
-                $iterator = new DirectoryIterator($coverDir);
-                foreach ($iterator as $potentialCoverFile) {
-                    if ($potentialCoverFile->isDot() || $potentialCoverFile->isDir()) {
-                        continue;
-                    }
-
-                    $lowerExt = strtolower(ltrim($potentialCoverFile->getExtension(), "."));
-                    if ($lowerExt === "jpg" || $lowerExt === "jpeg" || $lowerExt === "png") {
-                        $autoCoverFile = clone $potentialCoverFile->getFileInfo();
-                        break;
-
-                    }
-
-                }
-
-                if ($autoCoverFile && $autoCoverFile->isFile()) {
-                    $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
-                }
+            if (!$autoCoverFile->isFile()) {
+                $coverLoader = new FileLoader();
+                $coverLoader->setIncludeExtensions(static::COVER_EXTENSIONS);
+                $coverLoader->addNonRecursive($coverDir);
+                $autoCoverFile = $coverLoader->current() ? $coverLoader->current() : null;
             }
 
+            if ($autoCoverFile && $autoCoverFile->isFile()) {
+                $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
+            }
         }
+
         if ($this->input->getOption(static::OPTION_COVER)) {
             $this->notice("using cover ", $this->input->getOption("cover"));
         } else {
@@ -807,7 +738,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     private function mergeFiles()
     {
-        $outputTempFile = new SplFileInfo($this->createOutputTempDir() . "/tmp_" . $this->outputFile->getBasename());
+        $outputTempFile = new SplFileInfo($this->createOutputTempDir() . "tmp_" . $this->outputFile->getBasename());
         $outputTempChaptersFile = $this->audioFileToChaptersFile($outputTempFile);
 
         if ($outputTempFile->isFile() && !unlink($outputTempFile)) {
@@ -916,7 +847,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf");
         if ($openPackagingFormatContent) {
             $this->notice("enhancing tag with additional metadata from metadata.opf");
-            $tagLoader = new TagLoaderOpenPackagingFormat($openPackagingFormatContent);
+            $tagLoader = new OpenPackagingFormat($openPackagingFormatContent);
             $enhancingTag = $tagLoader->load();
             $enhancingTag->merge($tag);
             $tag = $enhancingTag;
