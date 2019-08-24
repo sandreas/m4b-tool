@@ -327,12 +327,12 @@ Codecs:
 
             if ($tag->cover && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
                 if (!file_exists($tag->cover)) {
-                    $this->notice("cover file " . $tag->cover . " does not exist");
+                    $this->notice(sprintf("cover file %s does not exist", $tag->cover));
                     return;
                 }
                 $command = ["--add", $tag->cover, $file];
                 $this->appendParameterToCommand($command, "-f", $this->optForce);
-                $process = $this->mp4art($command, "adding cover " . $tag->cover . " to " . $file);
+                $process = $this->mp4art($command, sprintf("adding cover %s to %s", $tag->cover, $file));
                 $this->debug($process->getOutput() . $process->getErrorOutput());
             }
 
@@ -340,12 +340,12 @@ Codecs:
             if (count($tag->chapters)) {
                 $chaptersFile = $this->audioFileToChaptersFile($file);
                 if ($chaptersFile->isFile() && !$this->optForce) {
-                    $this->notice("Chapters file " . $chaptersFile . " already exists, use --force to force overwrite");
+                    $this->notice(sprintf("Chapters file %s  already exists, use --%s to force overwrite", $chaptersFile, static::OPTION_FORCE));
                     return;
                 }
 
                 file_put_contents($chaptersFile, implode(PHP_EOL, $this->chaptersToMp4v2Format($tag->chapters)));
-                $this->mp4chaps(["-i", $file], "importing chapters for " . $file);
+                $this->mp4chaps(["-i", $file], sprintf("importing chapters for %s", $file));
             }
             return;
         }
