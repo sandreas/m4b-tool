@@ -1,16 +1,16 @@
 <?php
 
 
-namespace M4bTool\Audio;
+namespace M4bTool\Audio\TagLoader;
 
 
 use DateTime;
 use Exception;
+use M4bTool\Audio\Tag;
 use SimpleXMLElement;
-use SplFileInfo;
 use Throwable;
 
-class TagLoaderOpenPackagingFormat implements TagLoaderInterface
+class OpenPackagingFormat implements TagLoaderInterface
 {
 
     const NAMESPACE_DUBLIN_CORE = "dc";
@@ -51,25 +51,25 @@ class TagLoaderOpenPackagingFormat implements TagLoaderInterface
         $xml->registerXPathNamespace("opf", "http://www.idpf.org/2007/opf");
         $xml->registerXPathNamespace("dc", "http://purl.org/dc/elements/1.1/");
 
-        $tag->title = $this->toString($this->queryTag($xml, "title"));
+        $tag->title = $this->makeString($this->queryTag($xml, "title"));
 
 
-        $description = $this->toString($this->queryTag($xml, "description"));
+        $description = $this->makeString($this->queryTag($xml, "description"));
         $tag->description = $tag->longDescription = $description ? strip_tags($description) : null;
 
 
         $creators = $xml->xpath("//dc:creator");
         foreach ($creators as $creator) {
             if ($this->queryAttribute($creator, "role", static::NAMESPACE_OPEN_PACKAGING_FORMAT) === static::CREATOR_ROLE_AUTHOR) {
-                $tag->artist = $this->toString($creator);
+                $tag->artist = $this->makeString($creator);
             }
         }
 
 
-        $tag->year = $this->toYear($this->queryTag($xml, "date"));
-        $tag->publisher = $this->toString($this->queryTag($xml, "publisher"));
-        $tag->language = $this->toString($this->queryTag($xml, "language"));
-        $tag->genre = $this->toString($this->queryTag($xml, "subject"));
+        $tag->year = $this->makeYear($this->queryTag($xml, "date"));
+        $tag->publisher = $this->makeString($this->queryTag($xml, "publisher"));
+        $tag->language = $this->makeString($this->queryTag($xml, "language"));
+        $tag->genre = $this->makeString($this->queryTag($xml, "subject"));
 
 
         $metas = ((array)$xml->metadata ?? ["meta" => []])["meta"] ?? [];
@@ -123,7 +123,7 @@ class TagLoaderOpenPackagingFormat implements TagLoaderInterface
         return null;
     }
 
-    private function toString($value)
+    private function makeString($value)
     {
         if ((string)$value !== "") {
             return (string)$value;
@@ -131,7 +131,7 @@ class TagLoaderOpenPackagingFormat implements TagLoaderInterface
         return null;
     }
 
-    private function toYear($value)
+    private function makeYear($value)
     {
         if (strlen(trim($value)) > 0) {
             try {
@@ -140,14 +140,6 @@ class TagLoaderOpenPackagingFormat implements TagLoaderInterface
             } catch (Exception $e) {
 
             }
-        }
-        return null;
-    }
-
-    private function toInteger($value)
-    {
-        if (isset($value)) {
-            return (int)$value;
         }
         return null;
     }

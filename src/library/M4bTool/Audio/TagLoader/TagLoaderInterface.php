@@ -1,10 +1,10 @@
 <?php
 
 
-namespace M4bTool\Audio;
+namespace M4bTool\Audio\TagLoader;
 
 
-use SplFileInfo;
+use M4bTool\Audio\Tag;
 
 interface TagLoaderInterface
 {

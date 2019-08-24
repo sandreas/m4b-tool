@@ -1,12 +1,12 @@
 <?php
 
-namespace M4bTool\Audio;
+namespace M4bTool\Audio\TagLoader;
 
 use Exception;
 use PHPUnit\Framework\TestCase;
 
 
-class TagLoaderOpenPackagingFormatTest extends TestCase
+class OpenPackagingFormatTest extends TestCase
 {
     const OPF_CONTENT_ALL_ATTRIBUTES = <<<EOF
 <?xml version='1.0' encoding='utf-8'?>
@@ -44,6 +44,7 @@ EOF;
 <?xml version='1.0' encoding='utf-8'?>
 <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id" version="2.0">
     <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="ISBN">9780393609400</dc:identifier>
     </metadata>
     <guide>
         <reference href="cover.jpg" title="Cover" type="cover"/>
@@ -57,7 +58,7 @@ EOF;
      */
     public function testLoadAllAttributes()
     {
-        $subject = new TagLoaderOpenPackagingFormat(static::OPF_CONTENT_ALL_ATTRIBUTES);
+        $subject = new OpenPackagingFormat(static::OPF_CONTENT_ALL_ATTRIBUTES);
         $tag = $subject->load();
         $this->assertEquals("Astrophysics for People in a Hurry", $tag->title);
         $this->assertEquals("W. W. Norton & Company", $tag->publisher);
@@ -79,7 +80,7 @@ EOF;
      */
     public function testLoadNoAttributes()
     {
-        $subject = new TagLoaderOpenPackagingFormat(static::OPF_CONTENT_NO_ATTRIBUTES);
+        $subject = new OpenPackagingFormat(static::OPF_CONTENT_NO_ATTRIBUTES);
         $tag = $subject->load();
 
         $this->assertNull($tag->title);
