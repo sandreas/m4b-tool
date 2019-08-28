@@ -6,6 +6,7 @@ namespace M4bTool\Command;
 use Exception;
 use FilesystemIterator;
 use IteratorIterator;
+use M4bTool\Audio\TagLoader\Ffmetadata;
 use M4bTool\Audio\TagLoader\OpenPackagingFormat;
 use M4bTool\Audio\TagLoader\TagLoaderComposite;
 use M4bTool\Chapter\ChapterHandler;
@@ -849,6 +850,13 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         if ($openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf")) {
             $this->notice("enhancing tag with additional metadata from metadata.opf");
             $tagLoaderComposite->add(new OpenPackagingFormat($openPackagingFormatContent));
+        }
+
+        if ($ffmetadataContent = $this->lookupFileContents($this->argInputFile, "ffmetadata.txt")) {
+            $this->notice("enhancing tag with additional metadata from ffmetadata.txt");
+            $parser = new FfmetaDataParser();
+            $parser->parse($ffmetadataContent);
+            $tagLoaderComposite->add(new Ffmetadata($parser));
         }
 
         $this->tagFile($outputTmpFile, $tagLoaderComposite->load());
