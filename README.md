@@ -460,7 +460,7 @@ If you use the `--batch-pattern` parameter, the following placeholders are suppo
 - `title` / `name`: `%n`
 - `sort_name`: `%N`
 - `album`: `%m`,
-- `sort_album`: `%m`,
+- `sort_album`: `%M`,
 - `artist`: `%a`,
 - `sort_artist`: `%a`,
 - `genre`: `%g`,

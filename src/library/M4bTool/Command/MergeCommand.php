@@ -193,7 +193,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             throw new Exception(sprintf("The use of --%s assumes that exactly one directory is processed - please provide a valid and existing directory", static::OPTION_BATCH_PATTERN));
         }
 
-        $outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
+        $outputFile = new SplFileInfo($input->getOption(static::OPTION_OUTPUT_FILE));
         if ($outputFile->isFile()) {
             throw new Exception(sprintf("The use of --%s assumes that --%s is a directory", static::OPTION_BATCH_PATTERN, static::OPTION_OUTPUT_FILE));
         }
@@ -246,8 +246,11 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $fileNamePart = rtrim($formatParser->format($trimmedBatchPattern), "\\/");
 
             // add a folder for name, if it is not a series
-            if (!$formatParser->getPlaceHolderValue(static::MAPPING_OPTIONS_PLACEHOLDERS[static::OPTION_TAG_SERIES])) {
-                $fileNamePart .= "/" . $formatParser->format("%n");
+            $title = $formatParser->format("%n");
+            $album = $formatParser->format("%m");
+            $m4bFileName = $title ? $title : $album;
+            if ($m4bFileName && !$formatParser->getPlaceHolderValue(static::MAPPING_OPTIONS_PLACEHOLDERS[static::OPTION_TAG_SERIES])) {
+                $fileNamePart .= "/" . $m4bFileName;
             }
 
             $batchOutputFile = $outputFile . "/" . $fileNamePart . ".m4b";
@@ -317,7 +320,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     private function processBatchJobs(MergeCommand $command, OutputInterface $output, array $batchJobs)
     {
-
+        gc_enable();
         foreach ($batchJobs as $clonedInput) {
 
             $baseDir = $clonedInput->getArgument(static::ARGUMENT_INPUT);
@@ -327,11 +330,16 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
                 $clonedCommand = clone $command;
                 $clonedOutput = clone $output;
                 $clonedCommand->execute($clonedInput, $clonedOutput);
+                unset($clonedCommand);
+                unset($clonedInput);
+                unset($clonedOutput);
+                gc_collect_cycles();
             } catch (Exception $e) {
                 $this->error(sprintf("processing failed for %s: %s", $baseDir, $e->getMessage()));
                 $this->debug(sprintf("error on %s: %s", $baseDir, $e->getTraceAsString()));
             }
         }
+        gc_disable();
     }
 
     /**
