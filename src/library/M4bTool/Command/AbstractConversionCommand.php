@@ -6,7 +6,7 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\TagLoader\InputOptions;
+use M4bTool\Audio\TagTransfer\InputOptions;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Tags\StringBuffer;
 use Psr\Cache\InvalidArgumentException;

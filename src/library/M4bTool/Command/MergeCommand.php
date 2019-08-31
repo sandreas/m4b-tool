@@ -7,10 +7,10 @@ use Exception;
 use FilesystemIterator;
 use IteratorIterator;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\TagLoader\Ffmetadata;
-use M4bTool\Audio\TagLoader\InputOptions;
-use M4bTool\Audio\TagLoader\OpenPackagingFormat;
-use M4bTool\Audio\TagLoader\TagLoaderComposite;
+use M4bTool\Audio\TagTransfer\Ffmetadata;
+use M4bTool\Audio\TagTransfer\InputOptions;
+use M4bTool\Audio\TagTransfer\OpenPackagingFormat;
+use M4bTool\Audio\TagTransfer\TagTransferComposite;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
@@ -856,7 +856,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $tag = new Tag();
         $tag->chapters = $chapters;
 
-        $tagLoaderComposite = new TagLoaderComposite($tag);
+        $tagLoaderComposite = new TagTransferComposite($tag);
         if ($openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf")) {
             $this->notice("enhancing tag with additional metadata from metadata.opf");
             $tagLoaderComposite->add(new OpenPackagingFormat($openPackagingFormatContent));

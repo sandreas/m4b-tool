@@ -1,7 +1,7 @@
 <?php
 
 
-namespace M4bTool\Audio\TagLoader;
+namespace M4bTool\Audio\TagTransfer;
 
 
 use M4bTool\Audio\Tag;

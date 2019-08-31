@@ -1,6 +1,6 @@
 <?php
 
-namespace M4bTool\Audio\TagLoader;
+namespace M4bTool\Audio\TagTransfer;
 
 use Exception;
 use PHPUnit\Framework\TestCase;

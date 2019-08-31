@@ -1,7 +1,7 @@
 <?php
 
 
-namespace M4bTool\Audio\TagLoader;
+namespace M4bTool\Audio\TagTransfer;
 
 
 use DateTime;
@@ -143,4 +143,5 @@ class OpenPackagingFormat implements TagLoaderInterface
         }
         return null;
     }
+
 }

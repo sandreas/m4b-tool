@@ -1,12 +1,12 @@
 <?php
 
 
-namespace M4bTool\Audio\TagLoader;
+namespace M4bTool\Audio\TagTransfer;
 
 
 use M4bTool\Audio\Tag;
 
-class TagLoaderComposite implements TagLoaderInterface
+class TagTransferComposite implements TagLoaderInterface
 {
 
     /** @var TagLoaderInterface[] */
