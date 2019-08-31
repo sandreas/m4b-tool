@@ -6,7 +6,9 @@ namespace M4bTool\Command;
 use Exception;
 use FilesystemIterator;
 use IteratorIterator;
+use M4bTool\Audio\Tag;
 use M4bTool\Audio\TagLoader\Ffmetadata;
+use M4bTool\Audio\TagLoader\InputOptions;
 use M4bTool\Audio\TagLoader\OpenPackagingFormat;
 use M4bTool\Audio\TagLoader\TagLoaderComposite;
 use M4bTool\Chapter\ChapterHandler;
@@ -851,7 +853,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     private function tagMergedFile(SplFileInfo $outputTmpFile, array $chapters)
     {
-        $tag = $this->inputOptionsToTag();
+        $tag = new Tag();
         $tag->chapters = $chapters;
 
         $tagLoaderComposite = new TagLoaderComposite($tag);
@@ -867,7 +869,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $tagLoaderComposite->add(new Ffmetadata($parser));
         }
 
-        $this->tagFile($outputTmpFile, $tagLoaderComposite->load());
+        $tagLoaderComposite->add(new InputOptions($this->input));
+
+        $tag = $tagLoaderComposite->load();
+        $this->tagFile($outputTmpFile, $tag);
         $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputTmpFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
     }
 

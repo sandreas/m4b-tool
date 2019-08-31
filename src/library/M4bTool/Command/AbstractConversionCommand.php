@@ -7,8 +7,8 @@ namespace M4bTool\Command;
 use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\TagBuilder;
+use M4bTool\Audio\TagLoader\InputOptions;
 use M4bTool\Parser\FfmetaDataParser;
-use M4bTool\Executables\Ffmpeg;
 use M4bTool\Tags\StringBuffer;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
@@ -79,42 +79,8 @@ class AbstractConversionCommand extends AbstractCommand
 
     public function inputOptionsToTag()
     {
-        $tag = new Tag;
-
-        $tag->title = $this->input->getOption(static::OPTION_TAG_NAME);
-        $tag->sortTitle = $this->input->getOption(static::OPTION_TAG_SORT_NAME);
-
-        $tag->album = $this->input->getOption(static::OPTION_TAG_ALBUM);
-        $tag->sortAlbum = $this->input->getOption(static::OPTION_TAG_SORT_ALBUM);
-
-        // on ipods / itunes, album is for title of the audio book
-        if ($this->optAdjustBitrateForIpod) {
-            if ($tag->title && !$tag->album) {
-                $tag->album = $tag->title;
-            }
-
-            if ($tag->sortTitle && !$tag->sortAlbum) {
-                $tag->sortAlbum = $tag->sortTitle;
-            }
-        }
-
-        $tag->artist = $this->input->getOption(static::OPTION_TAG_ARTIST);
-        $tag->sortArtist = $this->input->getOption(static::OPTION_TAG_SORT_ARTIST);
-        $tag->genre = $this->input->getOption(static::OPTION_TAG_GENRE);
-        $tag->writer = $this->input->getOption(static::OPTION_TAG_WRITER);
-        $tag->albumArtist = $this->input->getOption(static::OPTION_TAG_ALBUM_ARTIST);
-        $tag->year = $this->input->getOption(static::OPTION_TAG_YEAR);
-        $tag->cover = $this->input->getOption(static::OPTION_COVER);
-        $tag->description = $this->input->getOption(static::OPTION_TAG_DESCRIPTION);
-        $tag->longDescription = $this->input->getOption(static::OPTION_TAG_LONG_DESCRIPTION);
-        $tag->comment = $this->input->getOption(static::OPTION_TAG_COMMENT);
-        $tag->copyright = $this->input->getOption(static::OPTION_TAG_COPYRIGHT);
-        $tag->encodedBy = $this->input->getOption(static::OPTION_TAG_ENCODED_BY);
-
-        $tag->series = $this->input->getOption(static::OPTION_TAG_SERIES);
-        $tag->seriesPart = $this->input->getOption(static::OPTION_TAG_SERIES_PART);
-
-        return $tag;
+        $loader = new InputOptions($this->input);
+        return $loader->load();
     }
 
     protected function configure()
@@ -716,13 +682,12 @@ Codecs:
         if (!$this->optAdjustBitrateForIpod) {
             return;
         }
-        $ffmpeg = new Ffmpeg();
 
         $this->notice("ipod auto adjust active, getting track durations");
         $totalDuration = new TimeUnit();
         foreach ($filesToConvert as $index => $file) {
             $this->notice("load estimated duration for file", $file);
-            $duration = $ffmpeg->estimateDuration($file);
+            $duration = $this->metaHandler->estimateDuration($file);
             if (!$duration || ($duration instanceof TimeUnit && $duration->milliseconds() == 0)) {
                 $this->debug("load quick estimated duration failed for file, trying to read exact duration", $file);
                 $duration = $this->readDuration($file);
