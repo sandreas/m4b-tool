@@ -6,7 +6,6 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\TagBuilder;
 use M4bTool\Audio\TagLoader\InputOptions;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Tags\StringBuffer;
@@ -18,8 +17,6 @@ use Throwable;
 
 class AbstractConversionCommand extends AbstractCommand
 {
-    const TAG_DESCRIPTION_MAX_LEN = 255;
-    const TAG_DESCRIPTION_SUFFIX = " ...";
 
     const OPTION_AUDIO_FORMAT = "audio-format";
     const OPTION_AUDIO_CHANNELS = "audio-channels";
@@ -242,233 +239,14 @@ Codecs:
             $this->fixMimeType($file);
         }
 
-        $isMp4Format = $this->hasMp4AudioFileExtension($file);
-        if (!$isMp4Format) {
-            $metaData = $this->readFileMetaData($file);
-            $isMp4Format = ($metaData->getFormat() === FfmetaDataParser::FORMAT_MP4);
-        }
-
-        if ($isMp4Format) {
-            $this->debug(sprintf("file %s is an MP4 file", $file));
-            $command = [];
-
-            $this->adjustTagDescriptionForMp4($tag);
-
-            $this->appendParameterToCommand($command, "-track", $tag->track);
-            $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
-            $this->appendParameterToCommand($command, "-song", $tag->title);
-            $this->appendParameterToCommand($command, "-artist", $tag->artist);
-            $this->appendParameterToCommand($command, "-genre", $tag->genre);
-            $this->appendParameterToCommand($command, "-writer", $tag->writer);
-            $this->appendParameterToCommand($command, "-description", $tag->description);
-            $this->appendParameterToCommand($command, "-longdesc", $tag->longDescription);
-            $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
-            $this->appendParameterToCommand($command, "-year", $tag->year);
-            $this->appendParameterToCommand($command, "-album", $tag->album);
-            $this->appendParameterToCommand($command, "-comment", $tag->comment);
-            $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
-            $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy ?? $tag->encoder);
-            $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
-            $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
-
-            if ($this->doesMp4tagsSupportSorting()) {
-                if (!$tag->sortTitle && $tag->series) {
-                    $tag->sortTitle = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
-                }
-
-                if (!$tag->sortAlbum && $tag->series) {
-                    $tag->sortAlbum = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
-                }
-
-                $this->appendParameterToCommand($command, "-sortname", $tag->sortTitle);
-                $this->appendParameterToCommand($command, "-sortalbum", $tag->sortAlbum);
-                $this->appendParameterToCommand($command, "-sortartist", $tag->sortArtist);
-            }
-
-
-            if (count($command) > 1) {
-                $command[] = $file;
-                $this->mp4tags($command, "tagging file " . $file);
-            }
-
-            if ($tag->cover && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
-                if (!file_exists($tag->cover)) {
-                    $this->notice(sprintf("cover file %s does not exist", $tag->cover));
-                    return;
-                }
-                $command = ["--add", $tag->cover, $file];
-                $this->appendParameterToCommand($command, "-f", $this->optForce);
-                $process = $this->mp4art($command, sprintf("adding cover %s to %s", $tag->cover, $file));
-                $this->debug($process->getOutput() . $process->getErrorOutput());
-            }
-
-
-            if (count($tag->chapters)) {
-                $chaptersFile = $this->audioFileToChaptersFile($file);
-                if ($chaptersFile->isFile() && !$this->optForce) {
-                    $this->notice(sprintf("Chapters file %s  already exists, use --%s to force overwrite", $chaptersFile, static::OPTION_FORCE));
-                    return;
-                }
-
-                file_put_contents($chaptersFile, implode(PHP_EOL, $this->chaptersToMp4v2Format($tag->chapters)));
-                $this->mp4chaps(["-i", $file], sprintf("importing chapters for %s", $file));
-            }
-            return;
-        }
-
         try {
-            // see https://wiki.multimedia.cx/index.php/FFmpeg_Metadata#MP3
-            $this->debug(sprintf("trying to tag file %s file with ffmpeg", $file));
-            $outputFile = new SplFileInfo((string)$file . uniqid("", true) . ".mp3");
-            $command = ["-i", $file];
-
-            $commandAddition = [];
-            $metaDataFileIndex = 1;
-            if ($tag->cover) {
-                $command = array_merge($command, ["-i", $tag->cover]);
-                $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
-                $metaDataFileIndex++;
-            }
-
-            $tagBuilder = new TagBuilder();
-            $ffmetadata = $tagBuilder->buildFfmetadata($tag);
-            $fpPath = tempnam(sys_get_temp_dir(), "");
-            if (file_put_contents($fpPath, $ffmetadata) === false) {
-                $this->debug(sprintf("failed to create %s", $fpPath));
-                $fpPath = null;
-            }
-
-            if ($fpPath) {
-                $this->debug(sprintf("created tempfile for metadata %s", $fpPath));
-                $command = array_merge($command, ["-i", $fpPath, "-map_metadata", (string)$metaDataFileIndex]);
-            }
-
-            if (count($commandAddition) > 0) {
-                $command = array_merge($command, $commandAddition);
-
-            }
-
-            if (!$fpPath) {
-                $this->debug("did not create ffmpeg metadata file, appending parameters");
-                $this->appendKeyValueParameterToCommand($command, 'album', $tag->album, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'composer', $tag->writer, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'genre', $tag->genre, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'copyright', $tag->copyright, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'encoded_by', $tag->encodedBy, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'title', $tag->title, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'language', $tag->language, '-mÇetadata');
-                $this->appendKeyValueParameterToCommand($command, 'artist', $tag->artist, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'album_artist', $tag->albumArtist, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'performer', $tag->performer, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'disc', $tag->disk, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'publisher', $tag->publisher, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'track', $tag->track, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'encoder', $tag->encoder, '-metadata');
-                $this->appendKeyValueParameterToCommand($command, 'lyrics', $tag->lyrics, '-metadata');
-            }
-
-            $command[] = $outputFile;
-            $this->ffmpeg($command, "tagging file " . $file);
-
-            if ($fpPath && file_exists($fpPath) && !$this->optDebug) {
-                $this->debug("deleting ffmetadata file");
-                unlink($fpPath);
-            }
-
-            if (!$outputFile->isFile()) {
-                $this->error("tagging file " . $file . " failed, could not write temp output file " . $outputFile);
-                return;
-            }
-
-            if (!unlink($file) || !rename($outputFile, $file)) {
-                $this->error("tagging file " . $file . " failed, could not rename temp output file " . $outputFile . " to " . $file);
-            }
+            $this->metaHandler->writeTag($file, $tag);
         } catch (Throwable $e) {
-            $this->error(sprintf("could not tag file %s with ffmpeg, error: %s", $file, $e->getMessage()));
+            $this->error(sprintf("could not tag file %s, error: %s", $file, $e->getMessage()));
             $this->debug("trace:", $e->getTraceAsString());
         }
-
-
     }
 
-
-    private function adjustTagDescriptionForMp4(Tag $tag)
-    {
-        if (!$tag->description) {
-            return;
-        }
-
-        $description = $tag->description;
-        $encoding = $this->detectEncoding($description);
-        if ($encoding === "") {
-            $this->notice("could not detect encoding of description, using UTF-8 as default");
-        } else if ($encoding !== "UTF-8") {
-            $description = mb_convert_encoding($tag->description, "UTF-8", $encoding);
-        }
-
-
-        $stringBuf = new StringBuffer($description);
-        if ($stringBuf->byteLength() <= static::TAG_DESCRIPTION_MAX_LEN) {
-            return;
-        }
-
-        $tag->description = $stringBuf->softTruncateBytesSuffix(static::TAG_DESCRIPTION_MAX_LEN, static::TAG_DESCRIPTION_SUFFIX);
-
-        if (!$tag->longDescription) {
-            $tag->longDescription = (string)$stringBuf;
-        }
-    }
-
-    /**
-     * mb_detect_encoding is not reliable on all systems and leads to php errors in some cases
-     *
-     * @param $string
-     * @return string
-     */
-    private function detectEncoding($string)
-    {
-        if (preg_match("//u", $string)) {
-            return "UTF-8";
-        }
-
-        $encodings = [
-            'UTF-8', 'ASCII', 'ISO-8859-1', 'ISO-8859-2', 'ISO-8859-3', 'ISO-8859-4', 'ISO-8859-5',
-            'ISO-8859-6', 'ISO-8859-7', 'ISO-8859-8', 'ISO-8859-9', 'ISO-8859-10', 'ISO-8859-13',
-            'ISO-8859-14', 'ISO-8859-15', 'ISO-8859-16', 'Windows-1251', 'Windows-1252', 'Windows-1254',
-        ];
-
-        // $enclist = mb_list_encodings();
-
-        foreach ($encodings as $encoding) {
-            $sample = mb_convert_encoding($string, $encoding, $encoding);
-            if (md5($sample) === md5($string)) {
-                return $encoding;
-            }
-        }
-
-        return "";
-    }
-
-    /**
-     * @return bool
-     * @throws Exception
-     */
-    private function doesMp4tagsSupportSorting()
-    {
-
-        $command = ["-help"];
-        $process = $this->mp4tags($command, "check for sorting support in mp4tags");
-        $result = $process->getOutput() . $process->getErrorOutput();
-        $searchStrings = ["-sortname", "-sortartist", "-sortalbum"];
-        foreach ($searchStrings as $searchString) {
-            if (strpos($result, $searchString) === false) {
-                $this->notice("not supported - get a release from https://github.com/sandreas/mp4v2 for sorting support");
-                return false;
-            }
-        }
-        $this->notice("supported, proceeding...");
-        return true;
-    }
 
     /**
      * @return float|int
@@ -490,75 +268,6 @@ Codecs:
         $value = $matches[1];
         $multiplier = $multipliers[$matches[2]];
         return $value * $multiplier;
-    }
-
-    protected function appendFfmpegTagParametersToCommand(&$command, Tag $tag)
-    {
-        if ($tag->title) {
-            $command[] = '-metadata';
-            $command[] = 'title=' . $tag->title;
-        }
-
-        if ($tag->artist) {
-            $command[] = '-metadata';
-            $command[] = 'artist=' . $tag->artist;
-        }
-
-
-        if ($tag->album) {
-            $command[] = '-metadata';
-            $command[] = 'album=' . $tag->album;
-        }
-
-
-        if ($tag->genre) {
-            $command[] = '-metadata';
-            $command[] = 'genre=' . $tag->genre;
-        }
-
-        if ($tag->description) {
-            $command[] = '-metadata';
-            $command[] = 'description=' . $tag->description;
-        }
-
-        if ($tag->writer) {
-            $command[] = '-metadata';
-            $command[] = 'composer=' . $tag->writer;
-        }
-
-
-        if ($tag->track && $tag->tracks) {
-            $command[] = '-metadata';
-            $command[] = 'track=' . $tag->track . "/" . $tag->tracks;
-        }
-
-        if ($tag->albumArtist) {
-            $command[] = '-metadata';
-            $command[] = 'album_artist=' . $tag->albumArtist;
-        }
-
-
-        if ($tag->year) {
-            $command[] = '-metadata';
-            $command[] = 'date=' . $tag->year;
-        }
-
-        if ($tag->comment) {
-            $command[] = '-metadata';
-            $command[] = 'comment=' . $tag->comment;
-        }
-
-
-        if ($tag->copyright) {
-            $command[] = '-metadata';
-            $command[] = 'copyright=' . $tag->copyright;
-        }
-
-
-        if ($tag->encodedBy) {
-            $command[] = '-metadata';
-            $command[] = 'encoded_by=' . $tag->encodedBy;
-        }
     }
 
     /**

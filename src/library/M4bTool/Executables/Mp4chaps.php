@@ -60,6 +60,6 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
         foreach ($chapters as $chapter) {
             $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
         }
-        return $chaptersAsLines;
+        return implode(PHP_EOL, $chaptersAsLines);
     }
 }

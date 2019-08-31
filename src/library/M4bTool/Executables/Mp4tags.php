@@ -45,6 +45,7 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
         $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
         $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
 
+
         if ($this->doesMp4tagsSupportSorting()) {
             if (!$tag->sortTitle && $tag->series) {
                 $tag->sortTitle = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
