@@ -100,8 +100,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     protected $outputFile;
     protected $sameFormatFileDirectory;
 
-    /** @var Chapter[] */
-    protected $chapters = [];
 
     /** @var Silence[] */
     protected $trackMarkerSilences = [];
@@ -122,7 +120,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->addOption(static::OPTION_OUTPUT_FILE, static::OPTION_OUTPUT_FILE_SHORTCUT, InputOption::VALUE_REQUIRED, "output file");
         $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", "aac,alac,flac,m4a,m4b,mp3,oga,ogg,wav,wma,mp4");
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
-        $this->addOption(static::OPTION_MARK_TRACKS, null, InputOption::VALUE_NONE, "add chapter marks for each track");
         $this->addOption(static::OPTION_NO_CONVERSION, null, InputOption::VALUE_NONE, "skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)");
 
         $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title) - parameter --output-file must be a directory", []);
@@ -439,23 +436,19 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->lookupAndAddCover();
 
         $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
-
         if ($chaptersFileContent !== null) {
             $this->notice("importing chapters from existing chapters.txt");
             $chapterParser = new Mp4ChapsChapterParser();
-            $this->chapters = $chapterParser->parse($chaptersFileContent);
+            $chapters = $chapterParser->parse($chaptersFileContent);
         } else {
             $this->notice("rebuilding chapters from converted files title tags");
-            $this->chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge, $this->filesToConvert);
-            $this->replaceChaptersWithMusicBrainz();
-            $this->addTrackMarkers();
+            $chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge, $this->filesToConvert);
+            $chapters = $this->replaceChaptersWithMusicBrainz($chapters);
         }
-
-
         $outputTempFile = $this->mergeFiles();
 
-        $this->adjustTooLongChapters($outputTempFile);
-        $this->tagMergedFile($outputTempFile, $this->chapters);
+        $chapters = $this->adjustTooLongChapters($outputTempFile, $chapters);
+        $this->tagMergedFile($outputTempFile, $chapters);
 
         $this->moveFinishedOutputFile($outputTempFile, $this->outputFile);
 
@@ -638,13 +631,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $taskCount = count($taskPool->getTasks());
             $runningTaskCount = count($taskPool->getRunningTasks());
             $remainingTaskCount = $queueLength + $runningTaskCount;
-//            $remainingTime = $taskPool->calculateRemainingTime();
-//            if ($remainingTime instanceof TimeUnit) {
-//                $runTimeAsString = $remainingTime->format("%H:%M:%S");
-//            } else {
-//                $runTimeAsString = " - ";
-//            }
-
 
             if ($taskPool === 0) {
                 $message = sprintf("\rfinished %4d tasks, preparing next step", $taskCount);
@@ -655,7 +641,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             } else {
                 $message = sprintf("\rpreparing conversion");
             }
-            // $message .= ", proc: " . $processedTaskCount . ", skip: " . $skippedTaskCount . ", run: " . $runningTaskCount;
 
             $chars = ['|', '/', '-', '\\'];
             $charCount = count($chars);
@@ -705,13 +690,15 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
 
     /**
+     * @param Chapter[] $chapters
+     * @return array|Chapter[]
      * @throws Exception
      */
-    private function replaceChaptersWithMusicBrainz()
+    private function replaceChaptersWithMusicBrainz(array $chapters)
     {
         $mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
         if (!$mbId) {
-            return;
+            return $chapters;
         }
 
         $mbChapterParser = new MusicBrainzChapterParser($mbId);
@@ -721,27 +708,11 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $mbChapters = $mbChapterParser->parseRecordings($mbXml);
 
         $chapterMarker = new ChapterMarker();
-        $this->chapters = $chapterMarker->guessChaptersByTracks($mbChapters, $this->chapters);
+        $chapters = $chapterMarker->guessChaptersByTracks($mbChapters, $chapters);
 
 
-        $this->chapters = $chapterMarker->normalizeChapters($this->chapters, static::NORMALIZE_CHAPTER_OPTIONS);
+        return $chapterMarker->normalizeChapters($chapters, static::NORMALIZE_CHAPTER_OPTIONS);
 
-    }
-
-    private function addTrackMarkers()
-    {
-        if (!$this->input->getOption(static::OPTION_MARK_TRACKS)) {
-            return;
-        }
-
-
-        foreach ($this->trackMarkerSilences as $index => $silence) {
-            $key = $silence->getStart()->milliseconds();
-            if (!isset($this->chapters[$key])) {
-                $this->chapters[$key] = new Chapter(clone $silence->getStart(), clone $silence->getLength(), "Track marker " . ($index + 1));
-            }
-        }
-        ksort($this->chapters);
     }
 
     /**
@@ -813,9 +784,11 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     /**
      * @param SplFileInfo $outputFile
+     * @param Chapter[] $chapters
+     * @return array|Chapter[]
      * @throws InvalidArgumentException
      */
-    private function adjustTooLongChapters(SplFileInfo $outputFile)
+    private function adjustTooLongChapters(SplFileInfo $outputFile, array $chapters)
     {
         // value examples:
         // 300 => maxLength = 300 seconds
@@ -831,7 +804,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         // at least one option has to be defined to adjust too long chapters
         if ($maxChapterLength->milliseconds() === 0) {
-            return;
+            return $chapters;
         }
 
         if ($maxChapterLength->milliseconds() > 0) {
@@ -842,7 +815,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $silenceDetectionOutput = $this->detectSilencesForChapterGuessing($outputFile);
         $silenceParser = new SilenceParser();
         $silences = $silenceParser->parse($silenceDetectionOutput);
-        $this->chapters = $this->chapterHandler->adjustChapters($this->chapters, $silences);
+        return $this->chapterHandler->adjustChapters($chapters, $silences);
     }
 
     /**
