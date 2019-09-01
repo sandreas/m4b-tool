@@ -5,6 +5,7 @@ namespace M4bTool\Executables;
 
 
 use Exception;
+use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Common\Flags;
 use Sandreas\Time\TimeUnit;
@@ -54,4 +55,26 @@ class Mp4v2Wrapper implements TagWriterInterface, DurationDetectorInterface
     {
         return $this->info->inspectExactDuration($file);
     }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $destinationFile
+     * @param int $index
+     * @throws Exception
+     */
+    public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $index = 0)
+    {
+        $this->art->exportCover($audioFile, $destinationFile, $index);
+    }
+
+    /**
+     * @param Chapter[] $chapters
+     * @return string
+     */
+    public function chaptersToMp4v2Format(array $chapters)
+    {
+        return $this->chaps->chaptersToMp4v2Format($chapters);
+    }
+
+
 }

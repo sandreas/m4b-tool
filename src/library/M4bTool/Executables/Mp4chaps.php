@@ -33,7 +33,8 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
         }
 
         $chaptersFile = $this->audioFileToChaptersFile($file);
-        if ($chaptersFile->isFile()) {
+        $chaptersFileAlreadyExisted = $chaptersFile->isFile();
+        if ($chaptersFileAlreadyExisted && $flags && !$flags->contains(static::FLAG_FORCE)) {
             throw new Exception(sprintf("Chapters file %s already exists", $chaptersFile));
         }
         file_put_contents($chaptersFile, $this->chaptersToMp4v2Format($tag->chapters));
@@ -45,6 +46,10 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
             unlink($chaptersFile);
             throw new Exception(sprintf("Could not import chapters for file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
         }
+
+        if (!$chaptersFileAlreadyExisted && $flags && $flags->contains(static::FLAG_CLEANUP)) {
+            unlink($chaptersFile);
+        }
     }
 
     protected function audioFileToChaptersFile(SplFileInfo $audioFile)
@@ -54,7 +59,7 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".chapters.txt");
     }
 
-    protected function chaptersToMp4v2Format(array $chapters)
+    public function chaptersToMp4v2Format(array $chapters)
     {
         $chaptersAsLines = [];
         foreach ($chapters as $chapter) {

@@ -37,4 +37,30 @@ class Mp4art extends AbstractExecutable implements TagWriterInterface
             throw new Exception(sprintf("Could not add cover to file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
         }
     }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $destinationFile
+     * @param int $index
+     * @throws Exception
+     */
+    public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $index = 0)
+    {
+        $this->runProcess([
+            "--art-index", "0",
+            "--extract", $audioFile
+        ]);
+
+        $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
+        $extractedCoverFile = new SplFileInfo($audioFile->getPath() . DIRECTORY_SEPARATOR . $fileName . ".art[" . $index . "].jpg");
+
+        if (!$extractedCoverFile->isFile()) {
+            throw new Exception(sprintf("exporting cover to %s failed", $extractedCoverFile));
+        }
+
+        if (!rename($extractedCoverFile, $destinationFile)) {
+            @unlink($extractedCoverFile);
+            throw new Exception(sprintf("renaming cover %s => %s failed", $extractedCoverFile, $destinationFile));
+        }
+    }
 }

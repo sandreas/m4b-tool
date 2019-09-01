@@ -433,6 +433,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         } else {
             $this->convertInputFiles();
         }
+
+
+        // put tagloaders here?!
         $this->lookupAndAddCover();
 
         $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
@@ -471,35 +474,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->setMissingCommandLineOptionsFromTag($metaData->toTag());
     }
 
-    private function lookupAndAddCover()
-    {
-        if ($this->input->getOption(static::OPTION_SKIP_COVER)) {
-            return;
-        }
-        $coverDir = $this->argInputFile->isDir() ? $this->argInputFile : new SplFileInfo($this->argInputFile->getPath());
 
-        if (!$this->input->getOption(static::OPTION_COVER)) {
-            $this->notice(sprintf("searching for cover in %s", $coverDir));
-
-            $autoCoverFile = new SplFileInfo($coverDir . DIRECTORY_SEPARATOR . "cover.jpg");
-            if (!$autoCoverFile->isFile()) {
-                $coverLoader = new FileLoader();
-                $coverLoader->setIncludeExtensions(static::COVER_EXTENSIONS);
-                $coverLoader->addNonRecursive($coverDir);
-                $autoCoverFile = $coverLoader->current() ? $coverLoader->current() : null;
-            }
-
-            if ($autoCoverFile && $autoCoverFile->isFile()) {
-                $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
-            }
-        }
-
-        if ($this->input->getOption(static::OPTION_COVER)) {
-            $this->notice(sprintf("using cover %s", $this->input->getOption("cover")));
-        } else {
-            $this->notice("cover not found or not specified");
-        }
-    }
 
     private function lookupAndAddDescription()
     {
@@ -509,22 +484,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
     }
 
-    private function lookupFileContents(SplFileInfo $referenceFile, $nameOfFile, $maxSize = 1024 * 1024)
-    {
-        $nameOfFileDir = $referenceFile->isDir() ? $referenceFile : new SplFileInfo($referenceFile->getPath());
-        $this->notice(sprintf("searching for %s in %s", $nameOfFile, $nameOfFileDir));
-        $autoDescriptionFile = new SplFileInfo($nameOfFileDir . DIRECTORY_SEPARATOR . $nameOfFile);
-
-        $this->debug(sprintf("checking file %s, realpath: %s", $autoDescriptionFile, $autoDescriptionFile->getRealPath()));
-
-        if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < $maxSize) {
-            $this->notice(sprintf("success: found %s for import", $nameOfFile));
-            return file_get_contents($autoDescriptionFile);
-        } else {
-            $this->notice(sprintf("file %s not found or too big", $nameOfFile));
-        }
-        return null;
-    }
 
     /**
      * @throws Exception

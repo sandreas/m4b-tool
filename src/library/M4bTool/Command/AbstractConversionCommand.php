@@ -5,8 +5,10 @@ namespace M4bTool\Command;
 
 
 use Exception;
+use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\TagTransfer\InputOptions;
+use M4bTool\Filesystem\FileLoader;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Tags\StringBuffer;
 use Psr\Cache\InvalidArgumentException;
@@ -227,7 +229,6 @@ Codecs:
      * @param SplFileInfo $file
      * @param Tag $tag
      * @throws Exception
-     * @throws InvalidArgumentException
      */
     protected function tagFile(SplFileInfo $file, Tag $tag)
     {
@@ -364,7 +365,7 @@ Codecs:
         if ($tag->description && $tag->longDescription) {
 
             $buf = new StringBuffer($tag->longDescription);
-            if ($buf->softTruncateBytesSuffix(static::TAG_DESCRIPTION_MAX_LEN, static::TAG_DESCRIPTION_SUFFIX) === $tag->description) {
+            if ($buf->softTruncateBytesSuffix(MetaDataHandler::TAG_DESCRIPTION_MAX_LEN, MetaDataHandler::TAG_DESCRIPTION_SUFFIX) === $tag->description) {
                 $description = $tag->longDescription;
             }
         }
@@ -468,6 +469,53 @@ Codecs:
         $this->setOptionIfUndefined(static::OPTION_TAG_LONG_DESCRIPTION, $tag->longDescription);
         $this->setOptionIfUndefined(static::OPTION_TAG_COMMENT, $tag->comment);
         $this->setOptionIfUndefined(static::OPTION_TAG_COPYRIGHT, $tag->copyright);
+    }
+
+    protected function lookupFileContents(SplFileInfo $referenceFile, $nameOfFile, $maxSize = 1024 * 1024)
+    {
+        $nameOfFileDir = $referenceFile->isDir() ? $referenceFile : new SplFileInfo($referenceFile->getPath());
+        $this->notice(sprintf("searching for %s in %s", $nameOfFile, $nameOfFileDir));
+        $autoDescriptionFile = new SplFileInfo($nameOfFileDir . DIRECTORY_SEPARATOR . $nameOfFile);
+
+        $this->debug(sprintf("checking file %s, realpath: %s", $autoDescriptionFile, $autoDescriptionFile->getRealPath()));
+
+        if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < $maxSize) {
+            $this->notice(sprintf("success: found %s for import", $nameOfFile));
+            return file_get_contents($autoDescriptionFile);
+        } else {
+            $this->notice(sprintf("file %s not found or too big", $nameOfFile));
+        }
+        return null;
+    }
+
+    protected function lookupAndAddCover()
+    {
+        if ($this->input->getOption(static::OPTION_SKIP_COVER)) {
+            return;
+        }
+        $coverDir = $this->argInputFile->isDir() ? $this->argInputFile : new SplFileInfo($this->argInputFile->getPath());
+
+        if (!$this->input->getOption(static::OPTION_COVER)) {
+            $this->notice(sprintf("searching for cover in %s", $coverDir));
+
+            $autoCoverFile = new SplFileInfo($coverDir . DIRECTORY_SEPARATOR . "cover.jpg");
+            if (!$autoCoverFile->isFile()) {
+                $coverLoader = new FileLoader();
+                $coverLoader->setIncludeExtensions(static::COVER_EXTENSIONS);
+                $coverLoader->addNonRecursive($coverDir);
+                $autoCoverFile = $coverLoader->current() ? $coverLoader->current() : null;
+            }
+
+            if ($autoCoverFile && $autoCoverFile->isFile()) {
+                $this->setOptionIfUndefined(static::OPTION_COVER, $autoCoverFile);
+            }
+        }
+
+        if ($this->input->getOption(static::OPTION_COVER)) {
+            $this->notice(sprintf("using cover %s", $this->input->getOption("cover")));
+        } else {
+            $this->notice("cover not found or not specified");
+        }
     }
 
 }

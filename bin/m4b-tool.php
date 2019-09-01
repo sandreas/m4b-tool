@@ -28,6 +28,7 @@ try {
         new Command\ChaptersCommand(),
         new Command\SplitCommand(),
         new Command\MergeCommand(),
+        new Command\MetaCommand(),
     ]);
 
     $application->run();

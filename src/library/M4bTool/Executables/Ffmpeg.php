@@ -350,4 +350,15 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
     {
         return true;
     }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $destinationFile
+     * @throws Exception
+     */
+    public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
+    {
+
+        $this->ffmpeg(["-i", $audioFile, "-an", "-vcodec", "copy", $destinationFile]);
+    }
 }

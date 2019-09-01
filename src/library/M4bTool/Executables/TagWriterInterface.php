@@ -12,6 +12,7 @@ interface TagWriterInterface
 {
     const FLAG_FORCE = 1 << 0;
     const FLAG_DEBUG = 1 << 1;
+    const FLAG_CLEANUP = 1 << 2;
 
     /**
      * @param SplFileInfo $file

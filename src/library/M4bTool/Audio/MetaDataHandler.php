@@ -11,6 +11,7 @@ use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Executables\TagReaderInterface;
 use M4bTool\Executables\TagWriterInterface;
+use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -181,5 +182,138 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
     public function detectSilences(SplFileInfo $file, TimeUnit $silenceLength)
     {
         return $this->ffmpeg->detectSilences($file, $silenceLength);
+    }
+
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $destinationFile
+     * @throws Exception
+     */
+    public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
+    {
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "cover.jpg");
+        $this->ensureFileDoesNotExist($destinationFile);
+
+        if ($this->detectFormat($audioFile) === static::FORMAT_MP4) {
+            $this->mp4v2->exportCover($audioFile, $destinationFile);
+            return;
+        }
+
+        $this->ffmpeg->exportCover($audioFile, $destinationFile);
+    }
+
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $coverFile
+     * @throws Exception
+     */
+    public function importCover(SplFileInfo $audioFile, SplFileInfo $coverFile = null)
+    {
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $coverFile, "cover.jpg");
+        $this->ensureFileExists($destinationFile);
+
+        $tag = $this->readTag($audioFile);
+        $tag->cover = $coverFile;
+        $this->writeTag($audioFile, $tag);
+    }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $destinationFile
+     * @throws Exception
+     */
+    public function exportChapters(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
+    {
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "chapters.txt");
+        $this->ensureFileDoesNotExist($destinationFile);
+        $tag = $this->readTag($audioFile);
+        file_put_contents($destinationFile, $this->mp4v2->chaptersToMp4v2Format($tag->chapters));
+    }
+
+    public function toMp4v2ChaptersFormat($chapters)
+    {
+        return $this->mp4v2->chaptersToMp4v2Format($chapters);
+    }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $chaptersFile
+     * @param Flags|null $flags
+     * @throws Exception
+     */
+    public function importChapters(SplFileInfo $audioFile, SplFileInfo $chaptersFile = null, Flags $flags = null)
+    {
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $chaptersFile, "chapters.txt");
+        $this->ensureFileExists($destinationFile);
+
+        $chapterParser = new Mp4ChapsChapterParser();
+        $tag = $this->readTag($audioFile);
+        $tag->chapters = $chapterParser->parse(file_get_contents($destinationFile));
+        $this->writeTag($audioFile, $tag, $flags);
+    }
+
+    /**
+     * @param SplFileInfo $destinationFile
+     * @throws Exception
+     */
+    private function ensureFileDoesNotExist(SplFileInfo $destinationFile)
+    {
+        if ($destinationFile->isFile() || $destinationFile->isDir()) {
+            throw new Exception(sprintf("destination file %s already exists", $destinationFile));
+        }
+    }
+
+    /**
+     * @param SplFileInfo $destinationFile
+     * @throws Exception
+     */
+    private function ensureFileExists(SplFileInfo $destinationFile)
+    {
+        if (!$destinationFile->isFile()) {
+            throw new Exception(sprintf("destination file %s does not exist", $destinationFile));
+        }
+    }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $destinationFile
+     * @throws Exception
+     */
+    public function exportDescription(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
+    {
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "description.txt");
+        $this->ensureFileDoesNotExist($destinationFile);
+        $tag = $this->readTag($audioFile);
+
+        $description = $tag->description;
+        if ($tag->description && $tag->longDescription) {
+            $buf = new StringBuffer($tag->longDescription);
+            if ($buf->softTruncateBytesSuffix(MetaDataHandler::TAG_DESCRIPTION_MAX_LEN, MetaDataHandler::TAG_DESCRIPTION_SUFFIX) === $tag->description) {
+                $description = $tag->longDescription;
+            }
+        }
+        file_put_contents($destinationFile, $description);
+    }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $destinationFile
+     * @throws Exception
+     */
+    public function exportFfmetadata(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
+    {
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "ffmetadata.txt");
+        $this->ensureFileDoesNotExist($destinationFile);
+        $tag = $this->readTag($audioFile);
+        $metaDataString = $this->ffmpeg->buildFfmetadata($tag);
+        file_put_contents($destinationFile, $metaDataString);
+    }
+
+    private function normalizeDefaultFile(SplFileInfo $referenceFile, ?SplFileInfo $destinationFile, $defaultFileName)
+    {
+        return $destinationFile ?? new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $defaultFileName);
+
     }
 }
