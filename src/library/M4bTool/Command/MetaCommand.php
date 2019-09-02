@@ -161,7 +161,7 @@ class MetaCommand extends AbstractConversionCommand
         $tag = $this->metaHandler->readTag($this->argInputFile);
         $tagLoaderComposite = new TagTransferComposite($tag);
 
-
+        $descriptionContent = "";
         if ($importFlags & static::ALL_FLAGS) {
             $this->lookupAndAddCover();
 
@@ -177,11 +177,18 @@ class MetaCommand extends AbstractConversionCommand
                 $tagLoaderComposite->add(new Ffmetadata($parser));
             }
 
+            $descriptionContent = $this->lookupFileContents($this->argInputFile, "description.txt");
+
         }
         $tagLoaderComposite->add(new InputOptions($this->input));
 
         $tag = $tagLoaderComposite->load();
+        if ($descriptionContent) {
+            $this->notice("enhancing tag with additional metadata from description.txt");
+            $tag->description = $descriptionContent;
+            $tag->longDescription = $descriptionContent;
 
+        }
         $flags = new Flags();
         if ($this->optForce) {
             $flags->insert(TagWriterInterface::FLAG_FORCE);
