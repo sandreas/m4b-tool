@@ -185,9 +185,11 @@ class MetaCommand extends AbstractConversionCommand
         $tag = $tagLoaderComposite->load();
         if ($descriptionContent) {
             $this->notice("enhancing tag with additional metadata from description.txt");
-            $tag->description = $descriptionContent;
-            $tag->longDescription = $descriptionContent;
-
+            $optDescription = $this->input->getOption(static::OPTION_TAG_DESCRIPTION);
+            $optLongDescription = $this->input->getOption(static::OPTION_TAG_LONG_DESCRIPTION);
+            $optLongDescription = $optLongDescription ? $optLongDescription : $optDescription;
+            $tag->description = $optDescription ? $optDescription : $descriptionContent;
+            $tag->longDescription = $optLongDescription ? $optLongDescription : $descriptionContent;
         }
         $flags = new Flags();
         if ($this->optForce) {
