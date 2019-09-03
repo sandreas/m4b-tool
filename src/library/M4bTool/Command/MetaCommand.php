@@ -5,38 +5,51 @@ namespace M4bTool\Command;
 
 
 use Exception;
+use M4bTool\Audio\Tag;
+use M4bTool\Audio\TagTransfer\Chapters;
+use M4bTool\Audio\TagTransfer\Cover;
+use M4bTool\Audio\TagTransfer\Description;
 use M4bTool\Audio\TagTransfer\Ffmetadata;
 use M4bTool\Audio\TagTransfer\InputOptions;
 use M4bTool\Audio\TagTransfer\OpenPackagingFormat;
 use M4bTool\Audio\TagTransfer\TagTransferComposite;
+use M4bTool\Common\ConditionalFlags;
 use M4bTool\Common\Flags;
 use M4bTool\Executables\TagWriterInterface;
-use M4bTool\Parser\FfmetaDataParser;
-use Psr\Cache\InvalidArgumentException;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
+use M4bTool\Filesystem\FileLoader;
+
 
 class MetaCommand extends AbstractConversionCommand
 {
-    const OPTION_AUTO_IMPORT = "auto-import";
+    const FLAG_NONE = 0;
+    const FLAG_ALL = PHP_INT_MAX;
+    const FLAG_TAG_OPTIONS = 1 << 0;
+    const FLAG_COVER = 1 << 1;
+    const FLAG_DESCRIPTION = 1 << 2;
+    const FLAG_FFMETADATA = 1 << 3;
+    const FLAG_OPF = 1 << 4;
+    const FLAG_CHAPTERS = 1 << 5;
 
-    const OPTION_AUTO_EXPORT = "auto-export";
+    const OPTION_EXPORT_ALL = "export-all";
+    const OPTION_EXPORT_COVER = "export-cover";
+    const OPTION_EXPORT_DESCRIPTION = "export-description";
+    const OPTION_EXPORT_FFMETADATA = "export-ffmetadata";
+    const OPTION_EXPORT_OPF = "export-opf";
+    const OPTION_EXPORT_CHAPTERS = "export-chapters";
 
-    const NO_FLAG = 0;
-    const ALL_FLAGS = PHP_INT_MAX;
+    const OPTION_IMPORT_ALL = "import-all";
+    const OPTION_IMPORT_COVER = "import-cover";
+    const OPTION_IMPORT_DESCRIPTION = "import-description";
+    const OPTION_IMPORT_FFMETADATA = "import-ffmetadata";
+    const OPTION_IMPORT_OPF = "import-opf";
+    const OPTION_IMPORT_CHAPTERS = "import-chapters";
 
-    const IMPORT_FLAG_COVER = 1 << 0;
-    const IMPORT_FLAG_DESCRIPTION = 1 << 1;
-    const IMPORT_FLAG_FFMETADATA = 1 << 2;
-
-
-    const EXPORT_FLAG_COVER = 1 << 0;
-    const EXPORT_FLAG_DESCRIPTION = 1 << 1;
-    const EXPORT_FLAG_FFMETADATA = 1 << 2;
-    const EXPORT_FLAG_OPF = 1 << 3;
+    const OPTION_REMOVE = "remove";
 
 
     protected function configure()
@@ -46,10 +59,23 @@ class MetaCommand extends AbstractConversionCommand
         $this->setDescription('View and change metadata for a single file');
         $this->setHelp('View and change metadata for a single file');
 
-        $this->addOption(static::OPTION_AUTO_IMPORT, null, InputOption::VALUE_NONE, "use all existing default tag sources to import metadata (e.g. cover.jpg, description.txt, chapters.txt, etc.)");
+        $this->addOption(static::OPTION_IMPORT_ALL, null, InputOption::VALUE_NONE, "use all existing default tag sources to import metadata (e.g. cover.jpg, description.txt, chapters.txt, etc.)");
+        $this->addOption(static::OPTION_IMPORT_COVER, null, InputOption::VALUE_OPTIONAL, "import cover cover file (e.g. cover.jpg)", false);
+        $this->addOption(static::OPTION_IMPORT_DESCRIPTION, null, InputOption::VALUE_OPTIONAL, "import description from plaintext file (e.g. description.txt)", false);
+        $this->addOption(static::OPTION_IMPORT_FFMETADATA, null, InputOption::VALUE_OPTIONAL, "import metadata in ffmetadata1 format (e.g. ffmetadata.txt)", false);
+        $this->addOption(static::OPTION_IMPORT_OPF, null, InputOption::VALUE_OPTIONAL, "import metadata from opf format (e.g. metadata.opf)", false);
+        $this->addOption(static::OPTION_IMPORT_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "import chapters from mp4v2 format (e.g. chapters.txt)", false);
 
+        $this->addOption(static::OPTION_EXPORT_ALL, null, InputOption::VALUE_NONE, "export all default tag sources as files (e.g. cover.jpg, description.txt, chapters.txt, etc.)");
+        $this->addOption(static::OPTION_EXPORT_COVER, null, InputOption::VALUE_OPTIONAL, "export cover cover file (e.g. cover.jpg)", false);
+        $this->addOption(static::OPTION_EXPORT_DESCRIPTION, null, InputOption::VALUE_OPTIONAL, "export description from plaintext file (e.g. description.txt)", false);
+        $this->addOption(static::OPTION_EXPORT_FFMETADATA, null, InputOption::VALUE_OPTIONAL, "export metadata in ffmetadata1 format (e.g. ffmetadata.txt)", false);
+        // currently not supported
+        // $this->addOption(static::OPTION_EXPORT_OPF, null, InputOption::VALUE_OPTIONAL, "export metadata from opf format (e.g. metadata.opf)", false);
+        $this->addOption(static::OPTION_EXPORT_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "export chapters from mp4v2 format (e.g. chapters.txt)", false);
 
-        $this->addOption(static::OPTION_AUTO_EXPORT, null, InputOption::VALUE_NONE, "export all default tag sources as files (e.g. cover.jpg, description.txt, chapters.txt, etc.)");
+        $this->addOption(static::OPTION_REMOVE, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "remove these tags (either comma separated --remove='title,album' or multiple usage '--remove=title --remove=album'", []);
+
 
     }
 
@@ -58,34 +84,50 @@ class MetaCommand extends AbstractConversionCommand
      * @param OutputInterface $output
      * @return int|void|null
      * @throws Exception
-     * @throws InvalidArgumentException
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $importFlags = static::NO_FLAG;
-        $importFlags |= $input->getOption(static::OPTION_AUTO_IMPORT) ? static::ALL_FLAGS : 0;
+        $importFlags = new ConditionalFlags();
+        $importFlags->insertIf(static::FLAG_ALL, $input->getOption(static::OPTION_IMPORT_ALL));
+        $importFlags->insertIf(static::FLAG_TAG_OPTIONS, count($input->getOption(static::OPTION_REMOVE)));
+        $importFlags->insertIf(static::FLAG_COVER, $input->getOption(static::OPTION_IMPORT_COVER));
+        $importFlags->insertIf(static::FLAG_DESCRIPTION, $input->getOption(static::OPTION_IMPORT_DESCRIPTION));
+        $importFlags->insertIf(static::FLAG_FFMETADATA, $input->getOption(static::OPTION_IMPORT_FFMETADATA));
+        $importFlags->insertIf(static::FLAG_OPF, $input->getOption(static::OPTION_IMPORT_OPF));
+        $importFlags->insertIf(static::FLAG_CHAPTERS, $input->getOption(static::OPTION_IMPORT_CHAPTERS));
+
+        foreach (static::ALL_TAG_OPTIONS as $tagOption) {
+            if ($input->getOption($tagOption) !== null) {
+                $importFlags->insert(static::FLAG_TAG_OPTIONS);
+                break;
+            }
+        }
 
 
-        $exportFlags = static::NO_FLAG;
-        $exportFlags |= $input->getOption(static::OPTION_AUTO_EXPORT) ? static::ALL_FLAGS : 0;
-
+        $exportFlags = new ConditionalFlags();
+        $exportFlags->insertIf(static::FLAG_ALL, $input->getOption(static::OPTION_EXPORT_ALL));
+        $exportFlags->insertIf(static::FLAG_COVER, $input->getOption(static::OPTION_EXPORT_COVER));
+        $exportFlags->insertIf(static::FLAG_DESCRIPTION, $input->getOption(static::OPTION_EXPORT_DESCRIPTION));
+        $exportFlags->insertIf(static::FLAG_FFMETADATA, $input->getOption(static::OPTION_EXPORT_FFMETADATA));
+//        $exportFlags->insertIf(static::FLAG_OPF, $input->getOption(static::OPTION_EXPORT_OPF));
+        $exportFlags->insertIf(static::FLAG_CHAPTERS, $input->getOption(static::OPTION_EXPORT_CHAPTERS));
 
         try {
             $this->initExecution($input, $output);
             if (!$this->argInputFile->isFile()) {
                 throw new Exception(sprintf("Input %s is not a valid file", $this->argInputFile));
             }
-            if ($importFlags === static::NO_FLAG && $exportFlags === static::NO_FLAG) {
+            if ($importFlags->equal(static::FLAG_NONE) && $exportFlags->equal(static::FLAG_NONE)) {
                 $this->viewMeta($this->argInputFile);
                 return;
             }
 
-            if ($importFlags !== static::NO_FLAG && $exportFlags !== static::NO_FLAG) {
-                throw new Exception("Import and export cannot be used at the same time");
+            if ($importFlags->notEqual(static::FLAG_NONE) && $exportFlags->notEqual(static::FLAG_NONE)) {
+                throw new Exception("Tag modification and export cannot be used at the same time");
             }
 
 
-            if ($importFlags) {
+            if ($importFlags->notEqual(static::FLAG_NONE)) {
                 $this->import($importFlags);
                 return;
             }
@@ -107,6 +149,14 @@ class MetaCommand extends AbstractConversionCommand
 
         $tag = $this->metaHandler->readTag($inputFile);
 
+        foreach ($this->dumpTag($tag) as $line) {
+            $this->output->writeln($line);
+        }
+
+    }
+
+    private function dumpTag(Tag $tag)
+    {
         $emptyMarker = "Empty tag fields";
         $longestKey = strlen($emptyMarker);
         $emptyTagNames = [];
@@ -114,8 +164,7 @@ class MetaCommand extends AbstractConversionCommand
         foreach ($tag as $key => $value) {
             $mappedKey = $this->mapTagKey($key);
 
-
-            if ($key === "chapters") {
+            if ($key === "chapters" || $key === "removeTags") {
                 continue;
             }
 
@@ -129,25 +178,26 @@ class MetaCommand extends AbstractConversionCommand
         }
 
         ksort($outputTagValues, SORT_NATURAL);
+        $output = [];
         foreach ($outputTagValues as $tagName => $tagValue) {
-            $this->output->writeln(sprintf("%s: %s", str_pad($tagName, $longestKey + 1), $tagValue));
+            $output[] = (sprintf("%s: %s", str_pad($tagName, $longestKey + 1), $tagValue));
+        }
+
+        if (count($tag->chapters) > 0) {
+            $output[] = "";
+            $output[] = str_pad("chapters", $longestKey + 1);
+            $output[] = $this->metaHandler->toMp4v2ChaptersFormat($tag->chapters);
+        } else {
+            $emptyTagNames[] = "chapters";
         }
 
         if (count($emptyTagNames) > 0) {
             natsort($emptyTagNames);
-            $this->output->writeln("");
-
-            $this->output->writeln(str_pad($emptyMarker, $longestKey + 1) . ": " . implode(", ", $emptyTagNames));
+            $output[] = "";
+            $output[] = str_pad($emptyMarker, $longestKey + 1) . ": " . implode(", ", $emptyTagNames);
         }
 
-
-        if (count($tag->chapters) > 0) {
-            $this->output->writeln("");
-            $this->output->writeln("Chapters:");
-            $this->output->writeln($this->metaHandler->toMp4v2ChaptersFormat($tag->chapters));
-        }
-
-
+        return $output;
     }
 
     private function mapTagKey($key)
@@ -156,99 +206,132 @@ class MetaCommand extends AbstractConversionCommand
     }
 
     /**
-     * @param int $importFlags
+     * @param Flags $importFlags
      * @throws Exception
      */
-    private function import(int $importFlags)
+    private function import(Flags $importFlags)
     {
         $tag = $this->metaHandler->readTag($this->argInputFile);
         $tagLoaderComposite = new TagTransferComposite($tag);
 
-        $descriptionContent = "";
-        if ($importFlags & static::ALL_FLAGS) {
-            $this->lookupAndAddCover();
-
-            if ($openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf")) {
-                $this->notice("enhancing tag with additional metadata from metadata.opf");
-                $tagLoaderComposite->add(new OpenPackagingFormat($openPackagingFormatContent));
-            }
-
-            if ($ffmetadataContent = $this->lookupFileContents($this->argInputFile, "ffmetadata.txt")) {
-                $this->notice("enhancing tag with additional metadata from ffmetadata.txt");
-                $parser = new FfmetaDataParser();
-                $parser->parse($ffmetadataContent);
-                $tagLoaderComposite->add(new Ffmetadata($parser));
-            }
-
-            $descriptionContent = $this->lookupFileContents($this->argInputFile, "description.txt");
-
+        if ($importFlags->contains(static::FLAG_COVER) && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
+            $this->notice("trying to load cover");
+            $preferredFileName = $this->input->getOption(static::OPTION_IMPORT_COVER);
+            $preferredFileName = $preferredFileName === false ? "cover.jpg" : $preferredFileName;
+            $tagLoaderComposite->add(new Cover(new FileLoader(), $this->argInputFile, $preferredFileName));
         }
-        $tagLoaderComposite->add(new InputOptions($this->input));
+
+        if ($importFlags->contains(static::FLAG_OPF)) {
+            $this->notice("trying to load opf");
+            $tagLoaderComposite->add(OpenPackagingFormat::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_OPF)));
+        }
+        if ($importFlags->contains(static::FLAG_FFMETADATA)) {
+            $this->notice("trying to load ffmetadata");
+            $tagLoaderComposite->add(Ffmetadata::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_FFMETADATA)));
+        }
+        if ($importFlags->contains(static::FLAG_CHAPTERS)) {
+            $this->notice("trying to load chapters");
+            $tagLoaderComposite->add(Chapters::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_CHAPTERS)));
+        }
+
+        if ($importFlags->contains(static::FLAG_DESCRIPTION)) {
+            $this->notice("trying to load description");
+            $tagLoaderComposite->add(Description::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_DESCRIPTION)));
+        }
+
+        if ($importFlags->contains(static::FLAG_TAG_OPTIONS)) {
+            $this->notice("trying to load tags from input arguments");
+            $tagLoaderComposite->add(new InputOptions($this->input));
+        }
 
         $tag = $tagLoaderComposite->load();
-        if ($descriptionContent) {
-            $this->notice("enhancing tag with additional metadata from description.txt");
-            $optDescription = $this->input->getOption(static::OPTION_TAG_DESCRIPTION);
-            $optLongDescription = $this->input->getOption(static::OPTION_TAG_LONG_DESCRIPTION);
-            $optLongDescription = $optLongDescription ? $optLongDescription : $optDescription;
-            $tag->description = $optDescription ? $optDescription : $descriptionContent;
-            $tag->longDescription = $optLongDescription ? $optLongDescription : $descriptionContent;
-        }
-        $flags = new Flags();
-        if ($this->optForce) {
-            $flags->insert(TagWriterInterface::FLAG_FORCE);
-        }
-        if ($this->optDebug) {
-            $flags->insert(TagWriterInterface::FLAG_DEBUG);
-        }
-        $flags->insert(TagWriterInterface::FLAG_CLEANUP);
 
+        $removeTags = [];
+        foreach ($this->input->getOption(static::OPTION_REMOVE) as $removeTag) {
+            $removeTags = array_merge($removeTags, explode(",", $removeTag));
+        }
+        if (count($removeTags) > 0) {
+            $this->notice("");
+            $this->notice(sprintf("removing tags: %s", implode(", ", $removeTags)));
+            $this->notice("");
+            $tag->removeTags = $removeTags;
+            foreach ($removeTags as $tagPropertyName) {
+                if (property_exists($tag, $tagPropertyName)) {
+                    $tag->$tagPropertyName = is_array($tag->$tagPropertyName) ? [] : null;
+                }
+            }
+        }
 
-        $this->metaHandler->writeTag($this->argInputFile, $tag, $flags);
-        if ($importFlags & static::ALL_FLAGS && $this->lookupFileContents($this->argInputFile, "chapters.txt")) {
-            $this->notice("enhancing tag with additional chapters from chapters.txt");
-            $this->metaHandler->importChapters($this->argInputFile, null, $flags);
+        $this->notice("storing tags:");
+
+        $outputLines = $this->dumpTag($tag);
+        foreach ($outputLines as $outputLine) {
+            $this->notice($outputLine);
+        }
+        $writeTagFlags = new ConditionalFlags();
+        $writeTagFlags->insertIf(TagWriterInterface::FLAG_FORCE, $this->optForce);
+        $writeTagFlags->insertIf(TagWriterInterface::FLAG_DEBUG, $this->optDebug);
+        $writeTagFlags->insert(TagWriterInterface::FLAG_CLEANUP);
+        $this->metaHandler->writeTag($this->argInputFile, $tag, $writeTagFlags);
+
+    }
+
+    /**
+     * @param Flags $exportFlags
+     */
+    private function export(Flags $exportFlags)
+    {
+        $inputFile = $this->argInputFile;
+        if ($exportFlags->contains(static::FLAG_COVER)) {
+            try {
+                $this->metaHandler->exportCover($inputFile, $this->prepareExportFile($inputFile, "cover.jpg", $this->input->getOption(static::OPTION_EXPORT_COVER)));
+            } catch (Exception $e) {
+                $this->error($e->getMessage());
+            }
+        }
+
+        if ($exportFlags->contains(static::FLAG_DESCRIPTION)) {
+            try {
+                $this->metaHandler->exportDescription($inputFile, $this->prepareExportFile($inputFile, "description.txt", $this->input->getOption(static::OPTION_EXPORT_DESCRIPTION)));
+            } catch (Exception $e) {
+                $this->error($e->getMessage());
+            }
+        }
+
+        if ($exportFlags->contains(static::FLAG_FFMETADATA)) {
+            try {
+                $this->metaHandler->exportFfmetadata($inputFile, $this->prepareExportFile($inputFile, "ffmetadata.txt", $this->input->getOption(static::OPTION_EXPORT_FFMETADATA)));
+            } catch (Exception $e) {
+                $this->error($e->getMessage());
+            }
+        }
+
+        if ($exportFlags->contains(static::FLAG_CHAPTERS)) {
+            try {
+                $this->metaHandler->exportChapters($inputFile, $this->prepareExportFile($inputFile, "chapters.txt", $this->input->getOption(static::OPTION_EXPORT_CHAPTERS)));
+            } catch (Exception $e) {
+                $this->error($e->getMessage());
+            }
         }
     }
 
     /**
-     * @param int $exportFlags
+     * @param SplFileInfo $argInputFile
+     * @param $defaultFileName
+     * @param null $optionValue
+     * @return SplFileInfo
      * @throws Exception
      */
-    private function export(int $exportFlags)
+    private function prepareExportFile(SplFileInfo $argInputFile, $defaultFileName, $optionValue = null)
     {
-        if ($exportFlags & static::ALL_FLAGS) {
-            $files = ["cover.jpg", "description.txt", "chapters.txt", "ffmetadata.txt"];
-            if ($this->optForce) {
-                foreach ($files as $fileName) {
-                    $path = $this->argInputFile->isDir() ? $this->argInputFile : $this->argInputFile->getPath();
-                    $file = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
-                    if ($file->isFile()) {
-                        unlink($file);
-                    }
-                }
+        $optionValue = $optionValue ? $optionValue : $defaultFileName;
+        $destinationFile = new SplFileInfo(($argInputFile->isDir() ? $argInputFile : $argInputFile->getPath()) . DIRECTORY_SEPARATOR . $optionValue);
+        if ($destinationFile->isFile()) {
+            if (!$this->optForce) {
+                throw new Exception(sprintf("File %s already exists and --%s is not active - skipping export", $destinationFile, static::OPTION_FORCE));
             }
-
-            try {
-                $this->metaHandler->exportCover($this->argInputFile);
-            } catch (Exception $e) {
-                $this->error($e->getMessage());
-            }
-            try {
-                $this->metaHandler->exportDescription($this->argInputFile);
-            } catch (Exception $e) {
-                $this->error($e->getMessage());
-            }
-            try {
-                $this->metaHandler->exportChapters($this->argInputFile);
-            } catch (Exception $e) {
-                $this->error($e->getMessage());
-            }
-            try {
-                $this->metaHandler->exportFfmetadata($this->argInputFile);
-            } catch (Exception $e) {
-                $this->error($e->getMessage());
-            }
+            unlink($destinationFile);
         }
+        return $destinationFile;
     }
 }

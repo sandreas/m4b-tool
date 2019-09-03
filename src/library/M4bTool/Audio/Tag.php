@@ -73,6 +73,7 @@ class Tag implements ArrayAccess
     public $comment;
     public $copyright;
     public $encodedBy;
+    public $type = self::MP4_STIK_AUDIOBOOK;
 
     // MP3 Specific
     public $performer; // TPE3
@@ -86,6 +87,8 @@ class Tag implements ArrayAccess
     // pseudo tags that are used to auto generate sort properties, if not present
     public $series;
     public $seriesPart;
+
+    public $removeTags = [];
 
 
     public function mergeMissing(Tag $tag)

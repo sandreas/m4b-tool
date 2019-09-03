@@ -51,6 +51,27 @@ class AbstractConversionCommand extends AbstractCommand
     const OPTION_TAG_SERIES = "series";
     const OPTION_TAG_SERIES_PART = "series-part";
 
+    const ALL_TAG_OPTIONS = [
+        self::OPTION_TAG_NAME,
+        self::OPTION_TAG_SORT_NAME,
+        self::OPTION_TAG_ALBUM,
+        self::OPTION_TAG_SORT_ALBUM,
+        self::OPTION_TAG_ARTIST,
+        self::OPTION_TAG_SORT_ARTIST,
+        self::OPTION_TAG_GENRE,
+        self::OPTION_TAG_WRITER,
+        self::OPTION_TAG_ALBUM_ARTIST,
+        self::OPTION_TAG_YEAR,
+        self::OPTION_TAG_COVER,
+        self::OPTION_TAG_DESCRIPTION,
+        self::OPTION_TAG_LONG_DESCRIPTION,
+        self::OPTION_TAG_COMMENT,
+        self::OPTION_TAG_COPYRIGHT,
+        self::OPTION_TAG_ENCODED_BY,
+        self::OPTION_TAG_SERIES,
+        self::OPTION_TAG_SERIES_PART,
+    ];
+
 
     const MAX_IPOD_SAMPLES = 2147483647;
     const IPOD_DEFAULT_SAMPLING_RATE = 22050;

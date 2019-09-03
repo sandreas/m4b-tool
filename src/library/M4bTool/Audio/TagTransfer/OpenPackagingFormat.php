@@ -8,6 +8,7 @@ use DateTime;
 use Exception;
 use M4bTool\Audio\Tag;
 use SimpleXMLElement;
+use SplFileInfo;
 use Throwable;
 
 class OpenPackagingFormat implements TagLoaderInterface
@@ -26,9 +27,26 @@ class OpenPackagingFormat implements TagLoaderInterface
 
     protected $xmlString;
 
-    public function __construct($xmlString)
+    public function __construct($xmlString = "")
     {
         $this->xmlString = $xmlString;
+    }
+
+    /**
+     * Cover constructor.
+     * @param SplFileInfo $reference
+     * @param null $fileName
+     * @return OpenPackagingFormat
+     */
+    public static function fromFile(SplFileInfo $reference, $fileName = null)
+    {
+        $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
+        $fileName = $fileName ? $fileName : "metadata.opf";
+        $fileToLoad = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
+        if ($fileToLoad->isFile()) {
+            return new static(file_get_contents($fileToLoad));
+        }
+        return new static();
     }
 
     /**

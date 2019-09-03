@@ -27,7 +27,6 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
      */
     public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
-        $command = [];
         $this->appendParameterToCommand($command, "-track", $tag->track);
         $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
         $this->appendParameterToCommand($command, "-song", $tag->title);
@@ -43,7 +42,7 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
         $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
         $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy ?? $tag->encoder);
         $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
-        $this->appendParameterToCommand($command, "-type", Tag::MP4_STIK_AUDIOBOOK);
+        $this->appendParameterToCommand($command, "-type", $tag->type);
 
 
         if ($this->doesMp4tagsSupportSorting()) {
@@ -65,6 +64,35 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
 
         if ($process->getExitCode() !== 0) {
             throw new Exception(sprintf("Could not tag file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
+        }
+
+        if (count($tag->removeTags) > 0) {
+            $command = [];
+            $this->appendParameterToCommand($command, "-r track", in_array("track", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r tracks", in_array("tracks", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r song", in_array("title", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r artist", in_array("artist", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r genre", in_array("genre", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r writer", in_array("writer", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r description", in_array("description", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r longdesc", in_array("longDescription", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r albumartist", in_array("albumArtist", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r year", in_array("year", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r album", in_array("album", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r comment", in_array("comment", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r copyright", in_array("copyright", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r encodedby", in_array("encodedBy", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r lyrics", in_array("lyrics", $tag->removeTags));
+            $this->appendParameterToCommand($command, "-r type", in_array("type", $tag->removeTags));
+
+            /*
+            // does not work atm
+            if ($this->doesMp4tagsSupportSorting()) {
+                $this->appendParameterToCommand($command, "-r sortname", in_array("sortTitle", $tag->removeTags));
+                $this->appendParameterToCommand($command, "-r sortalbum", in_array("sortAlbum", $tag->removeTags));
+                $this->appendParameterToCommand($command, "-r sortartist", in_array("sortArtist", $tag->removeTags));
+            }
+            */
         }
     }
 

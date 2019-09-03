@@ -56,14 +56,14 @@ abstract class AbstractExecutable
 
     protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)
     {
-        if (is_bool($parameterValue)) {
+        if (is_bool($parameterValue) && $parameterValue) {
             $command[] = $parameterName;
             return;
         }
 
         if ($parameterValue) {
             $command[] = $parameterName;
-            $command[] = $parameterValue;
+            $command[] = (string)$parameterValue;
         }
     }
 

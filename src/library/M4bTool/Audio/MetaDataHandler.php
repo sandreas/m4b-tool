@@ -313,7 +313,7 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
 
     private function normalizeDefaultFile(SplFileInfo $referenceFile, ?SplFileInfo $destinationFile, $defaultFileName)
     {
-        return $destinationFile ?? new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $defaultFileName);
+        return $destinationFile ? $destinationFile : new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $defaultFileName);
 
     }
 }
