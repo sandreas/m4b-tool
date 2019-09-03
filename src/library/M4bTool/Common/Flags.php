@@ -8,6 +8,16 @@ class Flags
 {
     private $rawValue = 0;
 
+    public function equal($flag)
+    {
+        return $this->rawValue === $flag;
+    }
+
+    public function notEqual($flag)
+    {
+        return $this->rawValue !== $flag;
+    }
+
     public function insert($flag)
     {
         $this->rawValue |= $flag;
