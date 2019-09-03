@@ -65,6 +65,9 @@ class AbstractConversionCommand extends AbstractCommand
         44100 => "128k",
     ];
 
+    const COVER_EXTENSIONS = ["jpg", "jpeg", "png"];
+
+
     protected $optAudioFormat;
     protected $optAudioExtension;
     protected $optAudioChannels;

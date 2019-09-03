@@ -84,7 +84,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         'chapter-pattern' => "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i",
         'chapter-remove-chars' => "„“”",
     ];
-    const COVER_EXTENSIONS = ["jpg", "jpeg", "png"];
 
     protected $outputDirectory;
 

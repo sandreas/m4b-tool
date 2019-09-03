@@ -10,6 +10,7 @@ use M4bTool\Audio\Tag;
 use M4bTool\StringUtilities\Runes;
 use M4bTool\StringUtilities\Scanner;
 use M4bTool\StringUtilities\Strings;
+use Sandreas\Strings\RuneList;
 use Sandreas\Time\TimeUnit;
 
 
@@ -231,7 +232,7 @@ class FfmetaDataParser
 
 
             if ($propertyName) {
-                $this->metaDataProperties[$propertyName] = $propertyValue;
+                $this->metaDataProperties[$propertyName] = $this->unquote($propertyValue);
             }
 
         }
@@ -357,5 +358,17 @@ class FfmetaDataParser
             return null;
         }
         return $this->metaDataProperties[$propertyName];
+    }
+
+    private function unquote(string $propertyValue)
+    {
+        $runeList = new RuneList($propertyValue);
+        return (string)$runeList->unquote([
+            "=" => "\\",
+            ";" => "\\",
+            "#" => "\\",
+            "\\" => "\\",
+            "\n" => "\\"
+        ]);
     }
 }

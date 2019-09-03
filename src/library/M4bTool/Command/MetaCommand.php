@@ -13,6 +13,7 @@ use M4bTool\Common\Flags;
 use M4bTool\Executables\TagWriterInterface;
 use M4bTool\Parser\FfmetaDataParser;
 use Psr\Cache\InvalidArgumentException;
+use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -127,11 +128,13 @@ class MetaCommand extends AbstractConversionCommand
             $longestKey = max(strlen($mappedKey), $longestKey);
         }
 
+        ksort($outputTagValues, SORT_NATURAL);
         foreach ($outputTagValues as $tagName => $tagValue) {
             $this->output->writeln(sprintf("%s: %s", str_pad($tagName, $longestKey + 1), $tagValue));
         }
 
         if (count($emptyTagNames) > 0) {
+            natsort($emptyTagNames);
             $this->output->writeln("");
 
             $this->output->writeln(str_pad($emptyMarker, $longestKey + 1) . ": " . implode(", ", $emptyTagNames));
@@ -217,8 +220,12 @@ class MetaCommand extends AbstractConversionCommand
         if ($exportFlags & static::ALL_FLAGS) {
             $files = ["cover.jpg", "description.txt", "chapters.txt", "ffmetadata.txt"];
             if ($this->optForce) {
-                foreach ($files as $file) {
-                    unlink($this->argInputFile . DIRECTORY_SEPARATOR . $file);
+                foreach ($files as $fileName) {
+                    $path = $this->argInputFile->isDir() ? $this->argInputFile : $this->argInputFile->getPath();
+                    $file = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
+                    if ($file->isFile()) {
+                        unlink($file);
+                    }
                 }
             }
 

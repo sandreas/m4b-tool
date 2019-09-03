@@ -19,6 +19,7 @@ class FfmetaDataParserTest extends TestCase
     protected $m4bComplexMetaData;
     protected $mp4StreamInfo;
     protected $mp4StreamInfoWithoutFrame;
+    protected $escapedMeta;
 
     public function setUp()
     {
@@ -97,6 +98,100 @@ START=1725444
 END=1863084
 title=005
 FFMETA;
+
+        $this->escapedMeta = <<<FFMETA
+;FFMETADATA1
+major_brand=isom
+minor_version=512
+compatible_brands=isomiso2mp41
+title=Jingle und Ansage
+artist=J.K. Rowling
+album_artist=Rufus Beck
+album=test\\\\\\\\\\\\\;test
+comment=test
+genre=Hörbuch
+date=2001
+track=1/8
+description=testing\\\\\\\\\\\\\; testing2\
+toll\
+
+synopsis=testing\\\\\\\\\\\\\; testing2\
+toll\
+
+media_type=2
+encoder=Lavf58.20.100
+[CHAPTER]
+TIMEBASE=1/1000
+START=0
+END=22149
+title=Jingle und Ansage
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x7fe7c4004400] stream 0, timescale not set
+    Last message repeated 2 times
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '../data/_output/merged.m4b':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2mp41
+    title           : Jingle und Ansage
+    artist          : J.K. Rowling
+    album_artist    : Rufus Beck
+    album           : test\\\;test
+    comment         : test
+    genre           : Hörbuch
+    date            : 2001
+    track           : 1/8
+    description     : testing\\\; testing2
+                    : toll
+                    : 
+    synopsis        : testing\\\; testing2
+                    : toll
+                    : 
+    encoder         : m4b-tool
+    media_type      : 2
+  Duration: 00:00:22.15, start: 0.000000, bitrate: 136 kb/s
+    Chapter #0:0: start 0.000000, end 22.149000
+    Metadata:
+      title           : Jingle und Ansage
+    Stream #0:0(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+    Metadata:
+      handler_name    : SoundHandler
+    Stream #0:1: Video: mjpeg, yuvj420p(pc, bt470bg/unknown/unknown), 240x240 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc
+    Stream #0:2: Video: mjpeg, yuvj420p(pc, bt470bg/unknown/unknown), 95x84 [SAR 1:1 DAR 95:84], 90k tbr, 90k tbn, 90k tbc
+    Stream #0:3: Video: mjpeg, yuvj420p(pc, bt470bg/unknown/unknown), 95x84 [SAR 1:1 DAR 95:84], 90k tbr, 90k tbn, 90k tbc
+    Stream #0:4(und): Data: bin_data (text / 0x74786574), 0 kb/s
+    Metadata:
+      creation_time   : 2019-09-03T09:55:19.000000Z
+Output #0, ffmetadata, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2mp41
+    title           : Jingle und Ansage
+    artist          : J.K. Rowling
+    album_artist    : Rufus Beck
+    album           : test\\\;test
+    comment         : test
+    genre           : Hörbuch
+    date            : 2001
+    track           : 1/8
+    description     : testing\\\; testing2
+                    : toll
+                    : 
+    synopsis        : testing\\\; testing2
+                    : toll
+                    : 
+    media_type      : 2
+    encoder         : Lavf58.20.100
+    Chapter #0:0: start 0.000000, end 22.149000
+    Metadata:
+      title           : Jingle und Ansage
+Stream mapping:
+Press [q] to stop, [?] for help
+size=       0kB time=-577014:32:22.77 bitrate=N/A speed=N/A    
+video:0kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+Output file is empty, nothing was encoded
+FFMETA;
+
 
 
         $this->mp3MetaData = <<<FFMETA
@@ -344,5 +439,11 @@ FFSTREAMINFO;
         $this->assertEquals("00:00:22.150", $this->subject->getDuration()->format());
         $this->assertEquals(FfmetaDataParser::FORMAT_MP4, $this->subject->getFormat());
 
+    }
+
+    public function testParseEscapedMetadata()
+    {
+        $this->subject->parse($this->escapedMeta);
+        $this->assertEquals("test\\\\\\;test", $this->subject->getProperty("album"));
     }
 }
