@@ -4,6 +4,7 @@
 namespace M4bTool\Executables;
 
 
+use const DIRECTORY_SEPARATOR;
 use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Common\Flags;
@@ -143,7 +144,7 @@ class Fdkaac extends AbstractExecutable implements TagReaderInterface, TagWriter
         if ('' === $argument || null === $argument) {
             return '""';
         }
-        if ('\\' !== \DIRECTORY_SEPARATOR) {
+        if ('\\' !== DIRECTORY_SEPARATOR) {
             return "'" . str_replace("'", "'\\''", $argument) . "'";
         }
         if (false !== strpos($argument, "\0")) {

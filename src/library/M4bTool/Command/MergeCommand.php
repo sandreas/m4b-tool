@@ -779,7 +779,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     /**
      * @param SplFileInfo $outputTmpFile
      * @param Chapter[] $chapters
-     * @throws InvalidArgumentException
      * @throws Exception
      */
     private function tagMergedFile(SplFileInfo $outputTmpFile, array $chapters)

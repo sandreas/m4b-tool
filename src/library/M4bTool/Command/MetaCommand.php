@@ -24,7 +24,7 @@ use Throwable;
 use M4bTool\Filesystem\FileLoader;
 
 
-class MetaCommand extends AbstractConversionCommand
+class MetaCommand extends AbstractMetadataCommand
 {
     const FLAG_NONE = 0;
     const FLAG_ALL = PHP_INT_MAX;
