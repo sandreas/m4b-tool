@@ -15,10 +15,9 @@ use Symfony\Component\Process\Process;
 
 class Fdkaac extends AbstractExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
 {
-    protected $ffmpeg;
-
     const PROFILE_AAC_HE = "aac_he";
     const PROFILE_AAC_HE_V2 = "aac_he_v2";
+    protected $ffmpeg;
 
     /**
      * Fdkaac constructor.
@@ -95,54 +94,67 @@ class Fdkaac extends AbstractExecutable implements TagReaderInterface, TagWriter
         }
 
         switch ($options->profile) {
-            case static::PROFILE_AAC_HE:
-                $options->channels = 1;
-                $fdkaacProfile = 5;
-                break;
             case static::PROFILE_AAC_HE_V2:
                 $options->channels = 2;
                 $fdkaacProfile = 29;
                 break;
+            default:
+            case static::PROFILE_AAC_HE:
+                $options->channels = 1;
+                $fdkaacProfile = 5;
+                break;
         }
 
+        // Pipe usage does not work with new Process, so the command has to be put together manually
+        $command = ["ffmpeg", "-i", $this->escapeArgument($options->source), "-vn"];
+        if ($options->channels) {
+            $command = array_merge($command, ["-ac", $this->escapeArgument($options->channels)]);
+        }
+        if ($options->sampleRate) {
+            $command = array_merge($command, ["-ar", $this->escapeArgument($options->sampleRate)]);
+        }
+        $command = array_merge($command, ["-f", "caf", "-", "|", "fdkaac"]);
 
-        $this->appendParameterToCommand($command, "--raw-channels", $options->channels);
-        $this->appendParameterToCommand($command, "--raw-rate", $options->sampleRate);
-        $this->appendParameterToCommand($command, "-p", $fdkaacProfile);
-        $this->appendParameterToCommand($command, "-b", $options->bitRate);
+        if ($options->channels) {
+            $command = array_merge($command, ["--raw-channels", $this->escapeArgument($options->channels)]);
+        }
+        if ($options->sampleRate) {
+            $command = array_merge($command, ["--raw-rate", $this->escapeArgument($options->sampleRate)]);
+        }
+        if ($fdkaacProfile) {
+            $command = array_merge($command, ["-p", $this->escapeArgument($fdkaacProfile)]);
+        }
 
+        if ($options->bitRate) {
+            $command = array_merge($command, ["-b", $this->escapeArgument($options->bitRate)]);
+        }
+        $command = array_merge($command, ["-o", $this->escapeArgument($options->destination), "-"]);
 
-        $this->appendParameterToCommand($command, "-o", $options->destination);
+        $shellCommand = implode(" ", $command);
 
-        $command[] = $options->source;
-
-        file_put_contents(__DIR__ . "/../../../../data/_fdkaac.txt", implode(" ", $command) . PHP_EOL, FILE_APPEND);
-
-        $process = $this->createNonBlockingProcess($command);
+        $process = Process::fromShellCommandline($shellCommand);
         $process->setTimeout(0);
         $process->start();
         return $process;
     }
 
-    /**
-     * @param Ffmpeg $ffmpeg
-     * @param FileConverterOptions $options
-     * @param SplFileInfo $tmpOutputFile
-     * @return Process
-     * @throws Exception
-     */
-    public function prepareConversion(Ffmpeg $ffmpeg, FileConverterOptions $options, SplFileInfo $tmpOutputFile)
+    private function escapeArgument(?string $argument): string
     {
-        // $tmpOutputFile = (string)$options->destination . ".fdkaac-input";
-        if ($tmpOutputFile->isFile()) {
-            unlink($tmpOutputFile);
+        if ('' === $argument || null === $argument) {
+            return '""';
         }
-        $command = ["-i", $options->source, "-vn", "-ac", $options->channels, "-ar", $options->sampleRate, "-f", "caf", (string)$tmpOutputFile];
-        $process = $ffmpeg->runProcess($command);
-        if (!$process->isSuccessful() || !$tmpOutputFile->isFile()) {
-            throw new Exception(sprintf("Could not prepare conversion for file %s", $options->source));
+        if ('\\' !== \DIRECTORY_SEPARATOR) {
+            return "'" . str_replace("'", "'\\''", $argument) . "'";
         }
-        return $process;
+        if (false !== strpos($argument, "\0")) {
+            $argument = str_replace("\0", '?', $argument);
+        }
+        if (!preg_match('/[\/()%!^"<>&|\s]/', $argument)) {
+            return $argument;
+        }
+        $argument = preg_replace('/(\\\\+)$/', '$1$1', $argument);
+
+        return '"' . str_replace(['"', '^', '%', '!', "\n"], ['""', '"^^"', '"^%"', '"^!"', '!LF!'], $argument) . '"';
     }
 
     /**

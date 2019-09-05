@@ -57,13 +57,9 @@ class ConversionTask extends AbstractTask
                 $this->skip();
                 return;
             }
+
             if ($this->fdkaac->supportsConversion($this->options)) {
-                $preparedOutputFile = new SplFileInfo($this->options->destination . ".fdkaac-input");
-                $this->fdkaac->prepareConversion($this->ffmpeg, $this->options, $preparedOutputFile);
-                $options = clone $this->options;
-                $options->source = $preparedOutputFile;
-                $this->process = $this->fdkaac->convertFile($options);
-                $this->tmpFilesToCleanUp[] = $preparedOutputFile;
+                $this->process = $this->fdkaac->convertFile($this->options);
             } else {
                 $this->process = $this->ffmpeg->convertFile($this->options);
             }
