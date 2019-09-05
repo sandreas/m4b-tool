@@ -601,6 +601,91 @@ If you would like to use a custom filename template, the [Twig](https://twig.sym
 - It is not recommended to use `{{description}}` or `{{longdescription}}` for filenames but they are also provided, if the field contains other information than intended
 - Special chars, that are forbidden in filenames are removed automatically
 
+## meta (experimental)
+
+With `m4b-tool` you can display, change, import and export specific metadata of one single m4b audiobook file. Since editing metadata is not the main goal of `m4b-tool` there might be a few things that do not work as expected, but for now this experimental feature is not beeing developed further, until major refactorings are finished.
+
+### Examples:
+```
+# show metadata of audiobook
+m4b-tool meta my-audio-book.m4b
+
+# import file based metadata (cover.jpg, description.txt, chapters.txt, etc.) and change album to "My Album"
+m4b-tool meta --import-all --album="My Album" my-audio-book.m4b
+
+# export file based metadata (cover.jpg, description.txt, chapters.txt, etc.)
+m4b-tool meta --export-all my-audio-book.m4b
+
+# remove metadata fields - hint: this only works for some of the main fields
+m4b-tool meta --remove="album,albumArtist" my-audio-book.m4b
+```
+
+
+> Note: If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](#chapters) for more info.
+
+### Reference
+For all options, see `m4b-tool meta --help`:
+
+```
+Description:
+  View and change metadata for a single file
+
+Usage:
+  meta [options] [--] <input>
+
+Arguments:
+  input                                          Input file or folder
+
+Options:
+      --logfile[=LOGFILE]                        file to log all output [default: ""]
+      --debug                                    enable debug mode - sets verbosity to debug, logfile to m4b-tool.log and temporary encoded files are not deleted
+  -f, --force                                    force overwrite of existing files
+      --no-cache                                 clear cache completely before doing anything
+      [...]
+      --name[=NAME]                              custom name, otherwise the existing metadata will be used
+      --sortname[=SORTNAME]                      custom sortname, that is used only for sorting
+      --album[=ALBUM]                            custom album, otherwise the existing metadata for name will be used
+      --sortalbum[=SORTALBUM]                    custom sortalbum, that is used only for sorting
+      --artist[=ARTIST]                          custom artist, otherwise the existing metadata will be used
+      --sortartist[=SORTARTIST]                  custom sortartist, that is used only for sorting
+      --genre[=GENRE]                            custom genre, otherwise the existing metadata will be used
+      --writer[=WRITER]                          custom writer, otherwise the existing metadata will be used
+      --albumartist[=ALBUMARTIST]                custom albumartist, otherwise the existing metadata will be used
+      --year[=YEAR]                              custom year, otherwise the existing metadata will be used
+      --description[=DESCRIPTION]                custom short description, otherwise the existing metadata will be used
+      --longdesc[=LONGDESC]                      custom long description, otherwise the existing metadata will be used
+      --comment[=COMMENT]                        custom comment, otherwise the existing metadata will be used
+      --copyright[=COPYRIGHT]                    custom copyright, otherwise the existing metadata will be used
+      --encoded-by[=ENCODED-BY]                  custom encoded-by, otherwise the existing metadata will be used
+      --cover[=COVER]                            custom cover, otherwise the existing metadata will be used
+      --skip-cover                               skip extracting and embedding covers
+      --series[=SERIES]                          custom series, this pseudo tag will be used to auto create sort order (e.g. Harry Potter or The Kingkiller Chronicles)
+      --series-part[=SERIES-PART]                custom series part, this pseudo tag will be used to auto create sort order (e.g. 1 or 2.5)
+      --fix-mime-type                            try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent an empty video window
+      --import-all                               use all existing default tag sources to import metadata (e.g. cover.jpg, description.txt, chapters.txt, etc.)
+      --import-cover[=IMPORT-COVER]              import cover cover file (e.g. cover.jpg) [default: false]
+      --import-description[=IMPORT-DESCRIPTION]  import description from plaintext file (e.g. description.txt) [default: false]
+      --import-ffmetadata[=IMPORT-FFMETADATA]    import metadata in ffmetadata1 format (e.g. ffmetadata.txt) [default: false]
+      --import-opf[=IMPORT-OPF]                  import metadata from opf format (e.g. metadata.opf) [default: false]
+      --import-chapters[=IMPORT-CHAPTERS]        import chapters from mp4v2 format (e.g. chapters.txt) [default: false]
+      --export-all                               export all default tag sources as files (e.g. cover.jpg, description.txt, chapters.txt, etc.)
+      --export-cover[=EXPORT-COVER]              export cover cover file (e.g. cover.jpg) [default: false]
+      --export-description[=EXPORT-DESCRIPTION]  export description from plaintext file (e.g. description.txt) [default: false]
+      --export-ffmetadata[=EXPORT-FFMETADATA]    export metadata in ffmetadata1 format (e.g. ffmetadata.txt) [default: false]
+      --export-chapters[=EXPORT-CHAPTERS]        export chapters from mp4v2 format (e.g. chapters.txt) [default: false]
+      --remove[=REMOVE]                          remove these tags (either comma separated --remove='title,album' or multiple usage '--remove=title --remove=album' (multiple values allowed)
+  -h, --help                                     Display this help message
+  -q, --quiet                                    Do not output any message
+  -V, --version                                  Display this application version
+      --ansi                                     Force ANSI output
+      --no-ansi                                  Disable ANSI output
+  -n, --no-interaction                           Do not ask any interactive question
+  -v|vv|vvv, --verbose                           Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
+
+```
+
+
+
 ## chapters
 
 Many m4b audiobook files do not contain valid chapters for different reasons. `m4b-tool` can handle two cases:
