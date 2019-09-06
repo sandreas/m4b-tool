@@ -143,13 +143,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         try {
 
-            $flags = 0;
-            if ($input->getOption(static::OPTION_CHAPTER_NO_REINDEXING)) {
-                $flags |= ChapterHandler::NO_REINDEXING;
-            }
-            if ($input->getOption(static::OPTION_CHAPTER_USE_FILENAMES)) {
-                $flags |= ChapterHandler::USE_FILENAMES;
-            }
+            $flags = new ConditionalFlags();
+            $flags->insertIf(ChapterHandler::NO_REINDEXING, $input->getOption(static::OPTION_CHAPTER_NO_REINDEXING));
+            $flags->insertIf(ChapterHandler::USE_FILENAMES, $input->getOption(static::OPTION_CHAPTER_USE_FILENAMES));
+
             $this->chapterHandler->setFlags($flags);
 
             $batchPatterns = $input->getOption(static::OPTION_BATCH_PATTERN);

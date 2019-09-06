@@ -4,9 +4,11 @@
 namespace M4bTool\Chapter;
 
 
+use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Audio\Silence;
+use M4bTool\Common\Flags;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
@@ -29,16 +31,18 @@ class ChapterHandler
 
     protected $removeChars;
 
-    protected $flags = 0;
+    /** @var Flags */
+    protected $flags;
 
     public function __construct(MetaDataHandler $meta)
     {
         $this->meta = $meta;
         $this->maxLength = new TimeUnit();
         $this->desiredLength = new TimeUnit();
+        $this->flags = new Flags();
     }
 
-    public function setFlags($flags)
+    public function setFlags(Flags $flags)
     {
         $this->flags = $flags;
     }
@@ -63,7 +67,7 @@ class ChapterHandler
      * @param SplFileInfo[] $files
      * @param array $fileNames
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     public function buildChaptersFromFiles(array $files, array $fileNames = [])
     {
@@ -76,7 +80,7 @@ class ChapterHandler
                 $file = new SplFileInfo($file);
             }
 
-            if ($this->hasFlag(static::USE_FILENAMES) && isset($fileNames[$index])) {
+            if ($this->flags->contains(static::USE_FILENAMES) && isset($fileNames[$index])) {
                 $fileName = $fileNames[$index];
                 if ($fileName instanceof SplFileInfo) {
                     $fileName = new SplFileInfo($fileName);
@@ -97,11 +101,6 @@ class ChapterHandler
             $lastStart = $chapter->getEnd();
         }
         return $this->adjustChapters($chapters);
-    }
-
-    private function hasFlag($flag)
-    {
-        return $this->flags & $flag;
     }
 
     public function adjustChapters(array $chapters, array $silences = [])
@@ -301,7 +300,7 @@ class ChapterHandler
 
     private function areChaptersNumberedConsecutively($chapters)
     {
-        if ($this->hasFlag(static::NO_REINDEXING)) {
+        if ($this->flags->contains(static::NO_REINDEXING)) {
             return false;
         }
 
