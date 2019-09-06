@@ -164,7 +164,7 @@ class MetaCommand extends AbstractMetadataCommand
         foreach ($tag as $key => $value) {
             $mappedKey = $this->mapTagKey($key);
 
-            if ($key === "chapters" || $key === "removeTags") {
+            if ($key === "chapters" || $key === "removeTags" || in_array($key, $tag->removeTags, true)) {
                 continue;
             }
 
@@ -183,7 +183,7 @@ class MetaCommand extends AbstractMetadataCommand
             $output[] = (sprintf("%s: %s", str_pad($tagName, $longestKey + 1), $tagValue));
         }
 
-        if (count($tag->chapters) > 0) {
+        if (count($tag->chapters) > 0 && !in_array("chapters", $tag->removeTags, true)) {
             $output[] = "";
             $output[] = str_pad("chapters", $longestKey + 1);
             $output[] = $this->metaHandler->toMp4v2ChaptersFormat($tag->chapters);
@@ -241,7 +241,7 @@ class MetaCommand extends AbstractMetadataCommand
 
         if ($importFlags->contains(static::FLAG_TAG_OPTIONS)) {
             $this->notice("trying to load tags from input arguments");
-            $tagLoaderComposite->add(new InputOptions($this->input));
+            $tagLoaderComposite->add(new InputOptions($this->input, new Flags(InputOptions::FLAG_ADJUST_FOR_IPOD)));
         }
 
         $tag = $tagLoaderComposite->load();
@@ -251,15 +251,10 @@ class MetaCommand extends AbstractMetadataCommand
             $removeTags = array_merge($removeTags, explode(",", $removeTag));
         }
         if (count($removeTags) > 0) {
-            $this->notice("");
-            $this->notice(sprintf("removing tags: %s", implode(", ", $removeTags)));
+            $this->notice("NOTE: removing tags is still experimental - it only works for m4a, m4b and mp4 files at the moment and some tags cannot be removed (sortTitle, sortAlbum, sortArtist)");
+            $this->notice(sprintf("trying to remove following tags: %s", implode(", ", $removeTags)));
             $this->notice("");
             $tag->removeTags = $removeTags;
-            foreach ($removeTags as $tagPropertyName) {
-                if (property_exists($tag, $tagPropertyName)) {
-                    $tag->$tagPropertyName = is_array($tag->$tagPropertyName) ? [] : null;
-                }
-            }
         }
 
         $this->notice("storing tags:");

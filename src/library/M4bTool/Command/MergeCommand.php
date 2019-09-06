@@ -15,6 +15,7 @@ use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
+use M4bTool\Common\ConditionalFlags;
 use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterOptions;
@@ -799,7 +800,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $tagLoaderComposite->add(new Ffmetadata($parser));
         }
 
-        $tagLoaderComposite->add(new InputOptions($this->input));
+        $flags = new ConditionalFlags();
+        $flags->insertIf(InputOptions::FLAG_ADJUST_FOR_IPOD, $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD));
+
+        $tagLoaderComposite->add(new InputOptions($this->input, $flags));
 
         $tag = $tagLoaderComposite->load();
         $this->tagFile($outputTmpFile, $tag);

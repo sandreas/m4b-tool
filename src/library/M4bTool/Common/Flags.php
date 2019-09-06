@@ -8,6 +8,11 @@ class Flags
 {
     private $rawValue = 0;
 
+    public function __construct($rawValue = 0)
+    {
+        $this->rawValue = $rawValue;
+    }
+
     public function equal($flag)
     {
         return $this->rawValue === $flag;

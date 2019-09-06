@@ -28,6 +28,37 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
     public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
         // $flags = $flags ?? new Flags();
+        $this->storeTagsToFile($file, $tag, $flags);
+
+        if (count($tag->removeTags) > 0) {
+            $this->removeTagsFromFile($file, $tag);
+        }
+    }
+
+    protected function audioFileToChaptersFile(SplFileInfo $audioFile)
+    {
+        $dirName = dirname($audioFile);
+        $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
+        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".chapters.txt");
+    }
+
+    public function chaptersToMp4v2Format(array $chapters)
+    {
+        $chaptersAsLines = [];
+        foreach ($chapters as $chapter) {
+            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
+        }
+        return implode(PHP_EOL, $chaptersAsLines);
+    }
+
+    /**
+     * @param SplFileInfo $file
+     * @param Tag $tag
+     * @param Flags $flags
+     * @throws Exception
+     */
+    private function storeTagsToFile(SplFileInfo $file, Tag $tag, Flags $flags)
+    {
         if (count($tag->chapters) === 0) {
             return;
         }
@@ -52,19 +83,22 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
         }
     }
 
-    protected function audioFileToChaptersFile(SplFileInfo $audioFile)
+    /**
+     * @param SplFileInfo $file
+     * @param Tag $tag
+     * @throws Exception
+     */
+    private function removeTagsFromFile(SplFileInfo $file, Tag $tag)
     {
-        $dirName = dirname($audioFile);
-        $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
-        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".chapters.txt");
-    }
-
-    public function chaptersToMp4v2Format(array $chapters)
-    {
-        $chaptersAsLines = [];
-        foreach ($chapters as $chapter) {
-            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
+        if (in_array("chapters", $tag->removeTags, true)) {
+            return;
         }
-        return implode(PHP_EOL, $chaptersAsLines);
+
+        $command[] = "-r";
+        $command[] = $file;
+        $process = $this->runProcess($command);
+        if ($process->getExitCode() !== 0) {
+            throw new Exception(sprintf("Could not remove chapters for file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
+        }
     }
 }

@@ -28,7 +28,7 @@ class AbstractMetadataCommand extends AbstractCommand
     const OPTION_SKIP_COVER = "skip-cover";
     const OPTION_COVER = "cover";
 
-
+    // pseudo tags
     const OPTION_TAG_SERIES = "series";
     const OPTION_TAG_SERIES_PART = "series-part";
 

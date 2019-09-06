@@ -6,17 +6,23 @@ namespace M4bTool\Audio\TagTransfer;
 
 use M4bTool\Audio\Tag;
 use M4bTool\Command\AbstractConversionCommand;
+use M4bTool\Common\Flags;
 use Symfony\Component\Console\Input\InputInterface;
 
 class InputOptions implements TagLoaderInterface
 {
-
+    const FLAG_ADJUST_FOR_IPOD = 1 << 0;
     /** @var InputInterface */
     protected $input;
+    /**
+     * @var Flags
+     */
+    protected $flags;
 
-    public function __construct(InputInterface $input)
+    public function __construct(InputInterface $input, Flags $flags = null)
     {
         $this->input = $input;
+        $this->flags = $flags ?? new Flags();
     }
 
     public function load(): Tag
@@ -30,7 +36,7 @@ class InputOptions implements TagLoaderInterface
         $tag->sortAlbum = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SORT_ALBUM);
 
         // on ipods / itunes, album is for title of the audio book
-        if ($this->input->getOption(AbstractConversionCommand::OPTION_ADJUST_FOR_IPOD)) {
+        if ($this->flags->contains(static::FLAG_ADJUST_FOR_IPOD)) {
             if ($tag->title && !$tag->album) {
                 $tag->album = $tag->title;
             }

@@ -46,7 +46,7 @@ class Mp4v2Wrapper implements TagWriterInterface, DurationDetectorInterface
 
         $this->tags->writeTag($file, $tag, $flags);
         $this->chaps->writeTag($file, $tag, $flags);
-        if ($tag->cover) {
+        if ($tag->cover || in_array("cover", $tag->removeTags, true)) {
             $this->art->writeTag($file, $tag, $flags);
         }
     }

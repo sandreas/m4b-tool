@@ -28,13 +28,19 @@ class Mp4art extends AbstractExecutable implements TagWriterInterface
      */
     public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
+        $this->removeAllCoversAndIgnoreErrors($file);
 
-        $command = ["--add", $tag->cover, $file];
-        // $this->appendParameterToCommand($command, "-f", $this->optForce);
-        $process = $this->runProcess($command);
+        if ($tag->cover) {
+            if (!file_exists($tag->cover)) {
+                throw new Exception(sprintf("Provided cover file does not exist: %s", $file));
+            }
+            $command = ["--add", $tag->cover, $file];
+            // $this->appendParameterToCommand($command, "-f", $this->optForce);
+            $process = $this->runProcess($command);
 
-        if ($process->getExitCode() !== 0) {
-            throw new Exception(sprintf("Could not add cover to file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
+            if ($process->getExitCode() !== 0) {
+                throw new Exception(sprintf("Could not add cover to file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
+            }
         }
     }
 
@@ -62,5 +68,11 @@ class Mp4art extends AbstractExecutable implements TagWriterInterface
             @unlink($extractedCoverFile);
             throw new Exception(sprintf("renaming cover %s => %s failed", $extractedCoverFile, $destinationFile));
         }
+    }
+
+    private function removeAllCoversAndIgnoreErrors(SplFileInfo $file)
+    {
+        $command = ["--remove", "--art-any", $file];
+        $this->runProcess($command);
     }
 }
