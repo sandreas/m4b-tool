@@ -255,6 +255,12 @@ class MetaCommand extends AbstractMetadataCommand
             $this->notice(sprintf("trying to remove following tags: %s", implode(", ", $removeTags)));
             $this->notice("");
             $tag->removeTags = $removeTags;
+
+            foreach ($removeTags as $tagPropertyName) {
+                if (property_exists($tag, $tagPropertyName)) {
+                    $tag->$tagPropertyName = is_array($tag->$tagPropertyName) ? [] : null;
+                }
+            }
         }
 
         $this->notice("storing tags:");

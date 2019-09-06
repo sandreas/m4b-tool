@@ -90,7 +90,7 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
      */
     private function removeTagsFromFile(SplFileInfo $file, Tag $tag)
     {
-        if (in_array("chapters", $tag->removeTags, true)) {
+        if (!in_array("chapters", $tag->removeTags, true)) {
             return;
         }
 

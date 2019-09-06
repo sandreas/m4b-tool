@@ -67,6 +67,10 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
             $this->appendParameterToCommand($command, "-sortartist", $tag->sortArtist);
         }
 
+        if (count($command) === 0) {
+            return;
+        }
+
         $command[] = $file;
         $process = $this->runProcess($command);
         if ($process->getExitCode() !== 0) {
@@ -120,6 +124,9 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
             $this->appendParameterToCommand($command, "-r sortartist", in_array("sortArtist", $tag->removeTags));
         }
         */
+        if (count($command) === 0) {
+            return;
+        }
 
         $command[] = $file;
         $process = $this->runProcess($command);
