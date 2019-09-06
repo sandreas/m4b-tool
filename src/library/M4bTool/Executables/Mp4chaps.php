@@ -30,7 +30,7 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
         // $flags = $flags ?? new Flags();
         $this->storeTagsToFile($file, $tag, $flags);
 
-        if (count($tag->removeTags) > 0) {
+        if (count($tag->removeProperties) > 0) {
             $this->removeTagsFromFile($file, $tag);
         }
     }
@@ -90,15 +90,12 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
      */
     private function removeTagsFromFile(SplFileInfo $file, Tag $tag)
     {
-        if (!in_array("chapters", $tag->removeTags, true)) {
+        if (!in_array("chapters", $tag->removeProperties, true)) {
             return;
         }
 
         $command[] = "-r";
         $command[] = $file;
-        $process = $this->runProcess($command);
-        if ($process->getExitCode() !== 0) {
-            throw new Exception(sprintf("Could not remove chapters for file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
-        }
+        $this->runProcess($command);
     }
 }

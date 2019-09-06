@@ -88,7 +88,7 @@ class Tag implements ArrayAccess
     public $series;
     public $seriesPart;
 
-    public $removeTags = [];
+    public $removeProperties = [];
 
 
     public function mergeMissing(Tag $tag)

@@ -164,7 +164,7 @@ class MetaCommand extends AbstractMetadataCommand
         foreach ($tag as $key => $value) {
             $mappedKey = $this->mapTagKey($key);
 
-            if ($key === "chapters" || $key === "removeTags" || in_array($key, $tag->removeTags, true)) {
+            if ($key === "chapters" || $key === "removeProperties" || in_array($key, $tag->removeProperties, true)) {
                 continue;
             }
 
@@ -183,7 +183,7 @@ class MetaCommand extends AbstractMetadataCommand
             $output[] = (sprintf("%s: %s", str_pad($tagName, $longestKey + 1), $tagValue));
         }
 
-        if (count($tag->chapters) > 0 && !in_array("chapters", $tag->removeTags, true)) {
+        if (count($tag->chapters) > 0 && !in_array("chapters", $tag->removeProperties, true)) {
             $output[] = "";
             $output[] = str_pad("chapters", $longestKey + 1);
             $output[] = $this->metaHandler->toMp4v2ChaptersFormat($tag->chapters);
@@ -246,17 +246,17 @@ class MetaCommand extends AbstractMetadataCommand
 
         $tag = $tagLoaderComposite->load();
 
-        $removeTags = [];
+        $tagPropertiesToRemove = [];
         foreach ($this->input->getOption(static::OPTION_REMOVE) as $removeTag) {
-            $removeTags = array_merge($removeTags, explode(",", $removeTag));
+            $tagPropertiesToRemove = array_merge($tagPropertiesToRemove, explode(",", $removeTag));
         }
-        if (count($removeTags) > 0) {
-            $this->notice("NOTE: removing tags is still experimental - it only works for m4a, m4b and mp4 files at the moment and some tags cannot be removed (sortTitle, sortAlbum, sortArtist)");
-            $this->notice(sprintf("trying to remove following tags: %s", implode(", ", $removeTags)));
+        if (count($tagPropertiesToRemove) > 0) {
+            $this->notice("NOTE: removing tags is still experimental - and it only works for m4a, m4b and mp4 files");
+            $this->notice(sprintf("trying to remove following tag properties: %s", implode(", ", $tagPropertiesToRemove)));
             $this->notice("");
-            $tag->removeTags = $removeTags;
+            $tag->removeProperties = $tagPropertiesToRemove;
 
-            foreach ($removeTags as $tagPropertyName) {
+            foreach ($tagPropertiesToRemove as $tagPropertyName) {
                 if (property_exists($tag, $tagPropertyName)) {
                     $tag->$tagPropertyName = is_array($tag->$tagPropertyName) ? [] : null;
                 }

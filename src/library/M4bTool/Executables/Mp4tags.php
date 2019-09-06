@@ -13,6 +13,37 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class Mp4tags extends AbstractExecutable implements TagWriterInterface
 {
+    // since --remove does require short-tags, the mapping only refers to these
+    const PROPERTY_PARAMETER_MAPPING = [
+        "album" => "A", //"album",
+        "artist" => "a", //"artist",
+        "track" => "t", // "track",
+        "tracks" => "T", // "tracks",
+        "title" => "s", // "song",
+        "genre" => "g", // "genre",
+        "writer" => "w", // "writer",
+        "description" => "m", //"description",
+        "longDescription" => "l", //"longdesc",
+        "albumArtist" => "R", // "albumartist",
+        "year" => "y", //"year",
+        "comment" => "c", //"comment",
+        "copyright" => "C", //"copyright",
+        "encodedBy" => "e", // "encodedby",
+        "lyrics" => "L", // "lyrics",
+        "type" => "i", // "type",
+        "sortTitle" => "f", // "sortname",
+        "sortAlbum" => "k", // "sortalbum",
+        "sortArtist" => "F", //"sortartist",
+    ];
+
+    const SORT_PARAMETERS = [
+        "f", // sortname
+        "F", // sortartist
+        "k", // sortalbum
+    ];
+
+    protected $sortingSupported;
+
 
     public function __construct($pathToBinary = "mp4tags", ProcessHelper $processHelper = null, OutputInterface $output = null)
     {
@@ -27,31 +58,28 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
      */
     public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
-        $this->storeTagsToFile($file, $tag, $flags);
-        if (count($tag->removeTags) > 0) {
+        $this->storeTagsToFile($file, $tag);
+        if (count($tag->removeProperties) > 0) {
             $this->removeTagsFromFile($file, $tag);
         }
     }
 
-    private function storeTagsToFile(SplFileInfo $file, Tag $tag, Flags $flags)
+    /**
+     * @param SplFileInfo $file
+     * @param Tag $tag
+     * @throws Exception
+     */
+    private function storeTagsToFile(SplFileInfo $file, Tag $tag)
     {
-        $this->appendParameterToCommand($command, "-track", $tag->track);
-        $this->appendParameterToCommand($command, "-tracks", $tag->tracks);
-        $this->appendParameterToCommand($command, "-song", $tag->title);
-        $this->appendParameterToCommand($command, "-artist", $tag->artist);
-        $this->appendParameterToCommand($command, "-genre", $tag->genre);
-        $this->appendParameterToCommand($command, "-writer", $tag->writer);
-        $this->appendParameterToCommand($command, "-description", $tag->description);
-        $this->appendParameterToCommand($command, "-longdesc", $tag->longDescription);
-        $this->appendParameterToCommand($command, "-albumartist", $tag->albumArtist);
-        $this->appendParameterToCommand($command, "-year", $tag->year);
-        $this->appendParameterToCommand($command, "-album", $tag->album);
-        $this->appendParameterToCommand($command, "-comment", $tag->comment);
-        $this->appendParameterToCommand($command, "-copyright", $tag->copyright);
-        $this->appendParameterToCommand($command, "-encodedby", $tag->encodedBy ?? $tag->encoder);
-        $this->appendParameterToCommand($command, "-lyrics", $tag->lyrics);
-        $this->appendParameterToCommand($command, "-type", $tag->type);
+        $command = [];
+        foreach (static::PROPERTY_PARAMETER_MAPPING as $tagPropertyName => $parameterName) {
+            // extra handling for sort params (support required)
+            if (in_array($parameterName, static::SORT_PARAMETERS, true)) {
+                continue;
+            }
+            $this->appendParameterToCommand($command, "-" . $parameterName, $tag->$tagPropertyName);
 
+        }
 
         if ($this->doesMp4tagsSupportSorting()) {
             if (!$tag->sortTitle && $tag->series) {
@@ -84,51 +112,47 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
      */
     private function doesMp4tagsSupportSorting()
     {
+        if ($this->sortingSupported !== null) {
+            return $this->sortingSupported;
+        }
         $command = ["-help"];
         $process = $this->runProcess($command);
         $result = $process->getOutput() . $process->getErrorOutput();
-        $searchStrings = ["-sortname", "-sortartist", "-sortalbum"];
-        foreach ($searchStrings as $searchString) {
-            if (strpos($result, $searchString) === false) {
-                return false;
+        $this->sortingSupported = true;
+        foreach (static::SORT_PARAMETERS as $searchString) {
+            if (strpos($result, "-" . $searchString) === false) {
+                $this->sortingSupported = false;
+                break;
             }
         }
-        return true;
+        return $this->sortingSupported;
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @param Tag $tag
+     * @throws Exception
+     */
     private function removeTagsFromFile(SplFileInfo $file, Tag $tag)
     {
-        $command = [];
-        $this->appendParameterToCommand($command, "-r track", in_array("track", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r tracks", in_array("tracks", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r song", in_array("title", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r artist", in_array("artist", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r genre", in_array("genre", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r writer", in_array("writer", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r description", in_array("description", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r longdesc", in_array("longDescription", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r albumartist", in_array("albumArtist", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r year", in_array("year", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r album", in_array("album", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r comment", in_array("comment", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r copyright", in_array("copyright", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r encodedby", in_array("encodedBy", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r lyrics", in_array("lyrics", $tag->removeTags));
-        $this->appendParameterToCommand($command, "-r type", in_array("type", $tag->removeTags));
-
-        /*
-        // does not work atm
-        if ($this->doesMp4tagsSupportSorting()) {
-            $this->appendParameterToCommand($command, "-r sortname", in_array("sortTitle", $tag->removeTags));
-            $this->appendParameterToCommand($command, "-r sortalbum", in_array("sortAlbum", $tag->removeTags));
-            $this->appendParameterToCommand($command, "-r sortartist", in_array("sortArtist", $tag->removeTags));
+        $removeParameters = [];
+        foreach (static::PROPERTY_PARAMETER_MAPPING as $propertyName => $parameterName) {
+            if (in_array($propertyName, $tag->removeProperties, true)) {
+                $removeParameters[] = $parameterName;
+            }
         }
-        */
-        if (count($command) === 0) {
+
+        // remove unsupported parameters
+        if (!$this->doesMp4tagsSupportSorting()) {
+            $removeParameters = array_diff($removeParameters, static::SORT_PARAMETERS);
+        }
+
+        if (count($removeParameters) === 0) {
             return;
         }
 
-        $command[] = $file;
+        $command = ["-r", implode("", $removeParameters), $file];
+
         $process = $this->runProcess($command);
         if ($process->getExitCode() !== 0) {
             throw new Exception(sprintf("Could not tag file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
