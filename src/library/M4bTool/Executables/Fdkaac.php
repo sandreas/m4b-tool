@@ -107,31 +107,21 @@ class Fdkaac extends AbstractExecutable implements TagReaderInterface, TagWriter
         }
 
         // Pipe usage does not work with new Process, so the command has to be put together manually
-        $command = ["ffmpeg", "-i", $this->escapeArgument($options->source), "-vn"];
-        if ($options->channels) {
-            $command = array_merge($command, ["-ac", $this->escapeArgument($options->channels)]);
-        }
-        if ($options->sampleRate) {
-            $command = array_merge($command, ["-ar", $this->escapeArgument($options->sampleRate)]);
-        }
+        $command = ["ffmpeg", "-i", $options->source, "-vn"];
+
+        $this->appendParameterToCommand($command, "-ac", $options->channels);
+        $this->appendParameterToCommand($command, "-ar", $options->sampleRate);
+
         $command = array_merge($command, ["-f", "caf", "-", "|", "fdkaac"]);
 
-        if ($options->channels) {
-            $command = array_merge($command, ["--raw-channels", $this->escapeArgument($options->channels)]);
-        }
-        if ($options->sampleRate) {
-            $command = array_merge($command, ["--raw-rate", $this->escapeArgument($options->sampleRate)]);
-        }
-        if ($fdkaacProfile) {
-            $command = array_merge($command, ["-p", $this->escapeArgument($fdkaacProfile)]);
-        }
+        $this->appendParameterToCommand($command, "--raw-channels", $options->channels);
+        $this->appendParameterToCommand($command, "--raw-rate", $options->sampleRate);
+        $this->appendParameterToCommand($command, "-p", $fdkaacProfile);
+        $this->appendParameterToCommand($command, "-b", $options->bitRate);
 
-        if ($options->bitRate) {
-            $command = array_merge($command, ["-b", $this->escapeArgument($options->bitRate)]);
-        }
-        $command = array_merge($command, ["-o", $this->escapeArgument($options->destination), "-"]);
+        $command = array_merge($command, ["-o", $options->destination, "-"]);
 
-        $process = Process::fromShellCommandline(implode(" ", $command));
+        $process = $this->createNonBlockingPipedProcess($command);
         $process->setTimeout(0);
         $process->start();
         return $process;

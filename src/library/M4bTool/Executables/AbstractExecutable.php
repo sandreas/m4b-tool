@@ -13,6 +13,8 @@ use Symfony\Component\Process\Process;
 
 abstract class AbstractExecutable
 {
+    const PIPE = "|";
+
     /** @var string */
     protected $pathToBinary;
 
@@ -54,6 +56,16 @@ abstract class AbstractExecutable
         return new Process($arguments);
     }
 
+    /**
+     * @param array $arguments
+     * @return Process
+     */
+    protected function createNonBlockingPipedProcess(array $arguments)
+    {
+        $escapedArguments = array_map([$this, "escapeNonePipeArgument"], $arguments);
+        return Process::fromShellCommandline(implode(" ", $escapedArguments));
+    }
+
     protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)
     {
         if (is_bool($parameterValue) && $parameterValue) {
@@ -70,6 +82,14 @@ abstract class AbstractExecutable
     protected function getAllProcessOutput(Process $process)
     {
         return $process->getOutput() . $process->getErrorOutput();
+    }
+
+    protected function escapeNonePipeArgument(?string $argument)
+    {
+        if ($argument === static::PIPE) {
+            return $argument;
+        }
+        return $this->escapeArgument($argument);
     }
 
     protected function escapeArgument(?string $argument): string
