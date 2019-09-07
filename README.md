@@ -751,7 +751,15 @@ Help:
   Can add Chapters to m4b files via different types of inputs
 ```
 
+# Latest release
 
+`m4b-tool` is a one-man-project, so sometimes it evolves quickly and often nothing happens. If you have reported an issue and it is marked as fixed, there might be no **stable** release for a long time. That's why now there is a `latest` tag in combination with a **Pre-Release** for testing purposes. 
+These releases always contain the most recent builds with all available fixes and new features. Mostly untested, there may be new bugs, non-functional features or - pretty unlikely - critical issues with the risk of data loss. Feedback is always welcome, but don't expect that these are fixed quickly.
+
+To get the Pre-Release, go to https://github.com/sandreas/m4b-tool/releases/tag/latest and download the `m4b-tool.tar.gz` or if using docker rebuild the image with:
+```
+docker build . --build-arg M4B_TOOL_DOWNLOAD_LINK=<link-to-pre-release> -t m4b-tool
+```
 
 
 # Building from source
