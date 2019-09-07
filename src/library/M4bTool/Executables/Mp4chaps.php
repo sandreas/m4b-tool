@@ -27,7 +27,7 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
      */
     public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
-        // $flags = $flags ?? new Flags();
+        $flags = $flags ?? new Flags();
         $this->storeTagsToFile($file, $tag, $flags);
 
         if (count($tag->removeProperties) > 0) {
