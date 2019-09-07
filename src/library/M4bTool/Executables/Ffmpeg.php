@@ -74,7 +74,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
         $commandAddition = [];
         $metaDataFileIndex = 1;
-        if ($tag->cover) {
+        if ($tag->hasCoverFile()) {
             $command = array_merge($command, ["-i", $tag->cover]);
             $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
             $metaDataFileIndex++;

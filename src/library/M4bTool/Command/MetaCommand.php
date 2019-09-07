@@ -50,6 +50,7 @@ class MetaCommand extends AbstractMetadataCommand
     const OPTION_IMPORT_CHAPTERS = "import-chapters";
 
     const OPTION_REMOVE = "remove";
+    const EMPTY_MARKER = "Empty tag fields";
 
 
     protected function configure()
@@ -157,14 +158,14 @@ class MetaCommand extends AbstractMetadataCommand
 
     private function dumpTag(Tag $tag)
     {
-        $emptyMarker = "Empty tag fields";
-        $longestKey = strlen($emptyMarker);
+
+        $longestKey = strlen(static::EMPTY_MARKER);
         $emptyTagNames = [];
         $outputTagValues = [];
-        foreach ($tag as $key => $value) {
-            $mappedKey = $this->mapTagKey($key);
+        foreach ($tag as $propertyName => $value) {
+            $mappedKey = $this->mapTagKey($propertyName);
 
-            if ($key === "chapters" || $key === "removeProperties" || in_array($key, $tag->removeProperties, true)) {
+            if ($tag->isTransientProperty($propertyName) || in_array($propertyName, $tag->removeProperties, true)) {
                 continue;
             }
 
@@ -172,6 +173,12 @@ class MetaCommand extends AbstractMetadataCommand
                 $emptyTagNames[] = $mappedKey;
                 continue;
             }
+
+            if ($propertyName === "cover" && $tag->hasCoverFile() && $imageProperties = @getimagesize($value)) {
+                $outputTagValues[$mappedKey] = $value . ", " . $imageProperties[0] . "x" . $imageProperties[1];
+                continue;
+            }
+
 
             $outputTagValues[$mappedKey] = $value;
             $longestKey = max(strlen($mappedKey), $longestKey);
@@ -194,7 +201,7 @@ class MetaCommand extends AbstractMetadataCommand
         if (count($emptyTagNames) > 0) {
             natsort($emptyTagNames);
             $output[] = "";
-            $output[] = str_pad($emptyMarker, $longestKey + 1) . ": " . implode(", ", $emptyTagNames);
+            $output[] = str_pad(static::EMPTY_MARKER, $longestKey + 1) . ": " . implode(", ", $emptyTagNames);
         }
 
         return $output;

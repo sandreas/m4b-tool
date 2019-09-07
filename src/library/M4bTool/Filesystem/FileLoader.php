@@ -17,7 +17,7 @@ class FileLoader
     const LINKS_ARE_SKIPPED = "links are skipped";
 
     /** @var string[] */
-    protected $includeExtensions;
+    protected $includeExtensions = [];
 
     /** @var string[] */
     protected $skippedFiles = [];

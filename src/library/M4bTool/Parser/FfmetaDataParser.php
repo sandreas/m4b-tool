@@ -51,6 +51,10 @@ class FfmetaDataParser
         "mono" => self::CHANNELS_MONO,
         "stereo" => self::CHANNELS_STEREO,
     ];
+    const SUPPORTED_COVER_TYPES = [
+        "mjpeg" => EmbeddedCover::FORMAT_JPEG,
+        "png" => EmbeddedCover::FORMAT_PNG,
+    ];
 
 
     protected $scanner;
@@ -62,6 +66,10 @@ class FfmetaDataParser
     protected $format;
     protected $codec;
     protected $channels;
+    /**
+     * @var EmbeddedCover
+     */
+    protected $cover;
 
 
     public function __construct(Scanner $scanner = null)
@@ -79,8 +87,9 @@ class FfmetaDataParser
     {
         $this->reset();
         $this->parseMetaData($metaData);
+        $this->parseStreams($metaData);
         if ($streamInfo !== "") {
-            $this->parseStreamInfo($streamInfo);
+            $this->parseStreams($streamInfo);
         }
     }
 
@@ -96,15 +105,19 @@ class FfmetaDataParser
      * @param $streamInfo
      * @throws Exception
      */
-    private function parseStreamInfo($streamInfo)
+    private function parseStreams($streamInfo)
     {
 
         $this->scanner->initialize(new Runes($streamInfo));
 
         while ($this->scanner->scanLine()) {
             $line = $this->scanner->getResult();
-            if (stripos($line, "Stream #") !== false && stripos($line, "Audio: ") !== false) {
-                $this->parseAudioStream($line);
+            if (stripos($line, "Stream #") !== false) {
+                if (stripos($line, "Audio: ") !== false) {
+                    $this->parseAudioStream($line);
+                } elseif (stripos($line, "Video: ") !== false) {
+                    $this->parseVideoStream($line);
+                }
                 continue;
             }
 
@@ -348,6 +361,7 @@ class FfmetaDataParser
         $tag->year = $this->getProperty("date");
         $tag->description = $this->getProperty("description");
         $tag->longDescription = $this->getProperty("longdesc") ?? $this->getProperty("synopsis");
+        $tag->cover = $this->cover;
         $tag->chapters = $this->chapters;
         return $tag;
     }
@@ -370,5 +384,38 @@ class FfmetaDataParser
             "\\" => "\\",
             "\n" => "\\"
         ]);
+    }
+
+    private function parseVideoStream(Runes $lineWithStream)
+    {
+        // Stream #0:1: Video: png, rgba(pc), 95x84, 90k tbr, 90k tbn, 90k tbc
+        // Stream #0:1: Video: mjpeg, yuvj420p(pc, bt470bg/unknown/unknown), 95x84 [SAR 1:1 DAR 95:84], 90k tbr, 90k tbn, 90k tbc
+        $stringLine = (string)$lineWithStream;
+        $cover = new EmbeddedCover();
+
+        foreach (static::SUPPORTED_COVER_TYPES as $needle => $compressionFormat) {
+            if (stripos($stringLine, $needle) !== false) {
+                $cover->imageFormat = $compressionFormat;
+                break;
+            }
+        }
+        if ($cover->imageFormat === EmbeddedCover::FORMAT_UNKNOWN) {
+            return;
+        }
+        $this->cover = $cover;
+
+
+        preg_match("/([1-9][0-9]*x[1-9][0-9]*)/is", $stringLine, $dimensionMatches);
+
+        if (!isset($dimensionMatches[0])) {
+            return;
+        }
+        $parts = explode("x", $dimensionMatches[0]);
+        if (count($parts) !== 2) {
+            return;
+        }
+        $cover->width = (int)$parts[0];
+        $cover->height = (int)$parts[1];
+
     }
 }

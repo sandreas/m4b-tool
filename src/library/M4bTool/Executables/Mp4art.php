@@ -30,7 +30,7 @@ class Mp4art extends AbstractExecutable implements TagWriterInterface
     {
         $this->removeAllCoversAndIgnoreErrors($file);
 
-        if ($tag->cover) {
+        if ($tag->hasCoverFile()) {
             if (!file_exists($tag->cover)) {
                 throw new Exception(sprintf("Provided cover file does not exist: %s", $file));
             }

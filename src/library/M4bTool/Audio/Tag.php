@@ -4,6 +4,7 @@ namespace M4bTool\Audio;
 
 
 use ArrayAccess;
+use M4bTool\Parser\EmbeddedCover;
 
 /**
  * Class Tag
@@ -51,6 +52,12 @@ use ArrayAccess;
 class Tag implements ArrayAccess
 {
     const MP4_STIK_AUDIOBOOK = 2;
+    const TRANSIENT_PROPERTIES = [
+        "chapters",
+        "removeProperties",
+        "series",
+        "seriesPart"
+    ];
 
     public $encoder = "m4b-tool";
     public $title;
@@ -110,6 +117,15 @@ class Tag implements ArrayAccess
         }
     }
 
+    public function hasCoverFile()
+    {
+        return $this->cover && !($this->cover instanceof EmbeddedCover);
+    }
+
+    public function isTransientProperty($propertyName)
+    {
+        return in_array($propertyName, static::TRANSIENT_PROPERTIES, true);
+    }
 
     /**
      * Whether a offset exists
