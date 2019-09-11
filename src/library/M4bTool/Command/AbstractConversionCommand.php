@@ -7,7 +7,7 @@ namespace M4bTool\Command;
 use Exception;
 use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\TagTransfer\InputOptions;
+use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Filesystem\FileLoader;
 use M4bTool\Parser\FfmetaDataParser;
@@ -61,7 +61,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $flags = new ConditionalFlags();
         $flags->insertIf(InputOptions::FLAG_ADJUST_FOR_IPOD, $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD));
         $loader = new InputOptions($this->input, $flags);
-        return $loader->load();
+        return $loader->improve();
     }
 
     protected function configure()

@@ -9,7 +9,8 @@
     "twig/twig": "^2.0",
     "sandreas/php-time": "dev-master",
     "sandreas/php-strings": "dev-master",
-    "ext-simplexml": "*"
+    "ext-simplexml": "*",
+    "ext-json": "*"
   },
   "autoload": {
     "psr-4": {

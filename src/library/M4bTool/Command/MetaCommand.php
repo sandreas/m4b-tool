@@ -6,13 +6,13 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\TagTransfer\Chapters;
-use M4bTool\Audio\TagTransfer\Cover;
-use M4bTool\Audio\TagTransfer\Description;
-use M4bTool\Audio\TagTransfer\Ffmetadata;
-use M4bTool\Audio\TagTransfer\InputOptions;
-use M4bTool\Audio\TagTransfer\OpenPackagingFormat;
-use M4bTool\Audio\TagTransfer\TagTransferComposite;
+use M4bTool\Audio\Tag\Chapters;
+use M4bTool\Audio\Tag\Cover;
+use M4bTool\Audio\Tag\Description;
+use M4bTool\Audio\Tag\Ffmetadata;
+use M4bTool\Audio\Tag\InputOptions;
+use M4bTool\Audio\Tag\OpenPackagingFormat;
+use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Common\Flags;
 use M4bTool\Executables\TagWriterInterface;
@@ -219,7 +219,7 @@ class MetaCommand extends AbstractMetadataCommand
     private function import(Flags $importFlags)
     {
         $tag = $this->metaHandler->readTag($this->argInputFile);
-        $tagLoaderComposite = new TagTransferComposite($tag);
+        $tagLoaderComposite = new TagImproverComposite();
 
         if ($importFlags->contains(static::FLAG_COVER) && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
             $this->notice("trying to load cover");
@@ -251,7 +251,7 @@ class MetaCommand extends AbstractMetadataCommand
             $tagLoaderComposite->add(new InputOptions($this->input, new Flags(InputOptions::FLAG_ADJUST_FOR_IPOD)));
         }
 
-        $tag = $tagLoaderComposite->load();
+        $tag = $tagLoaderComposite->improve($tag);
 
         $tagPropertiesToRemove = [];
         foreach ($this->input->getOption(static::OPTION_REMOVE) as $removeTag) {

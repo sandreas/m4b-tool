@@ -1,14 +1,14 @@
 <?php
 
 
-namespace M4bTool\Audio\TagTransfer;
+namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use SplFileInfo;
 
-class Chapters implements TagLoaderInterface
+class Chapters implements TagImproverInterface
 {
 
     /**
@@ -42,11 +42,11 @@ class Chapters implements TagLoaderInterface
 
 
     /**
+     * @param Tag $tag
      * @return Tag
      */
-    public function load(): Tag
+    public function improve(Tag $tag): Tag
     {
-        $tag = new Tag();
         if ($this->chapterParser !== null && trim($this->chaptersContent) !== "") {
             $tag->chapters = $this->chapterParser->parse($this->chaptersContent);
         }

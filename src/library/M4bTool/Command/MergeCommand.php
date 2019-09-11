@@ -7,10 +7,10 @@ use Exception;
 use FilesystemIterator;
 use IteratorIterator;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\TagTransfer\Ffmetadata;
-use M4bTool\Audio\TagTransfer\InputOptions;
-use M4bTool\Audio\TagTransfer\OpenPackagingFormat;
-use M4bTool\Audio\TagTransfer\TagTransferComposite;
+use M4bTool\Audio\Tag\Ffmetadata;
+use M4bTool\Audio\Tag\InputOptions;
+use M4bTool\Audio\Tag\OpenPackagingFormat;
+use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Chapter;
@@ -784,25 +784,25 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $tag = new Tag();
         $tag->chapters = $chapters;
 
-        $tagLoaderComposite = new TagTransferComposite($tag);
+        $tagExtenderComposite = new TagImproverComposite();
         if ($openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf")) {
             $this->notice("enhancing tag with additional metadata from metadata.opf");
-            $tagLoaderComposite->add(new OpenPackagingFormat($openPackagingFormatContent));
+            $tagExtenderComposite->add(new OpenPackagingFormat($openPackagingFormatContent));
         }
 
         if ($ffmetadataContent = $this->lookupFileContents($this->argInputFile, "ffmetadata.txt")) {
             $this->notice("enhancing tag with additional metadata from ffmetadata.txt");
             $parser = new FfmetaDataParser();
             $parser->parse($ffmetadataContent);
-            $tagLoaderComposite->add(new Ffmetadata($parser));
+            $tagExtenderComposite->add(new Ffmetadata($parser));
         }
 
         $flags = new ConditionalFlags();
         $flags->insertIf(InputOptions::FLAG_ADJUST_FOR_IPOD, $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD));
 
-        $tagLoaderComposite->add(new InputOptions($this->input, $flags));
+        $tagExtenderComposite->add(new InputOptions($this->input, $flags));
 
-        $tag = $tagLoaderComposite->load();
+        $tag = $tagExtenderComposite->improve($tag);
         $this->tagFile($outputTmpFile, $tag);
         $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputTmpFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
     }

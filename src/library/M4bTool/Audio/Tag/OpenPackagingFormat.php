@@ -1,7 +1,7 @@
 <?php
 
 
-namespace M4bTool\Audio\TagTransfer;
+namespace M4bTool\Audio\Tag;
 
 
 use DateTime;
@@ -11,7 +11,7 @@ use SimpleXMLElement;
 use SplFileInfo;
 use Throwable;
 
-class OpenPackagingFormat implements TagLoaderInterface
+class OpenPackagingFormat implements TagImproverInterface
 {
 
     const NAMESPACE_DUBLIN_CORE = "dc";
@@ -53,9 +53,8 @@ class OpenPackagingFormat implements TagLoaderInterface
      * @return Tag
      * @throws Exception
      */
-    public function load(): Tag
+    public function improve(Tag $tag): Tag
     {
-        $tag = new Tag();
 
         if (trim($this->xmlString) === "") {
             return $tag;

@@ -1,0 +1,18 @@
+<phpunit
+        convertErrorsToExceptions="true"
+        convertNoticesToExceptions="true"
+        convertWarningsToExceptions="true"
+        stopOnFailure="false"
+        bootstrap="vendor/autoload.php"
+>
+    <testsuites>
+        <testsuite name="Unit tests">
+            <directory>tests/</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+        <whitelist>
+            <directory>tests</directory>
+        </whitelist>
+    </filter>
+</phpunit>

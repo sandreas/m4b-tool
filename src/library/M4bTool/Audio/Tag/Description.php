@@ -1,13 +1,13 @@
 <?php
 
 
-namespace M4bTool\Audio\TagTransfer;
+namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
 use SplFileInfo;
 
-class Description implements TagLoaderInterface
+class Description implements TagImproverInterface
 {
 
     private $descriptionContent;
@@ -36,11 +36,11 @@ class Description implements TagLoaderInterface
 
 
     /**
+     * @param Tag $tag
      * @return Tag
      */
-    public function load(): Tag
+    public function improve(Tag $tag): Tag
     {
-        $tag = new Tag();
         if (trim($this->descriptionContent) !== "") {
             $tag->description = $this->descriptionContent;
             $tag->longDescription = $this->descriptionContent;

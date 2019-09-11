@@ -1,14 +1,14 @@
 <?php
 
 
-namespace M4bTool\Audio\TagTransfer;
+namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
 use M4bTool\Filesystem\FileLoader;
 use SplFileInfo;
 
-class Cover implements TagLoaderInterface
+class Cover implements TagImproverInterface
 {
     /**
      * @var FileLoader
@@ -35,11 +35,11 @@ class Cover implements TagLoaderInterface
     }
 
     /**
+     * @param Tag $tag
      * @return Tag
      */
-    public function load(): Tag
+    public function improve(Tag $tag): Tag
     {
-        $tag = new Tag();
         $tag->cover = new SplFileInfo($this->coverDir . DIRECTORY_SEPARATOR . $this->preferredFileName);
         if (!$tag->cover->isFile()) {
             $this->coverLoader->addNonRecursive($this->coverDir);

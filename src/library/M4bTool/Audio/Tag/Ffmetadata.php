@@ -1,7 +1,7 @@
 <?php
 
 
-namespace M4bTool\Audio\TagTransfer;
+namespace M4bTool\Audio\Tag;
 
 
 use Exception;
@@ -9,7 +9,7 @@ use M4bTool\Audio\Tag;
 use M4bTool\Parser\FfmetaDataParser;
 use SplFileInfo;
 
-class Ffmetadata implements TagLoaderInterface
+class Ffmetadata implements TagImproverInterface
 {
 
     /**
@@ -43,11 +43,12 @@ class Ffmetadata implements TagLoaderInterface
         return new static();
     }
 
-    public function load(): Tag
+    public function improve(Tag $tag): Tag
     {
         if ($this->ffparser === null) {
-            return new Tag();
+            return $tag;
         }
-        return $this->ffparser->toTag();
+        $tag->mergeOverwrite($this->ffparser->toTag());
+        return $tag;
     }
 }

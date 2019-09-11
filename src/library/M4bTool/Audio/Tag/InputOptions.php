@@ -1,7 +1,7 @@
 <?php
 
 
-namespace M4bTool\Audio\TagTransfer;
+namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
@@ -9,7 +9,7 @@ use M4bTool\Command\AbstractConversionCommand;
 use M4bTool\Common\Flags;
 use Symfony\Component\Console\Input\InputInterface;
 
-class InputOptions implements TagLoaderInterface
+class InputOptions implements TagImproverInterface
 {
     const FLAG_ADJUST_FOR_IPOD = 1 << 0;
     /** @var InputInterface */
@@ -25,10 +25,8 @@ class InputOptions implements TagLoaderInterface
         $this->flags = $flags ?? new Flags();
     }
 
-    public function load(): Tag
+    public function improve(Tag $tag): Tag
     {
-        $tag = new Tag;
-
         $tag->title = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_NAME);
         $tag->sortTitle = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SORT_NAME);
 
