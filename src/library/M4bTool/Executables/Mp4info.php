@@ -4,6 +4,7 @@
 namespace M4bTool\Executables;
 
 
+use Exception;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
@@ -17,21 +18,31 @@ class Mp4info extends AbstractExecutable implements DurationDetectorInterface
         parent::__construct($pathToBinary, $processHelper, $output);
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @return TimeUnit|null
+     * @throws Exception
+     */
     public function estimateDuration(SplFileInfo $file): ?TimeUnit
     {
-        $process = $this->runProcess([$file]);
-        $output = $process->getOutput() . $process->getErrorOutput();
-        preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
-        if (!isset($matches[1])) {
-            return null;
-        }
-
-        return new TimeUnit($matches[1], TimeUnit::SECOND);
+        return $this->inspectExactDuration($file);
     }
 
 
+    /**
+     * @param SplFileInfo $file
+     * @return TimeUnit|null
+     * @throws Exception
+     */
     public function inspectExactDuration(SplFileInfo $file): ?TimeUnit
     {
-        return $this->estimateDuration($file);
+        $process = $this->runProcess([$file]);
+        $output = $process->getOutput() . $process->getErrorOutput();
+        preg_match("/([0-9]+\.[0-9]{3}) secs,/isU", $output, $matches);
+        if (!isset($matches[1])) {
+            throw new Exception(sprintf("Could not detect length for file %s, output '%s' does not contain a valid length value", $file->getBasename(), $output));
+        }
+
+        return new TimeUnit($matches[1], TimeUnit::SECOND);
     }
 }
