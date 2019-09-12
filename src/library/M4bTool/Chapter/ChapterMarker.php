@@ -183,6 +183,7 @@ class ChapterMarker
     public function debug($message)
     {
         if ($this->debug) {
+            // todo: NO ECHO!
             echo $message;
         }
     }

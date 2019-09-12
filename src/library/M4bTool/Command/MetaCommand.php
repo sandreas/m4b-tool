@@ -6,7 +6,7 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Tag\Chapters;
+use M4bTool\Audio\Tag\ChaptersFromTxt;
 use M4bTool\Audio\Tag\Cover;
 use M4bTool\Audio\Tag\Description;
 use M4bTool\Audio\Tag\Ffmetadata;
@@ -238,7 +238,7 @@ class MetaCommand extends AbstractMetadataCommand
         }
         if ($importFlags->contains(static::FLAG_CHAPTERS)) {
             $this->notice("trying to load chapters");
-            $tagLoaderComposite->add(Chapters::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_CHAPTERS)));
+            $tagLoaderComposite->add(ChaptersFromTxt::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_CHAPTERS)));
         }
 
         if ($importFlags->contains(static::FLAG_DESCRIPTION)) {

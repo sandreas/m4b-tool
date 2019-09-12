@@ -6,11 +6,10 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
-use M4bTool\Parser\Mp4ChapsChapterParser;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
-class ContentMetadata
+class ChaptersFromContentMetadata implements TagImproverInterface
 {
     protected $chaptersContent;
 
@@ -23,7 +22,7 @@ class ContentMetadata
      * Cover constructor.
      * @param SplFileInfo $reference
      * @param null $fileName
-     * @return ContentMetadata
+     * @return ChaptersFromContentMetadata
      */
     public static function fromFile(SplFileInfo $reference, $fileName = null)
     {
@@ -49,7 +48,7 @@ class ContentMetadata
      * @param Tag $tag
      * @return Tag
      */
-    public function extend(Tag $tag): Tag
+    public function improve(Tag $tag): Tag
     {
         if (trim($this->chaptersContent) === "") {
             return $tag;

@@ -50,8 +50,8 @@ class OpenPackagingFormat implements TagImproverInterface
     }
 
     /**
+     * @param Tag $tag
      * @return Tag
-     * @throws Exception
      */
     public function improve(Tag $tag): Tag
     {

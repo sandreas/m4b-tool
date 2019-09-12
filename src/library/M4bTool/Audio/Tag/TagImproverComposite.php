@@ -10,17 +10,17 @@ class TagImproverComposite implements TagImproverInterface
 {
 
     /** @var TagImproverInterface[] */
-    protected $extenders = [];
+    protected $changers = [];
 
     public function add(TagImproverInterface $loader)
     {
-        $this->extenders[] = $loader;
+        $this->changers[] = $loader;
     }
 
     public function improve(Tag $tag): Tag
     {
-        foreach ($this->extenders as $extender) {
-            $tag = $extender->improve($tag);
+        foreach ($this->changers as $changer) {
+            $tag = $changer->improve($tag);
         }
         return $tag;
     }
