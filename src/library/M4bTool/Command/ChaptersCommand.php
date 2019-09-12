@@ -90,7 +90,6 @@ class ChaptersCommand extends AbstractCommand
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int|void|null
-     * @throws \Psr\Cache\InvalidArgumentException
      * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -287,7 +286,7 @@ class ChaptersCommand extends AbstractCommand
 
     /**
      * @param null $chaptersTxtFile
-     * @throws \Exception
+     * @throws Exception
      */
     protected function exportChaptersToTxt($chaptersTxtFile = null)
     {

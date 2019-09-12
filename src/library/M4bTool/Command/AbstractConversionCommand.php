@@ -12,7 +12,6 @@ use M4bTool\Common\ConditionalFlags;
 use M4bTool\Filesystem\FileLoader;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Tags\StringBuffer;
-use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputOption;
@@ -61,7 +60,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $flags = new ConditionalFlags();
         $flags->insertIf(InputOptions::FLAG_ADJUST_FOR_IPOD, $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD));
         $loader = new InputOptions($this->input, $flags);
-        return $loader->improve();
+        return $loader->improve(new Tag());
     }
 
     protected function configure()
@@ -203,7 +202,7 @@ Codecs:
             $this->metaHandler->writeTag($file, $tag);
         } catch (Throwable $e) {
             $this->error(sprintf("could not tag file %s, error: %s", $file, $e->getMessage()));
-            $this->debug("trace:", $e->getTraceAsString());
+            $this->debug(sprintf("trace: %s", $e->getTraceAsString()));
         }
     }
 
@@ -235,7 +234,6 @@ Codecs:
      * @param SplFileInfo $coverTargetFile
      * @param bool $force
      * @return SplFileInfo|null
-     * @throws InvalidArgumentException
      * @throws Exception
      */
     protected function extractCover(SplFileInfo $file, SplFileInfo $coverTargetFile, $force = false)
@@ -344,7 +342,6 @@ Codecs:
     /**
      * @param $filesToConvert
      * @throws Exception
-     * @throws InvalidArgumentException
      */
     protected function adjustBitrateForIpod($filesToConvert)
     {
@@ -474,6 +471,75 @@ Codecs:
             $this->notice(sprintf("using cover %s", $this->input->getOption("cover")));
         } else {
             $this->notice("cover not found or not specified");
+        }
+    }
+
+    protected function appendFfmpegTagParametersToCommand(&$command, Tag $tag)
+    {
+        if ($tag->title) {
+            $command[] = '-metadata';
+            $command[] = 'title=' . $tag->title;
+        }
+
+        if ($tag->artist) {
+            $command[] = '-metadata';
+            $command[] = 'artist=' . $tag->artist;
+        }
+
+
+        if ($tag->album) {
+            $command[] = '-metadata';
+            $command[] = 'album=' . $tag->album;
+        }
+
+
+        if ($tag->genre) {
+            $command[] = '-metadata';
+            $command[] = 'genre=' . $tag->genre;
+        }
+
+        if ($tag->description) {
+            $command[] = '-metadata';
+            $command[] = 'description=' . $tag->description;
+        }
+
+        if ($tag->writer) {
+            $command[] = '-metadata';
+            $command[] = 'composer=' . $tag->writer;
+        }
+
+
+        if ($tag->track && $tag->tracks) {
+            $command[] = '-metadata';
+            $command[] = 'track=' . $tag->track . "/" . $tag->tracks;
+        }
+
+        if ($tag->albumArtist) {
+            $command[] = '-metadata';
+            $command[] = 'album_artist=' . $tag->albumArtist;
+        }
+
+
+        if ($tag->year) {
+            $command[] = '-metadata';
+            $command[] = 'date=' . $tag->year;
+        }
+
+        if ($tag->comment) {
+            $command[] = '-metadata';
+            $command[] = 'comment=' . $tag->comment;
+        }
+
+
+        if ($tag->copyright) {
+            $command[] = '-metadata';
+            $command[] = 'copyright=' . $tag->copyright;
+        }
+
+
+        if ($tag->encodedBy) {
+            $command[] = '-metadata';
+            $command[] = 'encoded_by=' . $tag->encodedBy;
         }
     }
 

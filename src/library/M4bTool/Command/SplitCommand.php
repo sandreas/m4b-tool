@@ -17,7 +17,6 @@ use M4bTool\Executables\Mp4info;
 use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Parser\Mp4ChapsChapterParser;
-use Psr\Cache\InvalidArgumentException;
 use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -89,7 +88,6 @@ class SplitCommand extends AbstractConversionCommand
      * @throws Throwable
      * @throws Twig_Error_Loader
      * @throws Twig_Error_Syntax
-     * @throws InvalidArgumentException
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
@@ -254,10 +252,9 @@ class SplitCommand extends AbstractConversionCommand
     }
 
     /**
-     * @throws Throwable
      * @throws Twig_Error_Loader
      * @throws Twig_Error_Syntax
-     * @throws InvalidArgumentException
+     * @throws Exception
      */
     private function splitChapters()
     {

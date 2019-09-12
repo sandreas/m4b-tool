@@ -15,7 +15,7 @@ use M4bTool\Executables\Mp4info;
 use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Parser\FfmetaDataParser;
-use Psr\Cache\InvalidArgumentException;
+use Psr\Log\LoggerInterface;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
@@ -27,7 +27,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
 
-class AbstractCommand extends Command
+class AbstractCommand extends Command implements LoggerInterface
 {
     const AUDIO_EXTENSION_MP3 = "mp3";
     const AUDIO_EXTENSION_MP4 = "mp4";
@@ -151,7 +151,8 @@ class AbstractCommand extends Command
     protected $chapterHandler;
 
 
-    public function __construct(string $name = null) {
+    public function __construct(string $name = null)
+    {
         parent::__construct($name);
         $ffmpeg = new Ffmpeg();
         $mp4v2 = new Mp4v2Wrapper(
@@ -167,7 +168,6 @@ class AbstractCommand extends Command
     /**
      * @param SplFileInfo $file
      * @return TimeUnit|null
-     * @throws InvalidArgumentException
      * @throws Exception
      */
     public function readDuration(SplFileInfo $file)
@@ -193,7 +193,7 @@ class AbstractCommand extends Command
 
             $output = $proc->getOutput() . $proc->getErrorOutput();
 
-            $this->debug("file is mp4, trying mp4info, output: ", $output);
+            $this->debug(sprintf("file is mp4, trying mp4info, output: %s", $output));
             preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
             $seconds = isset($matches[1]) ? $matches[1] : 0;
             if ($seconds) {
@@ -202,7 +202,7 @@ class AbstractCommand extends Command
                 return new TimeUnit($seconds, TimeUnit::SECOND);
             }
             $this->warn("could not get mp4 duration with mp4info, trying to use ffmpeg");
-            $this->debug("mp4info output:", $output);
+            $this->debug(sprintf("mp4info output: %s", $output));
         }
 
         if (!$meta) {
@@ -214,12 +214,21 @@ class AbstractCommand extends Command
         return $meta->getDuration();
     }
 
-    protected function debug(...$params)
+    public function debug($message, array $context = [])
     {
-        $this->log(OutputInterface::VERBOSITY_DEBUG, ...$params);
+        $this->log(OutputInterface::VERBOSITY_DEBUG, $message, $context);
     }
 
-    protected function log($level, ...$params)
+    /**
+     * Logs with an arbitrary level.
+     *
+     * @param mixed $level
+     * @param string $message
+     * @param array $context
+     *
+     * @return void
+     */
+    public function log($level, $message, array $context = array())
     {
         if ($this->startTime === null) {
             $this->startTime = microtime(true);
@@ -227,14 +236,13 @@ class AbstractCommand extends Command
 
         if ($this->output->getVerbosity() >= $level) {
             $messageParts = [];
-            foreach ($params as $param) {
-                if (is_scalar($param) || (is_object($param) && method_exists($param, "__toString"))) {
-                    $messageParts[] = (string)$param;
-                } else if (is_array($param)) {
-                    $messageParts[] = var_export($param, true);
-                } else {
-                    $messageParts[] = "type: " . gettype($param);
-                }
+            if (is_scalar($message) || (is_object($message) && method_exists($message, "__toString"))) {
+                $messageParts[] = (string)$message;
+            } else if (is_array($message)) {
+                $messageParts[] = var_export($message, true);
+            } else {
+                $messageParts[] = "type: " . gettype($message);
+
             }
             $logMessage = implode(" ", $messageParts);
             $formattedLogMessage = $logMessage;
@@ -258,7 +266,6 @@ class AbstractCommand extends Command
         }
     }
 
-
     public function hasMp4AudioFileExtension(SplFileInfo $file)
     {
         return in_array($file->getExtension(), [static::AUDIO_EXTENSION_M4A, static::AUDIO_EXTENSION_M4B, static::AUDIO_EXTENSION_MP4], true);
@@ -268,7 +275,6 @@ class AbstractCommand extends Command
      * @param SplFileInfo $file
      * @return FfmetaDataParser
      * @throws Exception
-     * @throws InvalidArgumentException
      */
     public function readFileMetaData(SplFileInfo $file)
     {
@@ -276,33 +282,21 @@ class AbstractCommand extends Command
             throw new Exception("cannot read metadata, file " . $file . " does not exist");
         }
 
-
-        /*
-        TODO:
-        - Write classes for
-            - MetaData (format, duration, codec, bandwidth, tag, etc.)
-            - MetaDataWriter (read, write)
-        - Rewrite MetaData logic
-            - use mp4info / mp4tags / mp4chapters where possible
-            - speed up ffmpeg usage by not recoding the whole file over and over again
-            - use Caching to not re-read a file again
-        */
-
-        $this->notice("reading metadata and streaminfo for file " . $file);
+        $this->notice(sprintf("reading metadata and streaminfo for file %s", $file));
         $metaData = new FfmetaDataParser();
         $metaData->parse($this->readFileMetaDataOutput($file), $this->readFileMetaDataStreamInfo($file));
         return $metaData;
     }
 
-    protected function notice(...$params)
+    public function notice($message, array $context = [])
     {
-        $this->log(OutputInterface::VERBOSITY_VERBOSE, ...$params);
+        $this->log(OutputInterface::VERBOSITY_VERBOSE, $message, $context);
     }
 
     /**
      * @param SplFileInfo $file
      * @return mixed|string
-     * @throws InvalidArgumentException
+     * @throws Exception
      */
     protected function readFileMetaDataOutput(SplFileInfo $file)
     {
@@ -320,7 +314,6 @@ class AbstractCommand extends Command
      * @param $cacheKey
      * @param null $message
      * @return mixed|string
-     * @throws InvalidArgumentException
      * @throws Exception
      */
     private function runCachedFfmpeg(array $command, $cacheKey, $message = null)
@@ -462,7 +455,7 @@ class AbstractCommand extends Command
     /**
      * @param SplFileInfo $file
      * @return mixed|string
-     * @throws InvalidArgumentException
+     * @throws Exception
      */
     protected function readFileMetaDataStreamInfo(SplFileInfo $file)
     {
@@ -475,19 +468,79 @@ class AbstractCommand extends Command
         ], $cacheKey);
     }
 
-    protected function warn(...$params)
+    protected function warn($message, array $context = array())
     {
-        $this->log(OutputInterface::VERBOSITY_NORMAL, ...$params);
+        $this->log(OutputInterface::VERBOSITY_NORMAL, $message, $context);
     }
 
-    protected function info(...$params)
+    /**
+     * System is unusable.
+     *
+     * @param string $message
+     * @param array $context
+     *
+     * @return void
+     */
+    public function emergency($message, array $context = [])
     {
-        $this->log(OutputInterface::VERBOSITY_VERY_VERBOSE, ...$params);
+        $this->log(OutputInterface::VERBOSITY_QUIET, $message, $context);
     }
 
-    protected function error(...$params)
+    /**
+     * Action must be taken immediately.
+     *
+     * Example: Entire website down, database unavailable, etc. This should
+     * trigger the SMS alerts and wake you up.
+     *
+     * @param string $message
+     * @param array $context
+     *
+     * @return void
+     */
+    public function alert($message, array $context = [])
     {
-        $this->log(OutputInterface::VERBOSITY_QUIET, ...$params);
+        $this->log(OutputInterface::VERBOSITY_QUIET, $message, $context);
+    }
+
+    /**
+     * Critical conditions.
+     *
+     * Example: Application component unavailable, unexpected exception.
+     *
+     * @param string $message
+     * @param array $context
+     *
+     * @return void
+     */
+    public function critical($message, array $context = [])
+    {
+        $this->log(OutputInterface::VERBOSITY_QUIET, $message, $context);
+    }
+
+    /**
+     * Exceptional occurrences that are not errors.
+     *
+     * Example: Use of deprecated APIs, poor use of an API, undesirable things
+     * that are not necessarily wrong.
+     *
+     * @param string $message
+     * @param array $context
+     *
+     * @return void
+     */
+    public function warning($message, array $context = [])
+    {
+        $this->log(OutputInterface::VERBOSITY_NORMAL, $message, $context);
+    }
+
+    public function info($message, array $context = [])
+    {
+        $this->log(OutputInterface::VERBOSITY_VERY_VERBOSE, $message, $context);
+    }
+
+    public function error($message, array $context = [])
+    {
+        $this->log(OutputInterface::VERBOSITY_QUIET, $message, $context);
     }
 
     protected function configure()
@@ -703,7 +756,6 @@ class AbstractCommand extends Command
         return $this->shell($command, $introductionMessage);
     }
 
-
     /**
      * @param $command
      * @param null $introductionMessage
@@ -734,11 +786,9 @@ class AbstractCommand extends Command
         }
     }
 
-
     /**
      * @param SplFileInfo $file
      * @return mixed|string
-     * @throws InvalidArgumentException
      * @throws Exception
      */
     protected function detectSilencesForChapterGuessing(SplFileInfo $file)
@@ -780,4 +830,6 @@ class AbstractCommand extends Command
         }
         return $chaptersAsLines;
     }
+
+
 }

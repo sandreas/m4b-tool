@@ -435,20 +435,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         // put tagloaders here?!
         $this->lookupAndAddCover();
 
-        $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
-        if ($chaptersFileContent !== null) {
-            $this->notice("importing chapters from existing chapters.txt");
-            $chapterParser = new Mp4ChapsChapterParser();
-            $chapters = $chapterParser->parse($chaptersFileContent);
-        } else {
-            $this->notice("rebuilding chapters from converted files title tags");
-            $chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge, $this->filesToConvert);
-            $chapters = $this->replaceChaptersWithMusicBrainz($chapters);
-        }
         $outputTempFile = $this->mergeFiles();
 
-        $chapters = $this->adjustTooLongChapters($outputTempFile, $chapters);
-        $this->tagMergedFile($outputTempFile, $chapters);
+
+        $this->tagMergedFile($outputTempFile);
 
         $this->moveFinishedOutputFile($outputTempFile, $this->outputFile);
 
@@ -776,15 +766,29 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     /**
      * @param SplFileInfo $outputTmpFile
-     * @param Chapter[] $chapters
+     * @throws InvalidArgumentException
      * @throws Exception
      */
-    private function tagMergedFile(SplFileInfo $outputTmpFile, array $chapters)
+    private function tagMergedFile(SplFileInfo $outputTmpFile)
     {
+        $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
+        if ($chaptersFileContent !== null) {
+            $this->notice("importing chapters from existing chapters.txt");
+            $chapterParser = new Mp4ChapsChapterParser();
+            $chapters = $chapterParser->parse($chaptersFileContent);
+        } else {
+            $this->notice("rebuilding chapters from converted files title tags");
+            $chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge, $this->filesToConvert);
+            $chapters = $this->replaceChaptersWithMusicBrainz($chapters);
+        }
+        $chapters = $this->adjustTooLongChapters($outputTmpFile, $chapters);
+
         $tag = new Tag();
         $tag->chapters = $chapters;
 
         $tagExtenderComposite = new TagImproverComposite();
+
+
         if ($openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf")) {
             $this->notice("enhancing tag with additional metadata from metadata.opf");
             $tagExtenderComposite->add(new OpenPackagingFormat($openPackagingFormatContent));
