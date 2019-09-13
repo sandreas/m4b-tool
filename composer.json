@@ -10,7 +10,8 @@
     "sandreas/php-time": "dev-master",
     "sandreas/php-strings": "dev-master",
     "ext-simplexml": "*",
-    "ext-json": "*"
+      "ext-json": "*",
+      "ext-mbstring": "*"
   },
   "autoload": {
     "psr-4": {

@@ -1,0 +1,13 @@
+# todo: line 21 change to variable
+version: "3"
+services:
+  m4b-tool-dev:
+    build:
+      dockerfile: Dockerfile.dev
+      context: .
+    volumes:
+      - .:/m4b-tool
+      # - ~/.ssh/my-private-key:/root/.ssh/id_rsa:ro
+      #environment:
+      #- "SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}"
+

@@ -6,11 +6,13 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use Sandreas\Time\TimeUnit;
 
 class AdjustTooLongChapters implements TagImproverInterface
 {
+    use LogTrait;
     /**
      * @var TimeUnit
      */
@@ -54,6 +56,7 @@ class AdjustTooLongChapters implements TagImproverInterface
     {
         // at least one option has to be defined to adjust too long chapters
         if ($this->maxChapterLength->milliseconds() === 0 || !is_array($tag->chapters) || count($tag->chapters) === 0) {
+            $this->info("no chapter length adjustment required (max chapter length not provided or empty chapter list)");
             return $tag;
         }
 
@@ -62,8 +65,24 @@ class AdjustTooLongChapters implements TagImproverInterface
             $this->chapterHandler->setDesiredLength($this->desiredChapterLength);
         }
 
+
+        if (!$this->isAdjustmentRequired($tag)) {
+            $this->info("no chapter length adjustment required (no too long chapters found)");
+            return $tag;
+        }
+        $this->info(sprintf("adjusting %s chapters with max length %s and desired length %s", count($tag->chapters), $this->maxChapterLength->format(), $this->desiredChapterLength->format()));
         $silences = $this->metaDataHandler->detectSilences($this->file, $this->silenceLength);
         $tag->chapters = $this->chapterHandler->adjustChapters($tag->chapters, $silences);
         return $tag;
+    }
+
+    protected function isAdjustmentRequired(Tag $tag)
+    {
+        foreach ($tag->chapters as $chapter) {
+            if ($chapter->getLength()->milliseconds() > $this->maxChapterLength->milliseconds()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

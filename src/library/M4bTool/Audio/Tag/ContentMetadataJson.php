@@ -9,7 +9,7 @@ use M4bTool\Audio\Tag;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
-class ChaptersFromContentMetadata implements TagImproverInterface
+class ContentMetadataJson implements TagImproverInterface
 {
     protected $chaptersContent;
 
@@ -22,7 +22,7 @@ class ChaptersFromContentMetadata implements TagImproverInterface
      * Cover constructor.
      * @param SplFileInfo $reference
      * @param null $fileName
-     * @return ChaptersFromContentMetadata
+     * @return ContentMetadataJson
      */
     public static function fromFile(SplFileInfo $reference, $fileName = null)
     {

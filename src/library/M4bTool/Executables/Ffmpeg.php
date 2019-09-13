@@ -288,12 +288,12 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
     public function detectSilences(SplFileInfo $file, TimeUnit $silenceLength)
     {
+        // TODO: Cache results
         $process = $this->ffmpeg([
             "-i", $file,
             "-af", "silencedetect=noise=-30dB:d=" . ($silenceLength->milliseconds() / 1000),
             "-f", "null",
             "-",
-
         ]);
 
         $silenceParser = new SilenceParser();

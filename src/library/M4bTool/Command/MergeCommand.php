@@ -5,8 +5,10 @@ namespace M4bTool\Command;
 
 use Exception;
 use FilesystemIterator;
+use InvalidArgumentException;
 use IteratorIterator;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Tag\ChaptersTxt;
 use M4bTool\Audio\Tag\Ffmetadata;
 use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Audio\Tag\OpenPackagingFormat;
@@ -24,11 +26,10 @@ use M4bTool\Executables\Tasks\Pool;
 use M4bTool\Filesystem\DirectoryLoader;
 use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Filesystem\FileLoader;
+use M4bTool\M4bTool\Audio\Tag\ChaptersFromFileTracks;
+use M4bTool\M4bTool\Audio\Tag\ChaptersFromMusicBrainz;
 use M4bTool\Parser\FfmetaDataParser;
-use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
-use M4bTool\Parser\SilenceParser;
-use Psr\Cache\InvalidArgumentException;
 use RecursiveDirectoryIterator;
 use Sandreas\Strings\Format\FormatParser;
 use Sandreas\Strings\Format\PlaceHolder;
@@ -635,31 +636,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
 
-    /**
-     * @param Chapter[] $chapters
-     * @return array|Chapter[]
-     * @throws Exception
-     */
-    private function replaceChaptersWithMusicBrainz(array $chapters)
-    {
-        $mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
-        if (!$mbId) {
-            return $chapters;
-        }
-
-        $mbChapterParser = new MusicBrainzChapterParser($mbId);
-        $mbChapterParser->setCache($this->cache);
-
-        $mbXml = $mbChapterParser->loadRecordings();
-        $mbChapters = $mbChapterParser->parseRecordings($mbXml);
-
-        $chapterMarker = new ChapterMarker();
-        $chapters = $chapterMarker->guessChaptersByTracks($mbChapters, $chapters);
-
-
-        return $chapterMarker->normalizeChapters($chapters, static::NORMALIZE_CHAPTER_OPTIONS);
-
-    }
 
     /**
      * @return SplFileInfo
@@ -729,84 +705,42 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
     /**
-     * @param SplFileInfo $outputFile
-     * @param Chapter[] $chapters
-     * @return array|Chapter[]
-     * @throws InvalidArgumentException
-     */
-    private function adjustTooLongChapters(SplFileInfo $outputFile, array $chapters)
-    {
-        // value examples:
-        // 300 => maxLength = 300 seconds
-        // 300,900 => desiredLength = 300 seconds, maxLength = 900 seconds
-        $maxChapterLengthOriginalValue = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
-        $maxChapterLengthParts = explode(",", $maxChapterLengthOriginalValue);
-
-        $desiredChapterLengthSeconds = $maxChapterLengthParts[0] ?? 0;
-        $maxChapterLengthSeconds = $maxChapterLengthParts[1] ?? $desiredChapterLengthSeconds;
-
-        $maxChapterLength = new TimeUnit((int)$maxChapterLengthSeconds, TimeUnit::SECOND);
-        $desiredChapterLength = new TimeUnit((int)$desiredChapterLengthSeconds, TimeUnit::SECOND);
-
-        // at least one option has to be defined to adjust too long chapters
-        if ($maxChapterLength->milliseconds() === 0) {
-            return $chapters;
-        }
-
-        if ($maxChapterLength->milliseconds() > 0) {
-            $this->chapterHandler->setMaxLength($maxChapterLength);
-            $this->chapterHandler->setDesiredLength($desiredChapterLength);
-        }
-
-        $silenceDetectionOutput = $this->detectSilencesForChapterGuessing($outputFile);
-        $silenceParser = new SilenceParser();
-        $silences = $silenceParser->parse($silenceDetectionOutput);
-        return $this->chapterHandler->adjustChapters($chapters, $silences);
-    }
-
-    /**
      * @param SplFileInfo $outputTmpFile
      * @throws InvalidArgumentException
      * @throws Exception
      */
     private function tagMergedFile(SplFileInfo $outputTmpFile)
     {
-        $chaptersFileContent = $this->lookupFileContents($this->argInputFile, "chapters.txt");
-        if ($chaptersFileContent !== null) {
-            $this->notice("importing chapters from existing chapters.txt");
-            $chapterParser = new Mp4ChapsChapterParser();
-            $chapters = $chapterParser->parse($chaptersFileContent);
-        } else {
-            $this->notice("rebuilding chapters from converted files title tags");
-            $chapters = $this->chapterHandler->buildChaptersFromFiles($this->filesToMerge, $this->filesToConvert);
-            $chapters = $this->replaceChaptersWithMusicBrainz($chapters);
-        }
-        $chapters = $this->adjustTooLongChapters($outputTmpFile, $chapters);
 
         $tag = new Tag();
-        $tag->chapters = $chapters;
+        $tagChanger = new TagImproverComposite();
 
-        $tagExtenderComposite = new TagImproverComposite();
+        // chapter loaders
+        // todo: what about - don't change any chapters if found: freezeProperties? -> load($tag, $frozenProperties=[])
+        $tagChanger->add(Ffmetadata::fromFile($this->argInputFile, "ffmetadata.txt"));
+        $tagChanger->add(ChaptersTxt::fromFile($this->argInputFile, "chapters.txt"));
 
-
-        if ($openPackagingFormatContent = $this->lookupFileContents($this->argInputFile, "metadata.opf")) {
-            $this->notice("enhancing tag with additional metadata from metadata.opf");
-            $tagExtenderComposite->add(new OpenPackagingFormat($openPackagingFormatContent));
+        if ($mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID)) {
+            $mbChapterParser = new MusicBrainzChapterParser($mbId);
+            $mbChapterParser->setCache($this->cache);
+            $tagChanger->add(new ChaptersFromMusicBrainz(new ChapterMarker(), $mbChapterParser));
         }
+        $tagChanger->add(new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert));
 
-        if ($ffmetadataContent = $this->lookupFileContents($this->argInputFile, "ffmetadata.txt")) {
-            $this->notice("enhancing tag with additional metadata from ffmetadata.txt");
-            $parser = new FfmetaDataParser();
-            $parser->parse($ffmetadataContent);
-            $tagExtenderComposite->add(new Ffmetadata($parser));
-        }
+        $maxChapterLength = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
+        $minSilenceLength = ((float)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH) / 1000);
+        $tagChanger->add(new Tag\AdjustTooLongChapters($this->metaHandler, $this->chapterHandler, $outputTmpFile, $maxChapterLength, $minSilenceLength));
+
+        // tag property loaders
+        $tagChanger->add(OpenPackagingFormat::fromFile($this->argInputFile, "metadata.opf"));
+        $tagChanger->add(Tag\AudibleTxt::fromFile($this->argInputFile, "audible.txt"));
+        $tagChanger->add(Tag\Description::fromFile($this->argInputFile, "description.txt"));
 
         $flags = new ConditionalFlags();
         $flags->insertIf(InputOptions::FLAG_ADJUST_FOR_IPOD, $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD));
+        $tagChanger->add(new InputOptions($this->input, $flags));
 
-        $tagExtenderComposite->add(new InputOptions($this->input, $flags));
-
-        $tag = $tagExtenderComposite->improve($tag);
+        $tag = $tagChanger->improve($tag);
         $this->tagFile($outputTmpFile, $tag);
         $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputTmpFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
     }

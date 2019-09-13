@@ -127,7 +127,7 @@ class FfmetaDataParser
             }
 
             // Metadata duration (less exact but sometimes the only information available)
-            if (preg_match("/^[\s]+Duration:[\s]+([0-9:\.]+)/", $line, $matches)) {
+            if (preg_match("/^[\s]+Duration:[\s]+([0-9:.]+)/", $line, $matches)) {
                 $this->parseDurationMatches($matches);
                 continue;
             }
@@ -341,7 +341,7 @@ class FfmetaDataParser
     {
         $tag = new Tag();
         $tag->album = $this->getProperty("album");
-        $tag->sortAlbum = $this->getProperty("sort_album") ?? $this->getProperty("album-sort");;
+        $tag->sortAlbum = $this->getProperty("sort_album") ?? $this->getProperty("album-sort");
         $tag->sortTitle = $this->getProperty("sort_name") ?? $this->getProperty("title-sort");
         $tag->sortArtist = $this->getProperty("sort_artist") ?? $this->getProperty("artist-sort");
         $tag->writer = $this->getProperty("writer") ?? $this->getProperty("composer");

@@ -8,7 +8,7 @@ use M4bTool\Audio\Tag;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use SplFileInfo;
 
-class ChaptersFromTxtFile implements TagImproverInterface
+class ChaptersTxt implements TagImproverInterface
 {
 
     /**
@@ -27,7 +27,7 @@ class ChaptersFromTxtFile implements TagImproverInterface
      * Cover constructor.
      * @param SplFileInfo $reference
      * @param null $fileName
-     * @return ChaptersFromTxtFile
+     * @return ChaptersTxt
      */
     public static function fromFile(SplFileInfo $reference, $fileName = null)
     {

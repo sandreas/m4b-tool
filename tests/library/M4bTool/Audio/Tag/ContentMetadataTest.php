@@ -36,7 +36,7 @@ EOT;
 
     public function testLoad()
     {
-        $subject = new ChaptersFromContentMetadata(static::FILE_CONTENT);
+        $subject = new ContentMetadataJson(static::FILE_CONTENT);
         $tag = $subject->extend();
         $this->assertCount(5, $tag->chapters);
         $this->assertEquals("Intro", $tag->chapters[0]->getName());

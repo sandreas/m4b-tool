@@ -44,7 +44,7 @@ class ChaptersFromMusicBrainz implements TagImproverInterface
      */
     public function improve(Tag $tag): Tag
     {
-        if (count($tag->chapters) && $this->chapterParser) {
+        if (count($tag->chapters) == 0 && $this->chapterParser) {
             $mbXml = $this->chapterParser->loadRecordings();
             $mbChapters = $this->chapterParser->parseRecordings($mbXml);
             $chapters = $this->marker->guessChaptersByTracks($mbChapters, $tag->chapters);
