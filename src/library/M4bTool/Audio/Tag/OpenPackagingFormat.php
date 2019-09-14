@@ -3,10 +3,8 @@
 
 namespace M4bTool\Audio\Tag;
 
-
-use DateTime;
-use Exception;
 use M4bTool\Audio\Tag;
+use M4bTool\Common\ReleaseDate;
 use SimpleXMLElement;
 use SplFileInfo;
 use Throwable;
@@ -83,7 +81,7 @@ class OpenPackagingFormat implements TagImproverInterface
         }
 
 
-        $tag->year = $this->makeYear($this->queryTag($xml, "date"));
+        $tag->year = ReleaseDate::createFromValidString($this->queryTag($xml, "date"));
         $tag->publisher = $this->makeString($this->queryTag($xml, "publisher"));
         $tag->language = $this->makeString($this->queryTag($xml, "language"));
         $tag->genre = $this->makeString($this->queryTag($xml, "subject"));
@@ -144,19 +142,6 @@ class OpenPackagingFormat implements TagImproverInterface
     {
         if ((string)$value !== "") {
             return (string)$value;
-        }
-        return null;
-    }
-
-    private function makeYear($value)
-    {
-        if (strlen(trim($value)) > 0) {
-            try {
-                $releaseDate = new DateTime($value);
-                return (int)$releaseDate->format("Y");
-            } catch (Exception $e) {
-
-            }
         }
         return null;
     }

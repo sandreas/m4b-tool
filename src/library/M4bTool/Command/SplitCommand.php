@@ -95,7 +95,6 @@ class SplitCommand extends AbstractConversionCommand
         $this->initExecution($input, $output);
         $this->ensureInputFileIsFile();
 
-        $this->metaHandler = new MetaDataHandler(new Ffmpeg(), new Mp4v2Wrapper(new Mp4art(), new Mp4chaps(), new Mp4info(), new Mp4tags()));
         $this->estimatedTotalDuration = $this->metaHandler->estimateDuration($this->argInputFile);
 
 

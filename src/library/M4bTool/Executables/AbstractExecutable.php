@@ -50,10 +50,10 @@ abstract class AbstractExecutable
         return $this->processHelper->run($this->output, $arguments, $messageInCaseOfError);
     }
 
-    protected function createNonBlockingProcess(array $arguments)
+    protected function createNonBlockingProcess(array $arguments, $timeout = null)
     {
         array_unshift($arguments, $this->pathToBinary);
-        return new Process($arguments);
+        return new Process($arguments, null, null, null, $timeout);
     }
 
     /**
@@ -63,7 +63,7 @@ abstract class AbstractExecutable
     protected function createNonBlockingPipedProcess(array $arguments)
     {
         $escapedArguments = array_map([$this, "escapeNonePipeArgument"], $arguments);
-        return Process::fromShellCommandline(implode(" ", $escapedArguments));
+        return Process::fromShellCommandline(implode(" ", $escapedArguments), null, null, null, null);
     }
 
     protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)

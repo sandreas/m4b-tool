@@ -8,7 +8,9 @@ use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\Flags;
+use M4bTool\M4bTool\Audio\Traits\CacheAdapterTrait;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Parser\SilenceParser;
 use Sandreas\Strings\RuneList;
@@ -21,6 +23,7 @@ use Symfony\Component\Process\Process;
 
 class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
 {
+    use LogTrait, CacheAdapterTrait;
     const AAC_FALLBACK_CODEC = "aac";
     const AAC_BEST_QUALITY_NON_FREE_CODEC = "libfdk_aac";
     const FFMETADATA_PROPERTY_MAPPING = [
@@ -286,18 +289,49 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         ]);
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @param TimeUnit $silenceLength
+     * @return array
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
     public function detectSilences(SplFileInfo $file, TimeUnit $silenceLength)
     {
-        // TODO: Cache results
-        $process = $this->ffmpeg([
-            "-i", $file,
-            "-af", "silencedetect=noise=-30dB:d=" . ($silenceLength->milliseconds() / 1000),
-            "-f", "null",
-            "-",
-        ]);
+        $checksum = $this->audioChecksum($file);
+        $silenceDetectionOutput = $this->cachedAdapterValue((string)$checksum, function () use ($file, $silenceLength) {
+            $process = $this->createNonBlockingProcess([
+                "-hide_banner",
+                "-i", $file,
+                "-af", "silencedetect=noise=-30dB:d=" . ($silenceLength->milliseconds() / 1000),
+                "-f", "null",
+                "-",
+            ]);
+            $this->notice(sprintf("running silence detection for file %s with max length %s", $file, $silenceLength->format()));
+            $process->run();
+            $this->notice("silence detection finished");
+            return $this->getAllProcessOutput($process);
+        }, 7200);
+
 
         $silenceParser = new SilenceParser();
-        return $silenceParser->parse($this->getAllProcessOutput($process));
+        return $silenceParser->parse($silenceDetectionOutput);
+    }
+
+
+    public function audioChecksum(SplFileInfo $audioFile)
+    {
+        if (!$audioFile->isFile()) {
+            throw new Exception(sprintf("checksum calculation failed - file %s does not exist", $audioFile));
+        }
+        $process = $this->ffmpeg(["-loglevel", "panic", "-i", $audioFile, "-vn", "-c:a", "copy", "-f", "crc", "-"]);
+        $output = trim($this->getAllProcessOutput($process));
+        preg_match("/^CRC=(0x[0-9A-F]+)$/isU", $output, $matches);
+        if (!isset($matches[1])) {
+            throw new Exception(sprintf("checksum calculation failed - invalid output %s", $output));
+        }
+
+        return hexdec($matches[1]);
+
     }
 
 

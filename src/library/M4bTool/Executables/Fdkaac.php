@@ -18,7 +18,10 @@ class Fdkaac extends AbstractExecutable implements TagReaderInterface, TagWriter
 {
     const PROFILE_AAC_HE = "aac_he";
     const PROFILE_AAC_HE_V2 = "aac_he_v2";
-    protected $ffmpeg;
+    /**
+     * @var bool
+     */
+    protected $fdkaacInstalled;
 
     /**
      * Fdkaac constructor.
@@ -31,14 +34,22 @@ class Fdkaac extends AbstractExecutable implements TagReaderInterface, TagWriter
     {
         parent::__construct($pathToBinary, $processHelper, $output);
         $process = $this->runProcess([]);
-        if (stripos($process->getOutput(), 'Usage: fdkaac') === false) {
-            throw new Exception('You need fdkaac to be installed for using audio profiles');
-        }
+        $this->fdkaacInstalled = (stripos($process->getOutput(), 'Usage: fdkaac') !== false);
     }
 
-    public function setFfmpeg(Ffmpeg $ffmpeg)
+    public function isInstalled()
     {
-        $this->ffmpeg = $ffmpeg;
+        return $this->fdkaacInstalled;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function ensureIsInstalled()
+    {
+        if (!$this->fdkaacInstalled) {
+            throw new Exception('You need fdkaac to be installed for using audio profiles');
+        }
     }
 
     /**
@@ -90,9 +101,12 @@ class Fdkaac extends AbstractExecutable implements TagReaderInterface, TagWriter
      */
     public function convertFile(FileConverterOptions $options): Process
     {
+        $this->ensureIsInstalled();
+
         if (!$this->supportsConversion($options)) {
             throw new Exception("fdkaac conversion is not supported");
         }
+
 
         switch ($options->profile) {
             case static::PROFILE_AAC_HE_V2:

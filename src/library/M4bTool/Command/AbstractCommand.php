@@ -8,6 +8,7 @@ use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Chapter\ChapterHandler;
+use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\Mp4art;
 use M4bTool\Executables\Mp4chaps;
@@ -154,14 +155,20 @@ class AbstractCommand extends Command implements LoggerInterface
     public function __construct(string $name = null)
     {
         parent::__construct($name);
+
+        $this->cache = new FilesystemAdapter();
+
         $ffmpeg = new Ffmpeg();
+        $ffmpeg->setLogger($this);
+        $ffmpeg->setCacheAdapter($this->cache);
         $mp4v2 = new Mp4v2Wrapper(
             new Mp4art(),
             new Mp4chaps(),
             new Mp4info(),
             new Mp4tags()
         );
-        $this->metaHandler = new MetaDataHandler($ffmpeg, $mp4v2);
+        $fdkaac = new Fdkaac();
+        $this->metaHandler = new MetaDataHandler($ffmpeg, $mp4v2, $fdkaac);
         $this->chapterHandler = new ChapterHandler($this->metaHandler);
     }
 
@@ -230,6 +237,10 @@ class AbstractCommand extends Command implements LoggerInterface
      */
     public function log($level, $message, array $context = array())
     {
+        if (!is_int($level)) {
+            $level = array_search(strtoupper($level), static::VERBOSITY_TO_LOG_LEVEL, true);
+        }
+
         if ($this->startTime === null) {
             $this->startTime = microtime(true);
         }
@@ -571,7 +582,6 @@ class AbstractCommand extends Command implements LoggerInterface
     {
         $this->input = $input;
         $this->output = $output;
-        $this->cache = new FilesystemAdapter();
 
         $this->loadArguments();
 

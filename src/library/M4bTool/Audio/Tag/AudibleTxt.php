@@ -4,10 +4,9 @@
 namespace M4bTool\Audio\Tag;
 
 
-use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Traits\LogTrait;
-use Sandreas\Time\TimeUnit;
+use M4bTool\Common\ReleaseDate;
 use SplFileInfo;
 
 class AudibleTxt implements TagImproverInterface
@@ -76,7 +75,7 @@ class AudibleTxt implements TagImproverInterface
         // $tag->track = $this->getProperty("track");
         // $tag->encoder = $this->getProperty("encoder");
         // $tag->lyrics = $this->getProperty("lyrics");
-        $mergeTag->year = $decoded["audibleMeta"]["datePublished"] ?? null;
+        $mergeTag->year = ReleaseDate::createFromValidString($decoded["audibleMeta"]["datePublished"]);
         $mergeTag->description = $decoded["description"] ?? null;
         $mergeTag->longDescription = $decoded["description"] ?? null;
         // cover is only a link, so skip it

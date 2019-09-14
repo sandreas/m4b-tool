@@ -7,6 +7,7 @@ namespace M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag;
 use M4bTool\Command\AbstractConversionCommand;
 use M4bTool\Common\Flags;
+use M4bTool\Common\ReleaseDate;
 use Symfony\Component\Console\Input\InputInterface;
 
 class InputOptions implements TagImproverInterface
@@ -49,7 +50,7 @@ class InputOptions implements TagImproverInterface
         $tag->genre = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_GENRE);
         $tag->writer = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_WRITER);
         $tag->albumArtist = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ALBUM_ARTIST);
-        $tag->year = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_YEAR);
+        $tag->year = ReleaseDate::createFromValidString($this->input->getOption(AbstractConversionCommand::OPTION_TAG_YEAR));
         $tag->cover = $this->input->getOption(AbstractConversionCommand::OPTION_COVER);
         $tag->description = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_DESCRIPTION);
         $tag->longDescription = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_LONG_DESCRIPTION);

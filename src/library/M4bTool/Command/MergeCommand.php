@@ -15,7 +15,6 @@ use M4bTool\Audio\Tag\OpenPackagingFormat;
 use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
-use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Executables\Fdkaac;
@@ -33,7 +32,6 @@ use M4bTool\Parser\MusicBrainzChapterParser;
 use RecursiveDirectoryIterator;
 use Sandreas\Strings\Format\FormatParser;
 use Sandreas\Strings\Format\PlaceHolder;
-use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -143,7 +141,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     {
 
         try {
-
+            $this->output = $output;
             $flags = new ConditionalFlags();
             $flags->insertIf(ChapterHandler::NO_REINDEXING, $input->getOption(static::OPTION_CHAPTER_NO_REINDEXING));
             $flags->insertIf(ChapterHandler::USE_FILENAMES, $input->getOption(static::OPTION_CHAPTER_USE_FILENAMES));
@@ -167,7 +165,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             }
         } catch (Throwable $e) {
             $this->error($e->getMessage());
-            $this->debug("trace:", $e->getTraceAsString());
+            $this->debug(sprintf("trace: %s", $e->getTraceAsString()));
         }
 
 
@@ -526,8 +524,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         $outputTempDir = $this->createOutputTempDir();
 
-        $ffmpeg = new Ffmpeg();
-        $fdkaac = new Fdkaac();
+
 
         $jobs = $this->input->getOption(static::OPTION_JOBS) ? (int)$this->input->getOption(static::OPTION_JOBS) : 1;
         $taskPool = new Pool($jobs);
@@ -558,7 +555,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $options->force = $this->optForce;
             $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
 
-            $taskPool->submit(new ConversionTask($ffmpeg, $fdkaac, $options)/*, $taskWeight*/);
+            $taskPool->submit(new ConversionTask($this->metaHandler, $options)/*, $taskWeight*/);
         }
 
 
@@ -728,7 +725,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $tagChanger->add(new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert));
 
         $maxChapterLength = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
-        $minSilenceLength = ((float)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH) / 1000);
+        $minSilenceLength = (int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH);
         $tagChanger->add(new Tag\AdjustTooLongChapters($this->metaHandler, $this->chapterHandler, $outputTmpFile, $maxChapterLength, $minSilenceLength));
 
         // tag property loaders

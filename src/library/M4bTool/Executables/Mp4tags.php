@@ -77,6 +77,7 @@ class Mp4tags extends AbstractExecutable implements TagWriterInterface
             if (in_array($parameterName, static::SORT_PARAMETERS, true)) {
                 continue;
             }
+
             $this->appendParameterToCommand($command, "-" . $parameterName, $tag->$tagPropertyName);
 
         }

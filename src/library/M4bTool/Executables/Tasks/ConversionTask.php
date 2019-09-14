@@ -4,6 +4,7 @@
 namespace M4bTool\Executables\Tasks;
 
 
+use M4bTool\Audio\MetaDataHandler;
 use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterOptions;
@@ -17,7 +18,7 @@ class ConversionTask extends AbstractTask
     /**
      * @var Ffmpeg
      */
-    protected $ffmpeg;
+    protected $metaDataHandler;
 
     /**
      * @var Fdkaac
@@ -40,10 +41,9 @@ class ConversionTask extends AbstractTask
      */
     protected $finishedOutputFile;
 
-    public function __construct(Ffmpeg $ffmpeg, Fdkaac $fdkaac, FileConverterOptions $options)
+    public function __construct(MetaDataHandler $metaDataHandler, FileConverterOptions $options)
     {
-        $this->ffmpeg = $ffmpeg;
-        $this->fdkaac = $fdkaac;
+        $this->metaDataHandler = $metaDataHandler;
         $this->options = $options;
 
         $this->finishedOutputFile = new SplFileInfo(str_replace("-converting", "-finished", $options->destination));
@@ -58,11 +58,8 @@ class ConversionTask extends AbstractTask
                 return;
             }
 
-            if ($this->fdkaac->supportsConversion($this->options)) {
-                $this->process = $this->fdkaac->convertFile($this->options);
-            } else {
-                $this->process = $this->ffmpeg->convertFile($this->options);
-            }
+            $this->process = $this->metaDataHandler->convertFile($this->options);
+
         } catch (Throwable $e) {
             $this->lastException = $e;
         }

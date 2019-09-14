@@ -7,11 +7,13 @@ namespace M4bTool\Parser;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
+use M4bTool\Common\ReleaseDate;
 use M4bTool\StringUtilities\Runes;
 use M4bTool\StringUtilities\Scanner;
 use M4bTool\StringUtilities\Strings;
 use Sandreas\Strings\RuneList;
 use Sandreas\Time\TimeUnit;
+use Throwable;
 
 
 class FfmetaDataParser
@@ -99,103 +101,6 @@ class FfmetaDataParser
         $this->chapters = [];
 
     }
-
-
-    /**
-     * @param $streamInfo
-     * @throws Exception
-     */
-    private function parseStreams($streamInfo)
-    {
-
-        $this->scanner->initialize(new Runes($streamInfo));
-
-        while ($this->scanner->scanLine()) {
-            $line = $this->scanner->getResult();
-            if (stripos($line, "Stream #") !== false) {
-                if (stripos($line, "Audio: ") !== false) {
-                    $this->parseAudioStream($line);
-                } elseif (stripos($line, "Video: ") !== false) {
-                    $this->parseVideoStream($line);
-                }
-                continue;
-            }
-
-            if (stripos($line, "frame=") !== false && stripos($line, "time=") !== false && $this->duration !== null) {
-                $this->parseDuration($line);
-                continue;
-            }
-
-            // Metadata duration (less exact but sometimes the only information available)
-            if (preg_match("/^[\s]+Duration:[\s]+([0-9:.]+)/", $line, $matches)) {
-                $this->parseDurationMatches($matches);
-                continue;
-            }
-        }
-
-        // look for:
-        // #<stream-number>(<language>): <type>: <codec>
-        // Stream #0:0(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
-        // frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x
-    }
-
-    private function parseAudioStream($lineWithStream)
-    {
-        // Stream #0:0(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
-        // Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 128 kb/s
-
-        $parts = explode("Audio: ", $lineWithStream);
-        if (count($parts) != 2) {
-            return;
-        }
-
-        $stream = $parts[1];
-        $streamParts = explode(", ", $stream);
-
-        $this->applyAudioStreamMapping(static::CODEC_MAPPING, $streamParts[0], $this->codec);
-        $this->applyAudioStreamMapping(static::FORMAT_MAPPING, $streamParts[0], $this->format);
-        $this->applyAudioStreamMapping(static::CHANNEL_MAPPING, $streamParts[2], $this->channels);
-
-
-    }
-
-    private function applyAudioStreamMapping($mapping, &$haystack, &$property)
-    {
-        foreach ($mapping as $needle => $result) {
-            if (stripos($haystack, $needle) !== false) {
-                $property = $result;
-                break;
-            }
-        }
-    }
-
-    /**
-     * @param $lineWithDuration
-     * @throws Exception
-     */
-    private function parseDuration($lineWithDuration)
-    {
-        // frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x
-        $lastPos = strripos($lineWithDuration, "time=");
-        $lastPart = substr($lineWithDuration, $lastPos);
-
-        preg_match("/time=([^\s]+)/", $lastPart, $matches);
-        $this->parseDurationMatches($matches);
-    }
-
-    /**
-     * @param $matches
-     * @throws Exception
-     */
-    private function parseDurationMatches($matches)
-    {
-        if (!isset($matches[1])) {
-            return;
-        }
-
-        $this->duration = TimeUnit::fromFormat($matches[1], TimeUnit::FORMAT_DEFAULT);
-    }
-
 
     private function parseMetaData($metaData)
     {
@@ -316,6 +221,146 @@ class FfmetaDataParser
         return true;
     }
 
+    private function unquote(string $propertyValue)
+    {
+        $runeList = new RuneList($propertyValue);
+        return (string)$runeList->unquote([
+            "=" => "\\",
+            ";" => "\\",
+            "#" => "\\",
+            "\\" => "\\",
+            "\n" => "\\"
+        ]);
+    }
+
+    /**
+     * @param $streamInfo
+     * @throws Exception
+     */
+    private function parseStreams($streamInfo)
+    {
+
+        $this->scanner->initialize(new Runes($streamInfo));
+
+        while ($this->scanner->scanLine()) {
+            $line = $this->scanner->getResult();
+            if (stripos($line, "Stream #") !== false) {
+                if (stripos($line, "Audio: ") !== false) {
+                    $this->parseAudioStream($line);
+                } elseif (stripos($line, "Video: ") !== false) {
+                    $this->parseVideoStream($line);
+                }
+                continue;
+            }
+
+            if (stripos($line, "frame=") !== false && stripos($line, "time=") !== false && $this->duration !== null) {
+                $this->parseDuration($line);
+                continue;
+            }
+
+            // Metadata duration (less exact but sometimes the only information available)
+            if (preg_match("/^[\s]+Duration:[\s]+([0-9:.]+)/", $line, $matches)) {
+                $this->parseDurationMatches($matches);
+                continue;
+            }
+        }
+
+        // look for:
+        // #<stream-number>(<language>): <type>: <codec>
+        // Stream #0:0(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+        // frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x
+    }
+
+    private function parseAudioStream($lineWithStream)
+    {
+        // Stream #0:0(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 127 kb/s (default)
+        // Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 128 kb/s
+
+        $parts = explode("Audio: ", $lineWithStream);
+        if (count($parts) != 2) {
+            return;
+        }
+
+        $stream = $parts[1];
+        $streamParts = explode(", ", $stream);
+
+        $this->applyAudioStreamMapping(static::CODEC_MAPPING, $streamParts[0], $this->codec);
+        $this->applyAudioStreamMapping(static::FORMAT_MAPPING, $streamParts[0], $this->format);
+        $this->applyAudioStreamMapping(static::CHANNEL_MAPPING, $streamParts[2], $this->channels);
+
+
+    }
+
+    private function applyAudioStreamMapping($mapping, &$haystack, &$property)
+    {
+        foreach ($mapping as $needle => $result) {
+            if (stripos($haystack, $needle) !== false) {
+                $property = $result;
+                break;
+            }
+        }
+    }
+
+    private function parseVideoStream(Runes $lineWithStream)
+    {
+        // Stream #0:1: Video: png, rgba(pc), 95x84, 90k tbr, 90k tbn, 90k tbc
+        // Stream #0:1: Video: mjpeg, yuvj420p(pc, bt470bg/unknown/unknown), 95x84 [SAR 1:1 DAR 95:84], 90k tbr, 90k tbn, 90k tbc
+        $stringLine = (string)$lineWithStream;
+        $cover = new EmbeddedCover();
+
+        foreach (static::SUPPORTED_COVER_TYPES as $needle => $compressionFormat) {
+            if (stripos($stringLine, $needle) !== false) {
+                $cover->imageFormat = $compressionFormat;
+                break;
+            }
+        }
+        if ($cover->imageFormat === EmbeddedCover::FORMAT_UNKNOWN) {
+            return;
+        }
+        $this->cover = $cover;
+
+
+        preg_match("/([1-9][0-9]*x[1-9][0-9]*)/is", $stringLine, $dimensionMatches);
+
+        if (!isset($dimensionMatches[0])) {
+            return;
+        }
+        $parts = explode("x", $dimensionMatches[0]);
+        if (count($parts) !== 2) {
+            return;
+        }
+        $cover->width = (int)$parts[0];
+        $cover->height = (int)$parts[1];
+
+    }
+
+    /**
+     * @param $lineWithDuration
+     * @throws Exception
+     */
+    private function parseDuration($lineWithDuration)
+    {
+        // frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.12 bitrate=N/A speed= 360x
+        $lastPos = strripos($lineWithDuration, "time=");
+        $lastPart = substr($lineWithDuration, $lastPos);
+
+        preg_match("/time=([^\s]+)/", $lastPart, $matches);
+        $this->parseDurationMatches($matches);
+    }
+
+    /**
+     * @param $matches
+     * @throws Exception
+     */
+    private function parseDurationMatches($matches)
+    {
+        if (!isset($matches[1])) {
+            return;
+        }
+
+        $this->duration = TimeUnit::fromFormat($matches[1], TimeUnit::FORMAT_DEFAULT);
+    }
+
     public function getChapters()
     {
         return $this->chapters;
@@ -358,7 +403,10 @@ class FfmetaDataParser
         $tag->track = $this->getProperty("track");
         $tag->encoder = $this->getProperty("encoder");
         $tag->lyrics = $this->getProperty("lyrics");
-        $tag->year = $this->getProperty("date");
+
+        $tag->year = ReleaseDate::createFromValidString($this->getProperty("date"));
+
+
         $tag->description = $this->getProperty("description");
         $tag->longDescription = $this->getProperty("longdesc") ?? $this->getProperty("synopsis");
         $tag->cover = $this->cover;
@@ -372,50 +420,5 @@ class FfmetaDataParser
             return null;
         }
         return $this->metaDataProperties[$propertyName];
-    }
-
-    private function unquote(string $propertyValue)
-    {
-        $runeList = new RuneList($propertyValue);
-        return (string)$runeList->unquote([
-            "=" => "\\",
-            ";" => "\\",
-            "#" => "\\",
-            "\\" => "\\",
-            "\n" => "\\"
-        ]);
-    }
-
-    private function parseVideoStream(Runes $lineWithStream)
-    {
-        // Stream #0:1: Video: png, rgba(pc), 95x84, 90k tbr, 90k tbn, 90k tbc
-        // Stream #0:1: Video: mjpeg, yuvj420p(pc, bt470bg/unknown/unknown), 95x84 [SAR 1:1 DAR 95:84], 90k tbr, 90k tbn, 90k tbc
-        $stringLine = (string)$lineWithStream;
-        $cover = new EmbeddedCover();
-
-        foreach (static::SUPPORTED_COVER_TYPES as $needle => $compressionFormat) {
-            if (stripos($stringLine, $needle) !== false) {
-                $cover->imageFormat = $compressionFormat;
-                break;
-            }
-        }
-        if ($cover->imageFormat === EmbeddedCover::FORMAT_UNKNOWN) {
-            return;
-        }
-        $this->cover = $cover;
-
-
-        preg_match("/([1-9][0-9]*x[1-9][0-9]*)/is", $stringLine, $dimensionMatches);
-
-        if (!isset($dimensionMatches[0])) {
-            return;
-        }
-        $parts = explode("x", $dimensionMatches[0]);
-        if (count($parts) !== 2) {
-            return;
-        }
-        $cover->width = (int)$parts[0];
-        $cover->height = (int)$parts[1];
-
     }
 }

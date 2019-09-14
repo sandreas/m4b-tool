@@ -7,7 +7,10 @@ namespace M4bTool\Audio;
 use Exception;
 use M4bTool\Common\Flags;
 use M4bTool\Executables\DurationDetectorInterface;
+use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
+use M4bTool\Executables\FileConverterInterface;
+use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Executables\TagReaderInterface;
 use M4bTool\Executables\TagWriterInterface;
@@ -15,8 +18,9 @@ use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
+use Symfony\Component\Process\Process;
 
-class MetaDataHandler implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface
+class MetaDataHandler implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
 {
     const EXTENSION_MP3 = "mp3";
     const EXTENSION_MP4 = "mp4";
@@ -48,11 +52,14 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
     protected $ffmpeg;
     /** @var Mp4v2Wrapper */
     protected $mp4v2;
+    /** @var Fdkaac */
+    protected $fdkaac;
 
-    public function __construct(Ffmpeg $ffmpeg, Mp4v2Wrapper $mp4v2)
+    public function __construct(Ffmpeg $ffmpeg, Mp4v2Wrapper $mp4v2, Fdkaac $fdkaac)
     {
         $this->ffmpeg = $ffmpeg;
         $this->mp4v2 = $mp4v2;
+        $this->fdkaac = $fdkaac;
     }
 
     /**
@@ -315,5 +322,24 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
     {
         return $destinationFile ? $destinationFile : new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $defaultFileName);
 
+    }
+
+    /**
+     * @param FileConverterOptions $options
+     * @return Process
+     * @throws Exception
+     */
+    public function convertFile(FileConverterOptions $options): Process
+    {
+        if ($this->fdkaac->supportsConversion($options)) {
+            $this->fdkaac->ensureIsInstalled();
+            return $this->fdkaac->convertFile($options);
+        }
+        return $this->ffmpeg->convertFile($options);
+    }
+
+    public function supportsConversion(FileConverterOptions $options): bool
+    {
+        return $this->fdkaac->supportsConversion($options) || $this->ffmpeg->supportsConversion($options);
     }
 }

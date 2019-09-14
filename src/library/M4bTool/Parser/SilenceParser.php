@@ -27,7 +27,7 @@ class SilenceParser
 
     private function splitLines($chapterString)
     {
-        $this->lines = preg_split("/\r\n|\n|\r/", $chapterString);
+        $this->lines = $chapterString;
     }
 
     private function reset()
@@ -38,7 +38,10 @@ class SilenceParser
 
     private function parseLines()
     {
-        foreach ($this->lines as $line) {
+
+        while (($pos = strpos($this->lines, "\n")) !== false) {
+            $line = substr($this->lines, 0, $pos);
+            $this->lines = substr($this->lines, $pos + 1);
             $trimmedLine = trim($line);
 
             if(strpos($trimmedLine, "Duration:") !== false) {
