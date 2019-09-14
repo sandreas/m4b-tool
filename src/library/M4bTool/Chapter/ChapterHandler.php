@@ -6,7 +6,7 @@ namespace M4bTool\Chapter;
 
 use Exception;
 use M4bTool\Audio\Chapter;
-use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Silence;
 use M4bTool\Common\Flags;
 use Sandreas\Time\TimeUnit;
@@ -21,7 +21,7 @@ class ChapterHandler
     const NO_REINDEXING = 1 << 0;
     const USE_FILENAMES = 1 << 1;
     /**
-     * @var MetaDataHandler
+     * @var BinaryWrapper
      */
     protected $meta;
     /** @var TimeUnit */
@@ -34,7 +34,7 @@ class ChapterHandler
     /** @var Flags */
     protected $flags;
 
-    public function __construct(MetaDataHandler $meta)
+    public function __construct(BinaryWrapper $meta)
     {
         $this->meta = $meta;
         $this->maxLength = new TimeUnit();

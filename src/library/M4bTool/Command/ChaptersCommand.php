@@ -11,6 +11,7 @@ use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use M4bTool\Parser\SilenceParser;
+use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
@@ -90,6 +91,7 @@ class ChaptersCommand extends AbstractCommand
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int|void|null
+     * @throws InvalidArgumentException
      * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -137,7 +139,7 @@ class ChaptersCommand extends AbstractCommand
         $mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
         if ($mbId) {
             $this->mbChapterParser = new MusicBrainzChapterParser($mbId);
-            $this->mbChapterParser->setCache($this->cache);
+            $this->mbChapterParser->setCacheAdapter($this->cache);
         }
 
         $this->silenceParser = new SilenceParser();

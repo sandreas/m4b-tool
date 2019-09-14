@@ -4,6 +4,7 @@
 namespace M4bTool\Audio\Tag;
 
 
+use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use SplFileInfo;
@@ -44,6 +45,8 @@ class ChaptersTxt implements TagImproverInterface
     /**
      * @param Tag $tag
      * @return Tag
+     * @throws Exception
+     * @throws Exception
      */
     public function improve(Tag $tag): Tag
     {

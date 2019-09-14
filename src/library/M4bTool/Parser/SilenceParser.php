@@ -4,6 +4,7 @@
 namespace M4bTool\Parser;
 
 
+use Exception;
 use M4bTool\Audio\Silence;
 use Sandreas\Time\TimeUnit;
 
@@ -17,6 +18,11 @@ class SilenceParser
      */
     protected $duration;
 
+    /**
+     * @param $silencesString
+     * @return array
+     * @throws Exception
+     */
     public function parse($silencesString)
     {
         $this->reset();
@@ -27,7 +33,7 @@ class SilenceParser
 
     private function splitLines($chapterString)
     {
-        $this->lines = $chapterString;
+        $this->lines = preg_split("/\r\n|\n|\r/", $chapterString);
     }
 
     private function reset()
@@ -36,12 +42,13 @@ class SilenceParser
         $this->lines = [];
     }
 
+    /**
+     * @throws Exception
+     */
     private function parseLines()
     {
 
-        while (($pos = strpos($this->lines, "\n")) !== false) {
-            $line = substr($this->lines, 0, $pos);
-            $this->lines = substr($this->lines, $pos + 1);
+        foreach ($this->lines as $line) {
             $trimmedLine = trim($line);
 
             if(strpos($trimmedLine, "Duration:") !== false) {
@@ -70,6 +77,10 @@ class SilenceParser
         return $this->duration;
     }
 
+    /**
+     * @param $trimmedLine
+     * @throws Exception
+     */
     private function parseDuration($trimmedLine)
     {
         preg_match('/[\s]*Duration\:[\s]*([0-9\.\:]+)[\s]*.*/i', $trimmedLine, $matches);

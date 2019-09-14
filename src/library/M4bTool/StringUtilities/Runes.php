@@ -6,6 +6,7 @@ namespace M4bTool\StringUtilities;
 
 use ArrayAccess;
 use Countable;
+use InvalidArgumentException;
 use SeekableIterator;
 
 class Runes implements ArrayAccess, SeekableIterator, Countable
@@ -20,7 +21,7 @@ class Runes implements ArrayAccess, SeekableIterator, Countable
     public function __construct($string = "")
     {
         if (!$this->isUtf8($string)) {
-            throw new \InvalidArgumentException("Runes does only support UTF-8 strings");
+            throw new InvalidArgumentException("Runes does only support UTF-8 strings");
         }
 
         $this->runes = preg_split('//u', $string, -1, PREG_SPLIT_NO_EMPTY);
@@ -78,7 +79,7 @@ class Runes implements ArrayAccess, SeekableIterator, Countable
     public function offsetSet($offset, $value)
     {
         if (mb_strlen($value) !== 1) {
-            throw new \InvalidArgumentException("Values must contain exactly one rune");
+            throw new InvalidArgumentException("Values must contain exactly one rune");
         }
         $this->runes[$offset] = $value;
     }

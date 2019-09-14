@@ -20,10 +20,10 @@ class Mp4info extends AbstractExecutable implements DurationDetectorInterface
 
     /**
      * @param SplFileInfo $file
-     * @return TimeUnit|null
+     * @return TimeUnit
      * @throws Exception
      */
-    public function estimateDuration(SplFileInfo $file): ?TimeUnit
+    public function estimateDuration(SplFileInfo $file): TimeUnit
     {
         return $this->inspectExactDuration($file);
     }
@@ -31,10 +31,10 @@ class Mp4info extends AbstractExecutable implements DurationDetectorInterface
 
     /**
      * @param SplFileInfo $file
-     * @return TimeUnit|null
+     * @return TimeUnit
      * @throws Exception
      */
-    public function inspectExactDuration(SplFileInfo $file): ?TimeUnit
+    public function inspectExactDuration(SplFileInfo $file): TimeUnit
     {
         $process = $this->runProcess([$file]);
         $output = $process->getOutput() . $process->getErrorOutput();

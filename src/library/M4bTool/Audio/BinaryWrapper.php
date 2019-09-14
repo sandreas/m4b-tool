@@ -16,11 +16,12 @@ use M4bTool\Executables\TagReaderInterface;
 use M4bTool\Executables\TagWriterInterface;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Tags\StringBuffer;
+use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Process\Process;
 
-class MetaDataHandler implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
+class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
 {
     const EXTENSION_MP3 = "mp3";
     const EXTENSION_MP4 = "mp4";
@@ -186,6 +187,12 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
         return $this->ffmpeg->readTag($file);
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @param TimeUnit $silenceLength
+     * @return array
+     * @throws InvalidArgumentException
+     */
     public function detectSilences(SplFileInfo $file, TimeUnit $silenceLength)
     {
         return $this->ffmpeg->detectSilences($file, $silenceLength);
@@ -297,7 +304,7 @@ class MetaDataHandler implements TagReaderInterface, TagWriterInterface, Duratio
         $description = $tag->description;
         if ($tag->description && $tag->longDescription) {
             $buf = new StringBuffer($tag->longDescription);
-            if ($buf->softTruncateBytesSuffix(MetaDataHandler::TAG_DESCRIPTION_MAX_LEN, MetaDataHandler::TAG_DESCRIPTION_SUFFIX) === $tag->description) {
+            if ($buf->softTruncateBytesSuffix(BinaryWrapper::TAG_DESCRIPTION_MAX_LEN, BinaryWrapper::TAG_DESCRIPTION_SUFFIX) === $tag->description) {
                 $description = $tag->longDescription;
             }
         }

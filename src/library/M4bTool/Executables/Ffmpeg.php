@@ -6,13 +6,14 @@ namespace M4bTool\Executables;
 
 use Exception;
 use M4bTool\Audio\Chapter;
-use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\Flags;
 use M4bTool\M4bTool\Audio\Traits\CacheAdapterTrait;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Parser\SilenceParser;
+use Psr\Cache\InvalidArgumentException;
 use Sandreas\Strings\RuneList;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -293,12 +294,14 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
      * @param SplFileInfo $file
      * @param TimeUnit $silenceLength
      * @return array
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
+     * @throws Exception
      */
     public function detectSilences(SplFileInfo $file, TimeUnit $silenceLength)
     {
         $checksum = $this->audioChecksum($file);
-        $silenceDetectionOutput = $this->cachedAdapterValue((string)$checksum, function () use ($file, $silenceLength) {
+        $cacheKey = "m4b-tool.audiochecksum." . $checksum;
+        $silenceDetectionOutput = $this->cachedAdapterValue($cacheKey, function () use ($file, $silenceLength) {
             $process = $this->createNonBlockingProcess([
                 "-hide_banner",
                 "-i", $file,
@@ -318,6 +321,11 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
     }
 
 
+    /**
+     * @param SplFileInfo $audioFile
+     * @return float|int
+     * @throws Exception
+     */
     public function audioChecksum(SplFileInfo $audioFile)
     {
         if (!$audioFile->isFile()) {
@@ -349,7 +357,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         ];
 
         // backwards compatibility: ffmpeg needed experimental flag in earlier versions
-        if ($options->codec == MetaDataHandler::CODEC_AAC) {
+        if ($options->codec == BinaryWrapper::CODEC_AAC) {
             $command[] = "-strict";
             $command[] = "experimental";
         }
@@ -369,7 +377,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         $this->appendParameterToCommand($command, "-acodec", $options->codec);
 
         // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
-        if ($options->format && $options->codec !== MetaDataHandler::CODEC_ALAC) {
+        if ($options->format && $options->codec !== BinaryWrapper::CODEC_ALAC) {
             $this->appendParameterToCommand($command, "-f", $options->format);
         }
 

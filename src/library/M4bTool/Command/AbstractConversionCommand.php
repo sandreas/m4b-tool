@@ -5,7 +5,7 @@ namespace M4bTool\Command;
 
 
 use Exception;
-use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Common\ConditionalFlags;
@@ -322,7 +322,7 @@ Codecs:
         if ($tag->description && $tag->longDescription) {
 
             $buf = new StringBuffer($tag->longDescription);
-            if ($buf->softTruncateBytesSuffix(MetaDataHandler::TAG_DESCRIPTION_MAX_LEN, MetaDataHandler::TAG_DESCRIPTION_SUFFIX) === $tag->description) {
+            if ($buf->softTruncateBytesSuffix(BinaryWrapper::TAG_DESCRIPTION_MAX_LEN, BinaryWrapper::TAG_DESCRIPTION_SUFFIX) === $tag->description) {
                 $description = $tag->longDescription;
             }
         }

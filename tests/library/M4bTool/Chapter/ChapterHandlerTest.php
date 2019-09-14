@@ -3,7 +3,7 @@
 namespace M4bTool\Chapter;
 
 use M4bTool\Audio\Chapter;
-use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Audio\BinaryWrapper;
 use PHPUnit\Framework\TestCase;
 use Mockery as m;
 use Sandreas\Time\TimeUnit;
@@ -16,14 +16,14 @@ class ChapterHandlerTest extends TestCase
      */
     protected $subject;
     /**
-     * @var m\MockInterface|MetaDataHandler
+     * @var m\MockInterface|BinaryWrapper
      */
     protected $mockMetaDataHandler;
 
     public function setUp()
     {
 
-        $this->mockMetaDataHandler = m::mock(MetaDataHandler::class);
+        $this->mockMetaDataHandler = m::mock(BinaryWrapper::class);
         $this->subject = new ChapterHandler($this->mockMetaDataHandler);
     }
 

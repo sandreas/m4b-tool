@@ -6,7 +6,7 @@ namespace M4bTool\Command;
 use DateTime;
 use Exception;
 use M4bTool\Audio\Chapter;
-use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
@@ -145,7 +145,7 @@ class AbstractCommand extends Command implements LoggerInterface
     protected $logLevel;
 
 
-    /** @var MetaDataHandler */
+    /** @var BinaryWrapper */
     protected $metaHandler;
 
     /** @var ChapterHandler */
@@ -168,7 +168,7 @@ class AbstractCommand extends Command implements LoggerInterface
             new Mp4tags()
         );
         $fdkaac = new Fdkaac();
-        $this->metaHandler = new MetaDataHandler($ffmpeg, $mp4v2, $fdkaac);
+        $this->metaHandler = new BinaryWrapper($ffmpeg, $mp4v2, $fdkaac);
         $this->chapterHandler = new ChapterHandler($this->metaHandler);
     }
 

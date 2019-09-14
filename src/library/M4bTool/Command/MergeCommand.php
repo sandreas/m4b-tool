@@ -17,8 +17,6 @@ use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Silence;
 use M4bTool\Common\ConditionalFlags;
-use M4bTool\Executables\Fdkaac;
-use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Executables\Tasks\ConversionTask;
 use M4bTool\Executables\Tasks\Pool;
@@ -719,7 +717,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         if ($mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID)) {
             $mbChapterParser = new MusicBrainzChapterParser($mbId);
-            $mbChapterParser->setCache($this->cache);
+            $mbChapterParser->setCacheAdapter($this->cache);
             $tagChanger->add(new ChaptersFromMusicBrainz(new ChapterMarker(), $mbChapterParser));
         }
         $tagChanger->add(new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert));
@@ -780,8 +778,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         try {
             $this->deleteFilesAndParentDir($this->filesToMerge);
         } catch (Throwable $e) {
-            $this->error("could not delete temporary files: ", $e->getMessage());
-            $this->debug("trace:", $e->getTraceAsString());
+            $this->error(sprintf("could not delete temporary files: %s", $e->getMessage()));
+            $this->debug(sprintf("trace: %s", $e->getTraceAsString()));
         }
 
     }

@@ -13,7 +13,6 @@ use M4bTool\StringUtilities\Scanner;
 use M4bTool\StringUtilities\Strings;
 use Sandreas\Strings\RuneList;
 use Sandreas\Time\TimeUnit;
-use Throwable;
 
 
 class FfmetaDataParser

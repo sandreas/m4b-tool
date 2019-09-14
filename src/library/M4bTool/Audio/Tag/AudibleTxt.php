@@ -51,7 +51,7 @@ class AudibleTxt implements TagImproverInterface
         }
         $decoded = @json_decode($this->fileContent, true);
         if ($decoded === false) {
-            $this->warn("could not decode audible.txt");
+            $this->warning("could not decode audible.txt");
             return $tag;
         }
         $this->notice("audible.txt loaded for tagging");

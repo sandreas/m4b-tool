@@ -4,6 +4,7 @@
 namespace M4bTool\Chapter;
 
 
+use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use Sandreas\Time\TimeUnit;
@@ -28,7 +29,7 @@ class ChapterMarker
      * @param $silences
      * @param TimeUnit $fullLength
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     public function guessChaptersBySilences($mbChapters, $silences, TimeUnit $fullLength)
     {
@@ -193,7 +194,7 @@ class ChapterMarker
      * @param Chapter[] $mbChapters
      * @param Chapter[] $trackChapters
      * @return Chapter[] $guessedChapters
-     * @throws \Exception
+     * @throws Exception
      */
     public function guessChaptersByTracks($mbChapters, $trackChapters)
     {

@@ -4,12 +4,18 @@
 namespace M4bTool\Parser;
 
 
+use Exception;
 use M4bTool\Audio\Chapter;
 use Sandreas\Time\TimeUnit;
 
 class Mp4ChapsChapterParser
 {
 
+    /**
+     * @param string $chapterString
+     * @return array
+     * @throws Exception
+     */
     public function parse(string $chapterString)
     {
         $chapters = [];

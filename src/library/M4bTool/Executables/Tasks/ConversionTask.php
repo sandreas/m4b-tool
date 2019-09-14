@@ -4,7 +4,7 @@
 namespace M4bTool\Executables\Tasks;
 
 
-use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterOptions;
@@ -41,7 +41,7 @@ class ConversionTask extends AbstractTask
      */
     protected $finishedOutputFile;
 
-    public function __construct(MetaDataHandler $metaDataHandler, FileConverterOptions $options)
+    public function __construct(BinaryWrapper $metaDataHandler, FileConverterOptions $options)
     {
         $this->metaDataHandler = $metaDataHandler;
         $this->options = $options;

@@ -4,8 +4,6 @@
 namespace M4bTool\StringUtilities;
 
 
-use InvalidArgumentException;
-
 class Scanner
 {
     const OFFSET_RUNE_BEFORE_LAST = -2;

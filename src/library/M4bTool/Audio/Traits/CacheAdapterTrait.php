@@ -5,7 +5,6 @@ namespace M4bTool\M4bTool\Audio\Traits;
 
 
 use Psr\Cache\InvalidArgumentException;
-use Symfony\Component\Cache\Adapter\AbstractAdapter;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 
 trait CacheAdapterTrait

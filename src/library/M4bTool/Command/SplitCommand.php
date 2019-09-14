@@ -7,15 +7,9 @@ namespace M4bTool\Command;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\CueSheet;
-use M4bTool\Audio\MetaDataHandler;
+use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
 use M4bTool\Chapter\ChapterHandler;
-use M4bTool\Executables\Ffmpeg;
-use M4bTool\Executables\Mp4art;
-use M4bTool\Executables\Mp4chaps;
-use M4bTool\Executables\Mp4info;
-use M4bTool\Executables\Mp4tags;
-use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
@@ -57,7 +51,7 @@ class SplitCommand extends AbstractConversionCommand
 
     protected $meta = [];
     /**
-     * @var MetaDataHandler
+     * @var BinaryWrapper
      */
     protected $metaHandler;
     /**

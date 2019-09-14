@@ -4,10 +4,12 @@
 namespace M4bTool\Audio\Tag;
 
 
-use M4bTool\Audio\MetaDataHandler;
+use Exception;
+use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
+use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 
 class AdjustTooLongChapters implements TagImproverInterface
@@ -24,7 +26,7 @@ class AdjustTooLongChapters implements TagImproverInterface
     protected $file;
 
     /**
-     * @var MetaDataHandler
+     * @var BinaryWrapper
      */
     protected $metaDataHandler;
     /**
@@ -36,7 +38,7 @@ class AdjustTooLongChapters implements TagImproverInterface
      */
     protected $silenceLength;
 
-    public function __construct(MetaDataHandler $metaDataHandler, ChapterHandler $chapterHandler, $file, $maxChapterLengthOriginalValue, $silenceLength)
+    public function __construct(BinaryWrapper $metaDataHandler, ChapterHandler $chapterHandler, $file, $maxChapterLengthOriginalValue, $silenceLength)
     {
         $maxChapterLengthParts = explode(",", $maxChapterLengthOriginalValue);
 
@@ -52,6 +54,13 @@ class AdjustTooLongChapters implements TagImproverInterface
 
     }
 
+    /**
+     * @param Tag $tag
+     * @return Tag
+     * @throws Exception
+     * @throws InvalidArgumentException
+     * @throws InvalidArgumentException
+     */
     public function improve(Tag $tag): Tag
     {
         // at least one option has to be defined to adjust too long chapters

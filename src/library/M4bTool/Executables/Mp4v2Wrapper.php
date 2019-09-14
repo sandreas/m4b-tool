@@ -30,6 +30,11 @@ class Mp4v2Wrapper implements TagWriterInterface, DurationDetectorInterface
         $this->tags = $tags;
     }
 
+    /**
+     * @param SplFileInfo $file
+     * @return TimeUnit
+     * @throws Exception
+     */
     public function estimateDuration(SplFileInfo $file): ?TimeUnit
     {
         return $this->info->estimateDuration($file);
@@ -51,7 +56,12 @@ class Mp4v2Wrapper implements TagWriterInterface, DurationDetectorInterface
         }
     }
 
-    public function inspectExactDuration(SplFileInfo $file): ?TimeUnit
+    /**
+     * @param SplFileInfo $file
+     * @return TimeUnit
+     * @throws Exception
+     */
+    public function inspectExactDuration(SplFileInfo $file): TimeUnit
     {
         return $this->info->inspectExactDuration($file);
     }
