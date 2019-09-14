@@ -352,10 +352,10 @@ Codecs:
         $this->notice("ipod auto adjust active, getting track durations");
         $totalDuration = new TimeUnit();
         foreach ($filesToConvert as $index => $file) {
-            $this->notice("load estimated duration for file", $file);
+            $this->notice(sprintf("load estimated duration for file %s", $file));
             $duration = $this->metaHandler->estimateDuration($file);
             if (!$duration || ($duration instanceof TimeUnit && $duration->milliseconds() == 0)) {
-                $this->debug("load quick estimated duration failed for file, trying to read exact duration", $file);
+                $this->debug(sprintf("load quick estimated duration failed for file %s, trying to read exact duration", $file));
                 $duration = $this->readDuration($file);
             }
 

@@ -220,7 +220,7 @@ class AbstractCommand extends Command implements LoggerInterface
             $meta = $this->readFileMetaData($file);
         }
 
-        $this->debug("meta: ", print_r($meta, true));
+        $this->debug(sprintf("meta: %s", print_r($meta, true)));
 
         return $meta->getDuration();
     }
@@ -247,11 +247,6 @@ class AbstractCommand extends Command implements LoggerInterface
         return $metaData;
     }
 
-    public function notice($message, array $context = [])
-    {
-        $this->log(OutputInterface::VERBOSITY_VERBOSE, $message, $context);
-    }
-
     /**
      * Logs with an arbitrary level.
      *
@@ -273,12 +268,16 @@ class AbstractCommand extends Command implements LoggerInterface
             return;
         }
 
-
         $formattedLogMessage = $message;
-        if ($level = LogLevel::WARNING) {
-            $formattedLogMessage = "<fg=black;bg=yellow>" . $formattedLogMessage . "</>";
-        } elseif (static::LOG_LEVEL_TO_VERBOSITY[$level] === static::LOG_LEVEL_ERROR) {
+        switch ($level) {
+            case LogLevel::WARNING:
+                $formattedLogMessage = "<fg=black;bg=yellow>" . $formattedLogMessage . "</>";
+                break;
+            case LogLevel::ERROR:
+            case LogLevel::CRITICAL:
+            case LogLevel::EMERGENCY:
             $formattedLogMessage = "<fg=black;bg=red>" . $formattedLogMessage . "</>";
+                break;
         }
 
         $this->output->writeln($formattedLogMessage);
