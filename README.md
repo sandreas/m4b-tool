@@ -181,6 +181,15 @@ It is also possible to switch version of `m4b-tool` used in the docker image by 
 docker build . --build-arg M4B_TOOL_DOWNLOAD_LINK=https://github.com/sandreas/m4b-tool/releases/download/v.0.4.1/m4b-tool.tar.gz -t m4b-tool
 ```
 
+or the all in one command:
+
+```
+mkdir /tmp/m4b-tool && \
+    wget https://raw.githubusercontent.com/sandreas/m4b-tool/master/Dockerfile -O /tmp/m4b-tool/Dockerfile && \
+    docker build /tmp/m4b-tool -t m4b-tool --build-arg M4B_TOOL_DOWNLOAD_LINK=https://github.com/sandreas/m4b-tool/releases/download/v.0.4.1/m4b-tool.tar.gz 
+
+```
+
 Or you could just just edit the according variable in the `Dockerfile`.
 
 > Note: If you use the alias above, keep in mind that you cannot use absolute paths (e.g. `/tmp/data/audiobooks/harry potter 1`) or symlinks. You must change into the directory and use relative paths (e.g. `cd /tmp/data && m4b-tool merge "audiobooks/harry potter 1" --output-file harry.m4b`)
