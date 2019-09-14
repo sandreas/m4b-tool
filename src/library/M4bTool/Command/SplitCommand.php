@@ -259,7 +259,7 @@ class SplitCommand extends AbstractConversionCommand
             $metaData = $this->readFileMetaData($this->argInputFile);
             $metaDataTag = $metaData->toTag();
         } catch (Throwable $t) {
-            $this->warn("Could not read extended metadata for Tag: " . $t->getMessage());
+            $this->warning("Could not read extended metadata for Tag: " . $t->getMessage());
         }
 
         $this->extractDescription($metaDataTag, new SplFileInfo($this->outputDirectory . "/description.txt"));

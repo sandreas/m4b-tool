@@ -17,6 +17,8 @@ use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\Parser\FfmetaDataParser;
 use Psr\Log\LoggerInterface;
+use Psr\Log\LoggerTrait;
+use Psr\Log\LogLevel;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Cache\Adapter\AbstractAdapter;
@@ -30,6 +32,8 @@ use Symfony\Component\Process\Process;
 
 class AbstractCommand extends Command implements LoggerInterface
 {
+    use LoggerTrait;
+
     const AUDIO_EXTENSION_MP3 = "mp3";
     const AUDIO_EXTENSION_MP4 = "mp4";
     const AUDIO_EXTENSION_M4A = "m4a";
@@ -83,12 +87,12 @@ class AbstractCommand extends Command implements LoggerInterface
     const LOG_LEVEL_WARN = 'WARN';
     const LOG_LEVEL_ERROR = 'ERROR';
 
-    const VERBOSITY_TO_LOG_LEVEL = [
-        OutputInterface::VERBOSITY_DEBUG => self::LOG_LEVEL_DEBUG,
-        OutputInterface::VERBOSITY_VERBOSE => self::LOG_LEVEL_NOTICE,
-        OutputInterface::VERBOSITY_VERY_VERBOSE => self::LOG_LEVEL_INFO,
-        OutputInterface::VERBOSITY_NORMAL => self::LOG_LEVEL_WARN,
-        OutputInterface::VERBOSITY_QUIET => self::LOG_LEVEL_ERROR,
+    const LOG_LEVEL_TO_VERBOSITY = [
+        LogLevel::DEBUG => OutputInterface::VERBOSITY_DEBUG,
+        LogLevel::NOTICE => OutputInterface::VERBOSITY_VERBOSE,
+        LogLevel::INFO => OutputInterface::VERBOSITY_VERY_VERBOSE,
+        LogLevel::WARNING => OutputInterface::VERBOSITY_NORMAL,
+        LogLevel::ERROR => OutputInterface::VERBOSITY_QUIET,
     ];
 
     protected $startTime;
@@ -208,7 +212,7 @@ class AbstractCommand extends Command implements LoggerInterface
                 $this->cache->save($cacheItem);
                 return new TimeUnit($seconds, TimeUnit::SECOND);
             }
-            $this->warn("could not get mp4 duration with mp4info, trying to use ffmpeg");
+            $this->warning("could not get mp4 duration with mp4info, trying to use ffmpeg");
             $this->debug(sprintf("mp4info output: %s", $output));
         }
 
@@ -219,62 +223,6 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->debug("meta: ", print_r($meta, true));
 
         return $meta->getDuration();
-    }
-
-    public function debug($message, array $context = [])
-    {
-        $this->log(OutputInterface::VERBOSITY_DEBUG, $message, $context);
-    }
-
-    /**
-     * Logs with an arbitrary level.
-     *
-     * @param mixed $level
-     * @param string $message
-     * @param array $context
-     *
-     * @return void
-     */
-    public function log($level, $message, array $context = array())
-    {
-        if (!is_int($level)) {
-            $level = array_search(strtoupper($level), static::VERBOSITY_TO_LOG_LEVEL, true);
-        }
-
-        if ($this->startTime === null) {
-            $this->startTime = microtime(true);
-        }
-
-        if ($this->output->getVerbosity() >= $level) {
-            $messageParts = [];
-            if (is_scalar($message) || (is_object($message) && method_exists($message, "__toString"))) {
-                $messageParts[] = (string)$message;
-            } else if (is_array($message)) {
-                $messageParts[] = var_export($message, true);
-            } else {
-                $messageParts[] = "type: " . gettype($message);
-
-            }
-            $logMessage = implode(" ", $messageParts);
-            $formattedLogMessage = $logMessage;
-            if (static::VERBOSITY_TO_LOG_LEVEL[$level] === static::LOG_LEVEL_WARN) {
-                $formattedLogMessage = "<fg=black;bg=yellow>" . $formattedLogMessage . "</>";
-            } elseif (static::VERBOSITY_TO_LOG_LEVEL[$level] === static::LOG_LEVEL_ERROR) {
-                $formattedLogMessage = "<fg=black;bg=red>" . $formattedLogMessage . "</>";
-            }
-
-            $this->output->writeln($formattedLogMessage);
-            if ($this->optLogFile instanceof SplFileInfo) {
-                if (!touch($this->optLogFile) || !$this->optLogFile->isWritable()) {
-                    $this->output->writeln(sprintf("<error>Debug file %s is not writable</error>", $this->optLogFile));
-                    $this->optLogFile = null;
-                }
-
-                $logTime = str_pad(round((microtime(true) - $this->startTime) * 1000) . "ms", 10, " ", STR_PAD_LEFT);
-                $logLevel = str_pad(static::VERBOSITY_TO_LOG_LEVEL[$level] ?? "UNKNOWN", 8);
-                file_put_contents($this->optLogFile, $logLevel . " " . $logTime . " " . $logMessage . PHP_EOL, FILE_APPEND);
-            }
-        }
     }
 
     public function hasMp4AudioFileExtension(SplFileInfo $file)
@@ -302,6 +250,49 @@ class AbstractCommand extends Command implements LoggerInterface
     public function notice($message, array $context = [])
     {
         $this->log(OutputInterface::VERBOSITY_VERBOSE, $message, $context);
+    }
+
+    /**
+     * Logs with an arbitrary level.
+     *
+     * @param mixed $level
+     * @param string $message
+     * @param array $context
+     *
+     * @return void
+     */
+    public function log($level, $message, array $context = [])
+    {
+        $verbosity = static::LOG_LEVEL_TO_VERBOSITY[$level] ?? OutputInterface::VERBOSITY_VERBOSE;
+
+        if ($this->startTime === null) {
+            $this->startTime = microtime(true);
+        }
+
+        if ($this->output->getVerbosity() < $verbosity) {
+            return;
+        }
+
+
+        $formattedLogMessage = $message;
+        if ($level = LogLevel::WARNING) {
+            $formattedLogMessage = "<fg=black;bg=yellow>" . $formattedLogMessage . "</>";
+        } elseif (static::LOG_LEVEL_TO_VERBOSITY[$level] === static::LOG_LEVEL_ERROR) {
+            $formattedLogMessage = "<fg=black;bg=red>" . $formattedLogMessage . "</>";
+        }
+
+        $this->output->writeln($formattedLogMessage);
+        if (!($this->optLogFile instanceof SplFileInfo)) {
+            return;
+        }
+        if (!touch($this->optLogFile) || !$this->optLogFile->isWritable()) {
+            $this->output->writeln(sprintf("<error>Debug file %s is not writable</error>", $this->optLogFile));
+            $this->optLogFile = null;
+        }
+
+        $logTime = str_pad(round((microtime(true) - $this->startTime) * 1000) . "ms", 10, " ", STR_PAD_LEFT);
+        $logLevel = str_pad(static::LOG_LEVEL_TO_VERBOSITY[$level] ?? "UNKNOWN", 8);
+        file_put_contents($this->optLogFile, $logLevel . " " . $logTime . " " . $message . PHP_EOL, FILE_APPEND);
     }
 
     /**
@@ -477,81 +468,6 @@ class AbstractCommand extends Command implements LoggerInterface
             "-f", "null",
             "-"
         ], $cacheKey);
-    }
-
-    protected function warn($message, array $context = array())
-    {
-        $this->log(OutputInterface::VERBOSITY_NORMAL, $message, $context);
-    }
-
-    /**
-     * System is unusable.
-     *
-     * @param string $message
-     * @param array $context
-     *
-     * @return void
-     */
-    public function emergency($message, array $context = [])
-    {
-        $this->log(OutputInterface::VERBOSITY_QUIET, $message, $context);
-    }
-
-    /**
-     * Action must be taken immediately.
-     *
-     * Example: Entire website down, database unavailable, etc. This should
-     * trigger the SMS alerts and wake you up.
-     *
-     * @param string $message
-     * @param array $context
-     *
-     * @return void
-     */
-    public function alert($message, array $context = [])
-    {
-        $this->log(OutputInterface::VERBOSITY_QUIET, $message, $context);
-    }
-
-    /**
-     * Critical conditions.
-     *
-     * Example: Application component unavailable, unexpected exception.
-     *
-     * @param string $message
-     * @param array $context
-     *
-     * @return void
-     */
-    public function critical($message, array $context = [])
-    {
-        $this->log(OutputInterface::VERBOSITY_QUIET, $message, $context);
-    }
-
-    /**
-     * Exceptional occurrences that are not errors.
-     *
-     * Example: Use of deprecated APIs, poor use of an API, undesirable things
-     * that are not necessarily wrong.
-     *
-     * @param string $message
-     * @param array $context
-     *
-     * @return void
-     */
-    public function warning($message, array $context = [])
-    {
-        $this->log(OutputInterface::VERBOSITY_NORMAL, $message, $context);
-    }
-
-    public function info($message, array $context = [])
-    {
-        $this->log(OutputInterface::VERBOSITY_VERY_VERBOSE, $message, $context);
-    }
-
-    public function error($message, array $context = [])
-    {
-        $this->log(OutputInterface::VERBOSITY_QUIET, $message, $context);
     }
 
     protected function configure()

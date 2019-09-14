@@ -414,7 +414,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     {
 
         if (count($this->filesToConvert) === 0) {
-            $this->warn("no files to convert for given input...");
+            $this->warning("no files to convert for given input...");
             return;
         }
 

@@ -161,7 +161,7 @@ class ChaptersCommand extends AbstractCommand
         if ($this->outputFile === "") {
             $this->outputFile = $this->filesToProcess->getPath() . DIRECTORY_SEPARATOR . $this->filesToProcess->getBasename("." . $this->filesToProcess->getExtension()) . ".chapters.txt";
             if (file_exists($this->outputFile) && !$this->input->getOption(static::OPTION_FORCE)) {
-                $this->warn("output file already exists, add --force option to overwrite");
+                $this->warning("output file already exists, add --force option to overwrite");
                 $this->outputFile = "";
             }
         }

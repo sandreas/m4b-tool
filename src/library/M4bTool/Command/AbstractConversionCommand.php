@@ -177,7 +177,7 @@ Codecs:
         }
 
         if ($index > 0) {
-            $this->warn("Your ffmpeg version cannot produce top quality aac using encoder " . $returnValue . " instead of " . $aacQualityOrder[0] . "");
+            $this->warning("Your ffmpeg version cannot produce top quality aac using encoder " . $returnValue . " instead of " . $aacQualityOrder[0] . "");
         }
 
         return $returnValue;
@@ -270,7 +270,7 @@ Codecs:
 
             $extractedCoverFile = $this->audioFileToExtractedCoverFile($file);
             if (!$extractedCoverFile->isFile()) {
-                $this->warn("extracting cover to " . $extractedCoverFile . " failed");
+                $this->warning("extracting cover to " . $extractedCoverFile . " failed");
                 return null;
             }
 
@@ -283,7 +283,7 @@ Codecs:
         }
 
         if (!$coverTargetFile->isFile()) {
-            $this->warn("extracting cover to " . $coverTargetFile . " failed");
+            $this->warning("extracting cover to " . $coverTargetFile . " failed");
             return null;
         }
         $this->notice("extracted cover to " . $coverTargetFile . "");
@@ -332,7 +332,7 @@ Codecs:
         }
 
         if (file_put_contents($descriptionTargetFile, $description) === false) {
-            $this->warn("extracting description to " . $descriptionTargetFile . " failed");
+            $this->warning("extracting description to " . $descriptionTargetFile . " failed");
             return null;
         };
         $this->notice("extracted description to " . $descriptionTargetFile . "");
@@ -380,7 +380,7 @@ Codecs:
 
 
         if ($this->optAudioSampleRate && $this->samplingRateToInt() > $maxSamplingRate) {
-            $this->warn("desired sampling rate " . $this->optAudioSampleRate . " is higher than max possible sampling rate " . $maxSamplingRate . "Hz, trying to adjust...");
+            $this->warning("desired sampling rate " . $this->optAudioSampleRate . " is higher than max possible sampling rate " . $maxSamplingRate . "Hz, trying to adjust...");
             $resultSamplingRate = 0;
             $resultBitrate = "";
             foreach (static::SAMPLING_RATE_TO_BITRATE_MAPPING as $samplingRate => $bitrate) {
