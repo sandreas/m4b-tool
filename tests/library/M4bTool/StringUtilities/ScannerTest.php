@@ -5,6 +5,7 @@ namespace M4bTool\StringUtilities;
 
 
 use PHPUnit\Framework\TestCase;
+use Sandreas\Strings\RuneList;
 
 class ScannerTest extends TestCase
 {
@@ -17,7 +18,7 @@ class ScannerTest extends TestCase
 
     public function testScanLine()
     {
-        $subject = new Scanner(new Runes(static::UNICODE_STRING_CRLF));
+        $subject = new Scanner(new RuneList(static::UNICODE_STRING_CRLF));
         $this->assertTrue($subject->scanLine());
         $this->assertEquals("😋 this is a testing", (string)$subject->getTrimmedResult());
         $this->assertTrue($subject->scanLine());
@@ -32,13 +33,13 @@ class ScannerTest extends TestCase
 encoder=Lavf58.20.100
 FFMETA;
 
-        $subject = new Scanner(new Runes($mp3MetaData));
+        $subject = new Scanner(new RuneList($mp3MetaData));
         $this->assertTrue($subject->scanLine());
     }
 
     public function testScanLineWithEscapeChar()
     {
-        $subject = new Scanner(new Runes(static::UNICODE_STRING_CRLF_ESCAPED));
+        $subject = new Scanner(new RuneList(static::UNICODE_STRING_CRLF_ESCAPED));
         $subject->scanLine("\\");
         $this->assertEquals("😋 this is a string", (string)$subject->getTrimmedResult());
         $subject->scanLine("\\");
@@ -47,7 +48,7 @@ FFMETA;
 
     public function testScanForward()
     {
-        $subject = new Scanner(new Runes(static::UNICODE_STRING_CRLF));
+        $subject = new Scanner(new RuneList(static::UNICODE_STRING_CRLF));
         $subject->ScanForward("=");
         $this->assertEquals("😋 this is a testing\r\nstring", (string)$subject->getTrimmedResult());
         $this->assertEquals("😋 this is a testing\r\nstring=", (string)$subject->getResult());
@@ -55,7 +56,7 @@ FFMETA;
 
     public function testScanForwardMultiRune()
     {
-        $subject = new Scanner(new Runes(static::UNICODE_STRING_MULTI_RUNE));
+        $subject = new Scanner(new RuneList(static::UNICODE_STRING_MULTI_RUNE));
         $subject->scanForward("this");
         $this->assertEquals("", (string)$subject->getTrimmedResult());
         $this->assertEquals("this", (string)$subject->getResult());
@@ -69,7 +70,7 @@ FFMETA;
 
 
 //    public function testScanBackwardSingleRune() {
-//        $subject = new Scanner(new Runes(static::UNICODE_STRING_CRLF));
+//        $subject = new Scanner(new RuneList(static::UNICODE_STRING_CRLF));
 //        $subject->scanLine();
 //        $subject->scanBackwards("is");
 //        $this->assertEquals(" a testing\r\nstring= with unicode\näß öü € and emojis", (string)$subject->getTrimmedResult());

@@ -4,26 +4,28 @@
 namespace M4bTool\StringUtilities;
 
 
+use Sandreas\Strings\RuneList;
+
 class Scanner
 {
-    const OFFSET_RUNE_BEFORE_LAST = -2;
+    const OFFSET_RUNE_BEFORE_LAST = -1;
 
-    /** @var Runes */
+    /** @var RuneList */
     protected $runes;
 
     protected $lastScan;
-    /** @var Runes */
+    /** @var RuneList */
     protected $lastResult;
 
-    public function __construct(Runes $runes = null)
+    public function __construct(RuneList $runes = null)
     {
         $this->initialize($runes);
     }
 
-    public function initialize(Runes $runes = null)
+    public function initialize(RuneList $runes = null)
     {
-        $this->runes = $runes ?? new Runes();
-        $this->lastResult = new Runes();
+        $this->runes = $runes ?? new RuneList();
+        $this->lastResult = new RuneList();
         $this->runes->rewind();
     }
 
@@ -40,7 +42,7 @@ class Scanner
     }
 
     /**
-     * @return Runes
+     * @return RuneList
      */
     public function getTrimmedResult()
     {
@@ -55,12 +57,13 @@ class Scanner
 
     public function scanLine($escapeChar = null)
     {
-        if (!$this->seekFor(Runes::LINE_FEED, $escapeChar, 1) && $this->lastResult === null) {
+        if (!$this->seekFor(RuneList::LINE_FEED, $escapeChar, 1) && $this->lastResult === null) {
             return false;
         }
+        $this->lastResult->end();
         $beforeLastRune = $this->lastResult->offset(static::OFFSET_RUNE_BEFORE_LAST);
-        if ($beforeLastRune === Runes::CARRIAGE_RETURN) {
-            $this->lastScan = Runes::CARRIAGE_RETURN . Runes::LINE_FEED;
+        if ($beforeLastRune === RuneList::CARRIAGE_RETURN) {
+            $this->lastScan = RuneList::CARRIAGE_RETURN . RuneList::LINE_FEED;
         }
         $this->lastResult->rewind();
         return true;
@@ -111,7 +114,7 @@ class Scanner
             return false;
         }
         $offset = $this->runes->key();
-        $this->runes->last();
+        $this->runes->end();
         $this->lastResult = $this->runes->slice($offset);
         return true;
     }
@@ -128,7 +131,7 @@ class Scanner
 
     public function reset()
     {
-        $this->runes->first();
+        $this->runes->rewind();
         $this->lastResult = $this->runes->slice(0);
     }
 }

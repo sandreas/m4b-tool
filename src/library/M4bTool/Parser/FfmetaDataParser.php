@@ -8,10 +8,9 @@ use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Common\ReleaseDate;
-use M4bTool\StringUtilities\Runes;
 use M4bTool\StringUtilities\Scanner;
-use M4bTool\StringUtilities\Strings;
 use Sandreas\Strings\RuneList;
+use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
 
 
@@ -103,7 +102,7 @@ class FfmetaDataParser
 
     private function parseMetaData($metaData)
     {
-        $this->scanner->initialize(new Runes($metaData));
+        $this->scanner->initialize(new RuneList($metaData));
 
 
         $currentChapter = null;
@@ -124,7 +123,7 @@ class FfmetaDataParser
             // handle multiline properties (e.g. description)
             while (Strings::hasSuffix($line, "\\")) {
                 $this->scanner->scanLine();
-                $line = Strings::trimSuffix($line, "\\") . Runes::LINE_FEED . $this->scanner->getTrimmedResult();
+                $line = Strings::trimSuffix($line, "\\") . RuneList::LINE_FEED . $this->scanner->getTrimmedResult();
             }
 
             if (Strings::hasPrefix($line, ";")) {
@@ -139,7 +138,7 @@ class FfmetaDataParser
 
 
             // something fishy in here
-            $lineScanner = new Scanner(new Runes((string)$line));
+            $lineScanner = new Scanner(new RuneList((string)$line));
             if (!$lineScanner->scanForward("=")) {
                 continue;
             }
@@ -239,7 +238,7 @@ class FfmetaDataParser
     private function parseStreams($streamInfo)
     {
 
-        $this->scanner->initialize(new Runes($streamInfo));
+        $this->scanner->initialize(new RuneList($streamInfo));
 
         while ($this->scanner->scanLine()) {
             $line = $this->scanner->getResult();
@@ -300,7 +299,7 @@ class FfmetaDataParser
         }
     }
 
-    private function parseVideoStream(Runes $lineWithStream)
+    private function parseVideoStream(RuneList $lineWithStream)
     {
         // Stream #0:1: Video: png, rgba(pc), 95x84, 90k tbr, 90k tbn, 90k tbc
         // Stream #0:1: Video: mjpeg, yuvj420p(pc, bt470bg/unknown/unknown), 95x84 [SAR 1:1 DAR 95:84], 90k tbr, 90k tbn, 90k tbc
