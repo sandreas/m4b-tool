@@ -24,12 +24,23 @@ use Symfony\Component\Console\Application;
 try {
     $application = new Application('m4b-tool', '@package_version@');
 
-    $application->addCommands([
+    $commands = [
         new Command\ChaptersCommand(),
         new Command\SplitCommand(),
         new Command\MergeCommand(),
         new Command\MetaCommand(),
-    ]);
+    ];
+
+    $pluginsEnv = getenv('M4B_TOOL_PLUGINS');
+    $plugins = $pluginsEnv ? explode(",", $pluginsEnv) : [];
+    foreach ($plugins as $plugin) {
+        $pluginClassName = '\M4bTool\Command\Plugins\\' . $plugin . 'Command';
+        if (class_exists($pluginClassName) && is_subclass_of($pluginClassName, "\\M4bTool\\Command\\AbstractCommand")) {
+            $commands[] = new $pluginClassName();
+        }
+    }
+
+    $application->addCommands($commands);
 
     $application->run();
 } catch (Exception $e) {

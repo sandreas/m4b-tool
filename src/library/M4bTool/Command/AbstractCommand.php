@@ -15,6 +15,7 @@ use M4bTool\Executables\Mp4chaps;
 use M4bTool\Executables\Mp4info;
 use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
+use M4bTool\M4bTool\Audio\Traits\CacheAdapterTrait;
 use M4bTool\Parser\FfmetaDataParser;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
@@ -32,7 +33,7 @@ use Symfony\Component\Process\Process;
 
 class AbstractCommand extends Command implements LoggerInterface
 {
-    use LoggerTrait;
+    use LoggerTrait, CacheAdapterTrait;
 
     const AUDIO_EXTENSION_MP3 = "mp3";
     const AUDIO_EXTENSION_MP4 = "mp4";

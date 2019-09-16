@@ -2,6 +2,7 @@
 
 namespace M4bTool\Audio\Tag;
 
+use M4bTool\Audio\Tag;
 use PHPUnit\Framework\TestCase;
 
 class ContentMetadataTest extends TestCase
@@ -37,7 +38,7 @@ EOT;
     public function testLoad()
     {
         $subject = new ContentMetadataJson(static::FILE_CONTENT);
-        $tag = $subject->extend();
+        $tag = $subject->improve(new Tag());
         $this->assertCount(5, $tag->chapters);
         $this->assertEquals("Intro", $tag->chapters[0]->getName());
         $this->assertEquals("One", $tag->chapters[1]->getName());

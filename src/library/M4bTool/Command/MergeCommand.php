@@ -115,7 +115,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         // configure an argument
         $this->addArgument(static::ARGUMENT_MORE_INPUT_FILES, InputArgument::IS_ARRAY, 'Other Input files or folders');
         $this->addOption(static::OPTION_OUTPUT_FILE, static::OPTION_OUTPUT_FILE_SHORTCUT, InputOption::VALUE_REQUIRED, "output file");
-        $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", "aac,alac,flac,m4a,m4b,mp3,oga,ogg,wav,wma,mp4");
+        $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", implode(',', static::DEFAULT_SUPPORTED_AUDIO_EXTENSIONS));
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
         $this->addOption(static::OPTION_NO_CONVERSION, null, InputOption::VALUE_NONE, "skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)");
 
@@ -207,7 +207,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->ensureOutputFileIsNotEmpty($outputFile);
 
         $dirLoader = new DirectoryLoader();
-        $currentBatchDirs = $dirLoader->load($input->getArgument(static::ARGUMENT_INPUT), $this->parseIncludeExtensions(["jpg", "jpeg", "png", "txt"]), $this->alreadyProcessedBatchDirs);
+        $currentBatchDirs = $dirLoader->load($input->getArgument(static::ARGUMENT_INPUT), $this->parseIncludeExtensions(array_merge(
+            static::DEFAULT_SUPPORTED_IMAGE_EXTENSIONS,
+            static::DEFAULT_SUPPORTED_DATA_EXTENSIONS
+        )), $this->alreadyProcessedBatchDirs);
         $normalizedBatchPattern = $this->normalizeDirectory($batchPattern);
 
         $verifiedDirectories = [];

@@ -2,6 +2,7 @@
 
 namespace M4bTool\Chapter;
 
+use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use Sandreas\Time\TimeUnit;
@@ -530,7 +531,7 @@ class ChapterMarkerTest extends TestCase
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function testGenerate()
     {

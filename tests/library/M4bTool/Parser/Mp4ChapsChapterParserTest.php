@@ -3,6 +3,7 @@
 
 namespace M4bTool\Parser;
 
+use Exception;
 use PHPUnit\Framework\TestCase;
 
 class Mp4ChapsChapterParserTest extends TestCase
@@ -17,6 +18,9 @@ class Mp4ChapsChapterParserTest extends TestCase
         $this->subject = new Mp4ChapsChapterParser();
     }
 
+    /**
+     * @throws Exception
+     */
     public function testParse()
     {
         $chapterString = '00:00:00.000 Chapter 1

@@ -8,6 +8,7 @@
 !/data/.gitkeep
 /vendor
 /composer.lock
+/src/library/M4bTool/Command/Plugins/
 
 .DS_Store
 fummel.php

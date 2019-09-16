@@ -29,7 +29,9 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
     const OPTION_FIX_MIME_TYPE = "fix-mime-type";
 
-
+    const DEFAULT_SUPPORTED_AUDIO_EXTENSIONS = ["aac", "alac", "flac", "m4a", "m4b", "mp3", "oga", "ogg", "wav", "wma", "mp4"];
+    const DEFAULT_SUPPORTED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
+    const DEFAULT_SUPPORTED_DATA_EXTENSIONS = ["txt", "opf", "json"];
 
     const MAX_IPOD_SAMPLES = 2147483647;
     const IPOD_DEFAULT_SAMPLING_RATE = 22050;

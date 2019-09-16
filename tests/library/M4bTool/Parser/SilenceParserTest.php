@@ -3,6 +3,7 @@
 namespace M4bTool\Parser;
 
 
+use Exception;
 use PHPUnit\Framework\TestCase;
 use Sandreas\Time\TimeUnit;
 
@@ -18,6 +19,9 @@ class SilenceParserTest extends TestCase
         $this->subject = new SilenceParser();
     }
 
+    /**
+     * @throws Exception
+     */
     public function testParse() {
         $chapterString = "
   Duration: 13:35:02.34, start: 0.000000, bitrate: 64 kb/s        

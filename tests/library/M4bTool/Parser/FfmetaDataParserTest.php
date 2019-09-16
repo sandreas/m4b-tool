@@ -2,6 +2,7 @@
 
 namespace M4bTool\Parser;
 
+use Exception;
 use PHPUnit\Framework\TestCase;
 
 class FfmetaDataParserTest extends TestCase
@@ -193,7 +194,6 @@ Output file is empty, nothing was encoded
 FFMETA;
 
 
-
         $this->mp3MetaData = <<<FFMETA
 ;FFMETADATA1
 album=Harry Potter und der Gefangene von Askaban
@@ -353,7 +353,7 @@ FFSTREAMINFO;
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function testParseMp4Metadata()
     {
@@ -374,7 +374,7 @@ FFSTREAMINFO;
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function testParseMp4ComplexMetadata()
     {
@@ -395,7 +395,7 @@ FFSTREAMINFO;
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function testParseMp3Metadata()
     {
@@ -418,7 +418,7 @@ FFSTREAMINFO;
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function testParseMp4StreamInfo()
     {
@@ -430,7 +430,7 @@ FFSTREAMINFO;
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function testParseMp4StreamInfoWithoutFrame()
     {
@@ -441,6 +441,9 @@ FFSTREAMINFO;
 
     }
 
+    /**
+     * @throws Exception
+     */
     public function testParseEscapedMetadata()
     {
         $this->subject->parse($this->escapedMeta);
