@@ -21,7 +21,6 @@ use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Executables\Tasks\ConversionTask;
 use M4bTool\Executables\Tasks\Pool;
 use M4bTool\Filesystem\DirectoryLoader;
-use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Filesystem\FileLoader;
 use M4bTool\M4bTool\Audio\Tag\ChaptersFromFileTracks;
 use M4bTool\M4bTool\Audio\Tag\ChaptersFromMusicBrainz;
@@ -538,24 +537,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
 
             $this->filesToMerge[] = $finishedOutputFile;
-
             if ($outputFile->isFile()) {
                 unlink($outputFile);
             }
-
-            $options = new FileConverterOptions();
-            $options->source = $file;
-            $options->destination = $outputFile;
-            $options->tempDir = $outputTempDir;
-            $options->extension = $this->optAudioExtension;
-            $options->codec = $this->optAudioCodec;
-            $options->format = $this->optAudioFormat;
-            $options->channels = $this->optAudioChannels;
-            $options->sampleRate = $this->optAudioSampleRate;
-            $options->bitRate = $this->optAudioBitRate;
-            $options->force = $this->optForce;
-            $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
-
+            $options = $this->buildFileConverterOptions($file, $outputFile, $outputTempDir);
             $taskPool->submit(new ConversionTask($this->metaHandler, $options)/*, $taskWeight*/);
         }
 
@@ -616,6 +601,24 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
     }
 
+    public function buildFileConverterOptions($sourceFile, $destinationFile, $outputTempDir)
+    {
+        $options = new FileConverterOptions();
+        $options->source = $sourceFile;
+        $options->destination = $destinationFile;
+        $options->tempDir = $outputTempDir;
+        $options->extension = $this->optAudioExtension;
+        $options->codec = $this->optAudioCodec;
+        $options->format = $this->optAudioFormat;
+        $options->channels = $this->optAudioChannels;
+        $options->sampleRate = $this->optAudioSampleRate;
+        $options->bitRate = $this->optAudioBitRate;
+        $options->force = $this->optForce;
+        $options->debug = $this->optDebug;
+        $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
+        return $options;
+    }
+
     /**
      * @return string
      * @throws Exception
@@ -649,45 +652,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             throw new Exception(sprintf("Could not delete temporary output file %s", $outputTempFile));
         }
 
-        if (count($this->filesToMerge) === 1) {
-            $this->debug("only 1 file in merge list, copying file");
-            copy(current($this->filesToMerge), $outputTempFile);
-            return $outputTempFile;
-        }
-
-        // howto quote: http://ffmpeg.org/ffmpeg-utils.html#Quoting-and-escaping
-        $listFile = $this->outputFile . ".listing.txt";
-        file_put_contents($listFile, $this->ffmpeg->buildConcatListing($this->filesToMerge));
-
-        $command = [
-            "-f", "concat",
-            "-safe", "0",
-            "-vn",
-            "-i", $listFile,
-            "-max_muxing_queue_size", "9999",
-            "-c", "copy",
-        ];
-
-
-        // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
-        if ($this->optAudioFormat && $this->optAudioCodec !== static::AUDIO_CODEC_ALAC) {
-            $command[] = "-f";
-            $command[] = $this->optAudioFormat;
-        }
-
-        $command[] = $outputTempFile;
-
-
-        $this->ffmpeg($command, "merging " . $outputTempFile . ", this can take a while");
-
-        if (!$outputTempFile->isFile()) {
-            throw new Exception("could not merge to " . $outputTempFile);
-        }
-
-        if (!$this->optDebug) {
-            unlink($listFile);
-        }
-        return $outputTempFile;
+        $options = $this->buildFileConverterOptions(null, null, null);
+        return $this->ffmpeg->mergeFiles($this->filesToMerge, $outputTempFile, $options);
     }
 
     /**
@@ -709,7 +675,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         if ($mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID)) {
             $mbChapterParser = new MusicBrainzChapterParser($mbId);
             $mbChapterParser->setCacheAdapter($this->cache);
-            $tagChanger->add(new ChaptersFromMusicBrainz(new ChapterMarker(), $mbChapterParser));
+            $tagChanger->add(new ChaptersFromMusicBrainz($this->chapterMarker, $mbChapterParser));
         }
         $tagChanger->add(new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert));
 

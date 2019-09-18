@@ -8,6 +8,7 @@ use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Chapter\ChapterHandler;
+use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\Mp4art;
@@ -82,12 +83,6 @@ class AbstractCommand extends Command implements LoggerInterface
     const OPTION_OUTPUT_FILE_SHORTCUT = "o";
 
 
-    const LOG_LEVEL_DEBUG = 'DEBUG';
-    const LOG_LEVEL_NOTICE = 'NOTICE';
-    const LOG_LEVEL_INFO = 'INFO';
-    const LOG_LEVEL_WARN = 'WARN';
-    const LOG_LEVEL_ERROR = 'ERROR';
-
     const LOG_LEVEL_TO_VERBOSITY = [
         LogLevel::DEBUG => OutputInterface::VERBOSITY_DEBUG,
         LogLevel::NOTICE => OutputInterface::VERBOSITY_VERBOSE,
@@ -146,8 +141,6 @@ class AbstractCommand extends Command implements LoggerInterface
      */
     protected $optLogFile;
 
-    /** @var int */
-    protected $logLevel;
 
 
     /** @var BinaryWrapper */
@@ -157,6 +150,8 @@ class AbstractCommand extends Command implements LoggerInterface
     protected $chapterHandler;
     /** @var Ffmpeg */
     protected $ffmpeg;
+    /** @var ChapterMarker */
+    protected $chapterMarker;
 
 
     public function __construct(string $name = null)
@@ -176,7 +171,12 @@ class AbstractCommand extends Command implements LoggerInterface
         );
         $fdkaac = new Fdkaac();
         $this->metaHandler = new BinaryWrapper($this->ffmpeg, $mp4v2, $fdkaac);
+
+        // todo: merge these two classes?
         $this->chapterHandler = new ChapterHandler($this->metaHandler);
+
+        $this->chapterMarker = new ChapterMarker();
+        $this->chapterMarker->setLogger($this);
     }
 
     /**

@@ -7,7 +7,6 @@ namespace M4bTool\Command;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
-use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use M4bTool\Parser\SilenceParser;
@@ -174,13 +173,13 @@ class ChaptersCommand extends AbstractCommand
     private function buildChapters(array $mbChapters)
     {
         $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
-        $chapterMarker = new ChapterMarker($this->input->getOption(static::OPTION_DEBUG));
+
         $duration = $this->metaHandler->estimateDuration($this->filesToProcess);
         if(!($duration instanceof TimeUnit)) {
             throw new Exception(sprintf("Could not detect duration for file %s", $this->filesToProcess));
         }
         $this->notice(sprintf("found %s musicbrainz chapters and %s silences within length %s", count($mbChapters), count($this->silences), $duration->format()));
-        $this->chapters = $chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $duration);
+        $this->chapters = $this->chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $duration);
     }
 
     /**
@@ -189,7 +188,6 @@ class ChaptersCommand extends AbstractCommand
     private function normalizeChapters()
     {
 
-        $chapterMarker = new ChapterMarker();
         $options = [
             static::OPTION_FIRST_CHAPTER_OFFSET => (int)$this->input->getOption(static::OPTION_FIRST_CHAPTER_OFFSET),
             static::OPTION_LAST_CHAPTER_OFFSET => (int)$this->input->getOption(static::OPTION_LAST_CHAPTER_OFFSET),
@@ -200,7 +198,7 @@ class ChaptersCommand extends AbstractCommand
         ];
 
 
-        $this->chapters = $chapterMarker->normalizeChapters($this->chapters, $options);;
+        $this->chapters = $this->chapterMarker->normalizeChapters($this->chapters, $options);;
 
         $specialOffsetChapterNumbers = $this->parseSpecialOffsetChaptersOption();
 

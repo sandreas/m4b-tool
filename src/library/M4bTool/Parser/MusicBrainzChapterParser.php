@@ -40,7 +40,7 @@ class MusicBrainzChapterParser
 
         $cacheKey = "m4b-tool.chapter.mbxml." . $this->mbId;
 
-        $mbxml = $this->cachedAdapterValue($cacheKey, function () use ($retries, $pause, $callback) {
+        $mbxml = $this->cacheAdapterGet($cacheKey, function () use ($retries, $pause, $callback) {
 
             for ($i = 0; $i < $retries; $i++) {
                 $urlToGet = "http://musicbrainz.org/ws/2/release/" . $this->mbId . "?inc=recordings";

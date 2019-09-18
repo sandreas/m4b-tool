@@ -316,7 +316,7 @@ class ChapterHandler
 
     private function normalizeChapterName($name)
     {
-        return preg_replace("/[0-9\. ]+/is", "", $name);
+        return preg_replace("/[0-9. ]+/is", "", $name);
 
     }
 
@@ -370,7 +370,7 @@ class ChapterHandler
     {
         return array_map(function (Chapter $chapter) {
             $name = preg_replace("/[\s]+/", " ", $chapter->getName());
-            $indexesAndSpacesOnly = preg_replace("/[^0-9\. ]/", "", $name);
+            $indexesAndSpacesOnly = preg_replace("/[^0-9. ]/", "", $name);
 
 
             $indexes = array_filter(explode(" ", $indexesAndSpacesOnly), function ($element) {

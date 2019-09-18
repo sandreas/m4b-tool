@@ -301,7 +301,7 @@ class SplitCommand extends AbstractConversionCommand
         $template = $env->createTemplate($this->optFilenameTemplate);
         $fileNameTemplate = $template->render((array)$tag);
         $replacedFileName = preg_replace("/\r|\n/", "", $fileNameTemplate);
-        $replacedFileName = preg_replace('/[\<\>\:\"\|\?\*]/', "", $replacedFileName);
+        $replacedFileName = preg_replace('/[<>:\"|?*]/', "", $replacedFileName);
         $replacedFileName = preg_replace('/[\x00-\x1F\x7F]/u', '', $replacedFileName);
         return $replacedFileName . "." . $this->optAudioExtension;
     }

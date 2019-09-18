@@ -83,7 +83,7 @@ class SilenceParser
      */
     private function parseDuration($trimmedLine)
     {
-        preg_match('/[\s]*Duration\:[\s]*([0-9\.\:]+)[\s]*.*/i', $trimmedLine, $matches);
+        preg_match('/[\s]*Duration:[\s]*([0-9.:]+)[\s]*.*/i', $trimmedLine, $matches);
         if(count($matches) == 2) {
             $this->duration = TimeUnit::fromFormat($matches[1]);
         }

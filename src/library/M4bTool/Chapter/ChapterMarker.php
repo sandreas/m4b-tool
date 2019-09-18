@@ -7,22 +7,13 @@ namespace M4bTool\Chapter;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
+use M4bTool\Audio\Traits\LogTrait;
 use Sandreas\Time\TimeUnit;
 
 class ChapterMarker
 {
-    protected $debug = false;
+    use LogTrait;
     protected $maxDiffMilliseconds = 25000;
-
-    public function __construct($debug = false)
-    {
-        $this->debug = $debug;
-    }
-
-    public function setMaxDiffMilliseconds($maxDiffMilliseconds)
-    {
-        $this->maxDiffMilliseconds = $maxDiffMilliseconds;
-    }
 
     /**
      * @param $mbChapters
@@ -181,14 +172,6 @@ class ChapterMarker
         return $normSilences;
     }
 
-    public function debug($message)
-    {
-        if ($this->debug) {
-            // todo: NO ECHO!
-            echo $message;
-        }
-    }
-
     /**
      *
      * @param Chapter[] $mbChapters
@@ -198,8 +181,6 @@ class ChapterMarker
      */
     public function guessChaptersByTracks($mbChapters, $trackChapters)
     {
-
-
         $guessedChapters = [];
         $index = 1;
         foreach ($trackChapters as $key => $trackChapter) {

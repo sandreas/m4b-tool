@@ -10,6 +10,7 @@ class FileConverterOptions
 {
     public $codec;
     public $force;
+    public $debug;
     public $bitRate;
     public $sampleRate;
     public $channels;

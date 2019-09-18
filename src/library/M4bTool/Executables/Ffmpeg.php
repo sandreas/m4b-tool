@@ -219,7 +219,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
         $output = $this->getAllProcessOutput($this->createStreamInfoProcess($file));
 
-        preg_match_all("/time=([0-9:\.]+)/is", $output, $matches);
+        preg_match_all("/time=([0-9:.]+)/is", $output, $matches);
 
         if (!isset($matches[1]) || !is_array($matches[1]) || count($matches[1]) === 0) {
             return $this->estimateDuration($file);
@@ -253,7 +253,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
             "-"]);
         $output = $process->getOutput() . $process->getErrorOutput();
 
-        preg_match("/\bDuration:[\s]+([0-9:\.]+)/", $output, $matches);
+        preg_match("/\bDuration:[\s]+([0-9:.]+)/", $output, $matches);
         if (!isset($matches[1])) {
             return null;
         }
@@ -301,7 +301,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
     {
         $checksum = $this->audioChecksum($file);
         $cacheKey = "m4b-tool.audiochecksum." . $checksum;
-        $silenceDetectionOutput = $this->cachedAdapterValue($cacheKey, function () use ($file, $silenceLength) {
+        $silenceDetectionOutput = $this->cacheAdapterGet($cacheKey, function () use ($file, $silenceLength) {
             $process = $this->createNonBlockingProcess([
                 "-hide_banner",
                 "-i", $file,
@@ -413,5 +413,60 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
             $content .= "file " . $quotedFilename . "\n";
         }
         return $content;
+    }
+
+    /**
+     * @param array $filesToMerge
+     * @param SplFileInfo $outputFile
+     * @param FileConverterOptions $converterOptions
+     * @return SplFileInfo
+     * @throws Exception
+     */
+    public function mergeFiles(array $filesToMerge, SplFileInfo $outputFile, FileConverterOptions $converterOptions)
+    {
+        $count = count($filesToMerge);
+
+        if ($count === 0) {
+            throw new Exception("At least 1 file is required for merge, 0 files given");
+        }
+
+        if ($count === 1) {
+            $this->debug("only 1 file in merge list, copying file");
+            copy(current($filesToMerge), $outputFile);
+            return $outputFile;
+        }
+
+        // howto quote: http://ffmpeg.org/ffmpeg-utils.html#Quoting-and-escaping
+        $listFile = $outputFile . ".listing.txt";
+        file_put_contents($listFile, $this->buildConcatListing($filesToMerge));
+
+        $command = [
+            "-f", "concat",
+            "-safe", "0",
+            "-vn",
+            "-i", $listFile,
+            "-max_muxing_queue_size", "9999",
+            "-c", "copy",
+        ];
+
+
+        // alac can be used for m4a/m4b, but ffmpeg says it is not mp4 compilant
+        if ($converterOptions->format && $converterOptions->codec !== BinaryWrapper::CODEC_ALAC) {
+            $command[] = "-f";
+            $command[] = $converterOptions->format;
+        }
+
+        $command[] = $outputFile;
+
+        $this->notice(sprintf("merging %s files into %s, this can take a while", $count, $outputFile));
+        $this->ffmpeg($command);
+
+        if (!$outputFile->isFile()) {
+            throw new Exception("could not merge to " . $outputFile);
+        }
+        if (!$converterOptions->debug) {
+            unlink($listFile);
+        }
+        return $outputFile;
     }
 }

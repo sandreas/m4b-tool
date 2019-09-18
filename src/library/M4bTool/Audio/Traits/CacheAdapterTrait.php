@@ -4,6 +4,7 @@
 namespace M4bTool\M4bTool\Audio\Traits;
 
 
+use Exception;
 use Psr\Cache\InvalidArgumentException;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 
@@ -25,12 +26,13 @@ trait CacheAdapterTrait
      * @param callable $expensiveFunction
      * @param int $expiresAfter
      * @return mixed
+     * @throws Exception
      * @throws InvalidArgumentException
      */
-    public function cachedAdapterValue($cacheKey, callable $expensiveFunction, $expiresAfter = null)
+    public function cacheAdapterGet($cacheKey, callable $expensiveFunction, $expiresAfter = null)
     {
         if (!($this->cacheAdapter instanceof AdapterInterface)) {
-            return $expensiveFunction();
+            throw new Exception("cachedAdapterValue cannot be used without a cacheAdapter");
         }
         $cacheItem = $this->cacheAdapter->getItem($cacheKey);
         if (!$cacheItem->isHit()) {
