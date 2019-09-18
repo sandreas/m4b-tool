@@ -641,15 +641,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     private function mergeFiles()
     {
+        // TODO integrate this method into BinaryWrapper / FFMPEG => $this->>metaHandler->mergeFiles($this->>filesToMerge, $outputFile)
+
         $outputTempFile = new SplFileInfo($this->createOutputTempDir() . "tmp_" . $this->outputFile->getBasename());
-        $outputTempChaptersFile = $this->audioFileToChaptersFile($outputTempFile);
 
         if ($outputTempFile->isFile() && !unlink($outputTempFile)) {
             throw new Exception(sprintf("Could not delete temporary output file %s", $outputTempFile));
-        }
-
-        if ($outputTempChaptersFile->isFile() && !unlink($outputTempChaptersFile)) {
-            throw new Exception(sprintf("Could not delete temporary chapters file %s", $outputTempChaptersFile));
         }
 
         if (count($this->filesToMerge) === 1) {
@@ -660,16 +657,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         // howto quote: http://ffmpeg.org/ffmpeg-utils.html#Quoting-and-escaping
         $listFile = $this->outputFile . ".listing.txt";
-        file_put_contents($listFile, '');
-
-        /**
-         * @var SplFileInfo $file
-         */
-        foreach ($this->filesToMerge as $index => $file) {
-            $quotedFilename = "'" . implode("'\''", explode("'", $file->getRealPath())) . "'";
-            file_put_contents($listFile, "file " . $quotedFilename . PHP_EOL, FILE_APPEND);
-            // file_put_contents($listFile, "duration " . ($numberedChapters[$index]->getLength()->milliseconds() / 1000) . PHP_EOL, FILE_APPEND);
-        }
+        file_put_contents($listFile, $this->ffmpeg->buildConcatListing($this->filesToMerge));
 
         $command = [
             "-f", "concat",

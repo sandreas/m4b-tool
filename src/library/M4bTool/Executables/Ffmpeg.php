@@ -403,4 +403,15 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
         $this->ffmpeg(["-i", $audioFile, "-an", "-vcodec", "copy", $destinationFile]);
     }
+
+    public function buildConcatListing(array $filesToMerge)
+    {
+        $content = "";
+        foreach ($filesToMerge as $index => $file) {
+            $filePath = $file instanceof SplFileInfo ? $file->getRealPath() : $file;
+            $quotedFilename = "'" . implode("'\''", explode("'", $filePath)) . "'";
+            $content .= "file " . $quotedFilename . "\n";
+        }
+        return $content;
+    }
 }

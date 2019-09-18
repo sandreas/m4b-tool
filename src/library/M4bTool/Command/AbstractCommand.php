@@ -155,6 +155,8 @@ class AbstractCommand extends Command implements LoggerInterface
 
     /** @var ChapterHandler */
     protected $chapterHandler;
+    /** @var Ffmpeg */
+    protected $ffmpeg;
 
 
     public function __construct(string $name = null)
@@ -163,9 +165,9 @@ class AbstractCommand extends Command implements LoggerInterface
 
         $this->cache = new FilesystemAdapter();
 
-        $ffmpeg = new Ffmpeg();
-        $ffmpeg->setLogger($this);
-        $ffmpeg->setCacheAdapter($this->cache);
+        $this->ffmpeg = new Ffmpeg();
+        $this->ffmpeg->setLogger($this);
+        $this->ffmpeg->setCacheAdapter($this->cache);
         $mp4v2 = new Mp4v2Wrapper(
             new Mp4art(),
             new Mp4chaps(),
@@ -173,7 +175,7 @@ class AbstractCommand extends Command implements LoggerInterface
             new Mp4tags()
         );
         $fdkaac = new Fdkaac();
-        $this->metaHandler = new BinaryWrapper($ffmpeg, $mp4v2, $fdkaac);
+        $this->metaHandler = new BinaryWrapper($this->ffmpeg, $mp4v2, $fdkaac);
         $this->chapterHandler = new ChapterHandler($this->metaHandler);
     }
 
