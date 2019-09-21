@@ -3,13 +3,16 @@ rm -f dist/m4b-tool* bin/*.log
 
 
 if [[ "$1" == "--with-plugins" ]]; then
-    PHP_CODE="echo '!!! WITH PLUGINS !!!'.PHP_EOL;";
+    echo "!!! WITH PLUGINS !!!";
+    PHP_CODE="echo '';"
 else
-    echo "no plugins"
-    PHP_CODE="\$f = new Phar('phar://'.realpath(__DIR__.'/dist/m4b-tool.phar').'/src/library/M4bTool/Command/Plugins/');\
+    PHP_CODE="try {\
+    \$p = 'phar://'.realpath(__DIR__.'/dist/m4b-tool.phar').'/src/library/M4bTool/Command/Plugins/'; \
+    \$f = new Phar(\$p);\
     foreach(\$f as \$file) {\
     unlink(\$file);\
-    }";
+    }\
+    } catch(Throwable \$e) {}";
 fi
 
 php -d phar.readonly=off tools/box.phar build && php -d phar.readonly=off -r "${PHP_CODE}" && chmod +x dist/*.phar && tar -C dist -czf dist/m4b-tool.tar.gz m4b-tool.phar && cd dist && zip m4b-tool.zip m4b-tool.phar && cd -
