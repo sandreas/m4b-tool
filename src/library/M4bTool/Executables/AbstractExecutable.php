@@ -14,6 +14,7 @@ use Symfony\Component\Process\Process;
 abstract class AbstractExecutable
 {
     const PIPE = "|";
+    const SILENCE_DEFAULT_DB = "-30dB";
 
     /** @var string */
     protected $pathToBinary;

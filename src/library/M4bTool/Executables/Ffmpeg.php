@@ -305,7 +305,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
             $process = $this->createNonBlockingProcess([
                 "-hide_banner",
                 "-i", $file,
-                "-af", "silencedetect=noise=-30dB:d=" . ($silenceLength->milliseconds() / 1000),
+                "-af", "silencedetect=noise=" . static::SILENCE_DEFAULT_DB . ":d=" . ($silenceLength->milliseconds() / 1000),
                 "-f", "null",
                 "-",
             ]);
@@ -355,6 +355,11 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
             "-max_muxing_queue_size", "9999",
             "-map_metadata", "0",
         ];
+
+        if ($options->trimSilence) {
+            $command[] = "-af";
+            $command[] = "silenceremove=0:0:0:-1:5:" . static::SILENCE_DEFAULT_DB;
+        }
 
         // backwards compatibility: ffmpeg needed experimental flag in earlier versions
         if ($options->codec == BinaryWrapper::CODEC_AAC) {
@@ -407,12 +412,18 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
     public function buildConcatListing(array $filesToMerge)
     {
         $content = "";
-        foreach ($filesToMerge as $index => $file) {
-            $filePath = $file instanceof SplFileInfo ? $file->getRealPath() : $file;
-            $quotedFilename = "'" . implode("'\''", explode("'", $filePath)) . "'";
-            $content .= "file " . $quotedFilename . "\n";
+        foreach ($filesToMerge as $file) {
+            $content .= $this->buildConcatListingLine($file) . "\n";
         }
         return $content;
+    }
+
+    private function buildConcatListingLine($file)
+    {
+        $filePath = $file instanceof SplFileInfo ? $file->getRealPath() : $file;
+        $quotedFilename = "'" . implode("'\''", explode("'", $filePath)) . "'";
+        return "file " . $quotedFilename;
+
     }
 
     /**
@@ -468,5 +479,23 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
             unlink($listFile);
         }
         return $outputFile;
+    }
+
+    /**
+     * @param TimeUnit $silenceLength
+     * @param SplFileInfo $outputFile
+     * @throws Exception
+     */
+    public function createSilence(TimeUnit $silenceLength, SplFileInfo $outputFile)
+    {
+        // ffmpeg -f lavfi -i anullsrc -t 5 -f caf silence.caf
+        $silenceLengthSeconds = $silenceLength->milliseconds() / 1000;
+        if ($silenceLengthSeconds < 0.001) {
+            throw new Exception("Silence length has to be greater than 0.001 seconds");
+        }
+        $this->ffmpeg(["-f", "lavfi", "-i", "anullsrc", "-t", $silenceLengthSeconds, $outputFile]);
+        if (!$outputFile->isFile()) {
+            throw new Exception(sprintf("Could not create silence file %s", $outputFile));
+        }
     }
 }

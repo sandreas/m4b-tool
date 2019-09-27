@@ -29,6 +29,7 @@ use M4bTool\Parser\MusicBrainzChapterParser;
 use RecursiveDirectoryIterator;
 use Sandreas\Strings\Format\FormatParser;
 use Sandreas\Strings\Format\PlaceHolder;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -50,6 +51,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     const OPTION_CHAPTER_NO_REINDEXING = "no-chapter-reindexing";
     const OPTION_CHAPTER_USE_FILENAMES = "use-filenames-as-chapters";
+    const OPTION_ADD_SILENCE = "add-silence";
+    const OPTION_TRIM_SILENCE = "trim-silence";
 
     const MAPPING_OPTIONS_PLACEHOLDERS = [
         self::OPTION_TAG_NAME => "n",
@@ -82,6 +85,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         'chapter-remove-chars' => "„“”",
     ];
 
+
     protected $outputDirectory;
 
     protected $meta = [];
@@ -90,6 +94,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
      */
     protected $filesToConvert = [];
     protected $filesToMerge = [];
+    protected $filesToDelete = [];
     protected $sameFormatFiles = [];
 
     /** @var SplFileInfo */
@@ -102,6 +107,10 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
     /** @var string[] */
     protected $alreadyProcessedBatchDirs = [];
+    /**
+     * @var SplFileInfo
+     */
+    protected $silenceBetweenFile;
 
 
     protected function configure()
@@ -124,6 +133,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         $this->addOption(static::OPTION_CHAPTER_USE_FILENAMES, null, InputOption::VALUE_NONE, "Use filenames for chapter titles instead of tag contents");
         $this->addOption(static::OPTION_CHAPTER_NO_REINDEXING, null, InputOption::VALUE_NONE, "Do not perform any reindexing for index-only chapter names (by default m4b-tool will try to detect index-only chapters like Chapter 1, Chapter 2 and reindex it with its numbers only)");
+
+        $this->addOption(static::OPTION_TRIM_SILENCE, null, InputOption::VALUE_NONE, "Try to trim silences at the start and end before merging files");
+        $this->addOption(static::OPTION_ADD_SILENCE, null, InputOption::VALUE_OPTIONAL, "Silence length in ms to add between merged files");
 
     }
 
@@ -461,7 +473,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     }
 
 
-
     private function lookupAndAddDescription()
     {
         $descriptionFileContents = $this->lookupFileContents($this->argInputFile, "description.txt");
@@ -525,23 +536,29 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $outputTempDir = $this->createOutputTempDir();
 
 
-
         $jobs = $this->input->getOption(static::OPTION_JOBS) ? (int)$this->input->getOption(static::OPTION_JOBS) : 1;
         $taskPool = new Pool($jobs);
 
-        foreach ($this->filesToConvert as $index => $file) {
-//            $estimatedDuration = $this->metaHandler->estimateDuration($file);
-//            $taskWeight = $estimatedDuration ? $estimatedDuration->milliseconds() / 1000 : 1;
-            $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
-            $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
-            $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
-
-            $this->filesToMerge[] = $finishedOutputFile;
-            if ($outputFile->isFile()) {
-                unlink($outputFile);
+        $addSilenceOption = $this->input->getOption(static::OPTION_ADD_SILENCE);
+        $silence = $addSilenceOption ? new TimeUnit((int)$addSilenceOption) : null;
+        $silenceBaseFile = new SplFileInfo($outputTempDir . "silence.caf");
+        $this->silenceBetweenFile = null;
+        if ($silence instanceof TimeUnit) {
+            if (!$silenceBaseFile->isFile()) {
+                $this->ffmpeg->createSilence($silence, $silenceBaseFile);
+                $this->filesToDelete[] = $silenceBaseFile;
             }
-            $options = $this->buildFileConverterOptions($file, $outputFile, $outputTempDir);
-            $taskPool->submit(new ConversionTask($this->metaHandler, $options)/*, $taskWeight*/);
+            $this->silenceBetweenFile = $this->submitConversionTask($outputTempDir, "", $silenceBaseFile, $taskPool);
+        }
+
+        $lastIndex = count($this->filesToConvert) - 1;
+        foreach ($this->filesToConvert as $index => $file) {
+            $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
+            $finishedOutputFile = $this->submitConversionTask($outputTempDir, $pad, $file, $taskPool);
+            $this->filesToMerge[] = $finishedOutputFile;
+            if ($index !== $lastIndex) {
+                $this->filesToMerge[] = $this->silenceBetweenFile;
+            }
         }
 
 
@@ -601,24 +618,6 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         }
     }
 
-    public function buildFileConverterOptions($sourceFile, $destinationFile, $outputTempDir)
-    {
-        $options = new FileConverterOptions();
-        $options->source = $sourceFile;
-        $options->destination = $destinationFile;
-        $options->tempDir = $outputTempDir;
-        $options->extension = $this->optAudioExtension;
-        $options->codec = $this->optAudioCodec;
-        $options->format = $this->optAudioFormat;
-        $options->channels = $this->optAudioChannels;
-        $options->sampleRate = $this->optAudioSampleRate;
-        $options->bitRate = $this->optAudioBitRate;
-        $options->force = $this->optForce;
-        $options->debug = $this->optDebug;
-        $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
-        return $options;
-    }
-
     /**
      * @return string
      * @throws Exception
@@ -636,7 +635,36 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         return $dir;
     }
 
+    private function submitConversionTask($outputTempDir, $pad, SplFileInfo $file, Pool $taskPool)
+    {
+        $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-converting." . $this->optAudioExtension);
+        $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . "-finished." . $this->optAudioExtension);
+        if ($outputFile->isFile()) {
+            unlink($outputFile);
+        }
+        $options = $this->buildFileConverterOptions($file, $outputFile, $outputTempDir);
+        $taskPool->submit(new ConversionTask($this->metaHandler, $options)/*, $taskWeight*/);
+        return $finishedOutputFile;
+    }
 
+    public function buildFileConverterOptions($sourceFile, $destinationFile, $outputTempDir)
+    {
+        $options = new FileConverterOptions();
+        $options->source = $sourceFile;
+        $options->destination = $destinationFile;
+        $options->tempDir = $outputTempDir;
+        $options->extension = $this->optAudioExtension;
+        $options->codec = $this->optAudioCodec;
+        $options->format = $this->optAudioFormat;
+        $options->channels = $this->optAudioChannels;
+        $options->sampleRate = $this->optAudioSampleRate;
+        $options->bitRate = $this->optAudioBitRate;
+        $options->force = $this->optForce;
+        $options->debug = $this->optDebug;
+        $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
+        $options->trimSilence = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
+        return $options;
+    }
 
     /**
      * @return SplFileInfo
@@ -677,6 +705,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             $mbChapterParser->setCacheAdapter($this->cache);
             $tagChanger->add(new ChaptersFromMusicBrainz($this->chapterMarker, $mbChapterParser));
         }
+        $this->chapterHandler->setSilenceBetweenFile($this->silenceBetweenFile);
         $tagChanger->add(new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert));
 
         $maxChapterLength = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
@@ -728,6 +757,8 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             return;
         }
 
+        $this->deleteFilesAndParentDir($this->filesToDelete);
+
         if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
             return;
         }
@@ -745,7 +776,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
     {
         $file = null;
         foreach ($files as $file) {
-            unlink($file);
+            if (file_exists($file)) {
+                unlink($file);
+            }
         }
         if ($file === null) {
             return true;

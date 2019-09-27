@@ -18,6 +18,8 @@ class FileConverterOptions
     public $extension;
     public $profile;
 
+    /** @var bool */
+    public $trimSilence;
 
     /** @var SplFileInfo */
     public $tempDir;
@@ -27,4 +29,5 @@ class FileConverterOptions
 
     /** @var SplFileInfo */
     public $destination;
+
 }

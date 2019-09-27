@@ -33,6 +33,10 @@ class ChapterHandler
 
     /** @var Flags */
     protected $flags;
+    /**
+     * @var SplFileInfo
+     */
+    protected $silenceBetweenFile;
 
     public function __construct(BinaryWrapper $meta)
     {
@@ -76,13 +80,13 @@ class ChapterHandler
 
         foreach ($files as $index => $file) {
 
-            if ($file instanceof SplFileInfo) {
+            if (!($file instanceof SplFileInfo)) {
                 $file = new SplFileInfo($file);
             }
 
             if ($this->flags->contains(static::USE_FILENAMES) && isset($fileNames[$index])) {
                 $fileName = $fileNames[$index];
-                if ($fileName instanceof SplFileInfo) {
+                if (!($fileName instanceof SplFileInfo)) {
                     $fileName = new SplFileInfo($fileName);
                 }
                 $chapterName = $fileName->getBasename("." . $fileName->getExtension());
@@ -96,6 +100,16 @@ class ChapterHandler
             }
 
             $duration = $this->meta->inspectExactDuration($file);
+
+            if ($file === $this->silenceBetweenFile) {
+                $lastChapter = end($chapters);
+                if ($lastChapter instanceof Chapter) {
+                    $newEnd = new TimeUnit($lastChapter->getEnd()->milliseconds() + ($duration->milliseconds() / 2));
+                    $lastChapter->setEnd($newEnd);
+                    $lastStart = $newEnd;
+                    continue;
+                }
+            }
             $chapter = new Chapter($lastStart, $duration, $chapterName);
             $chapters[] = $chapter;
             $lastStart = $chapter->getEnd();
@@ -419,5 +433,10 @@ class ChapterHandler
         }
 
         return $newChapters;
+    }
+
+    public function setSilenceBetweenFile(SplFileInfo $silenceBetweenFile)
+    {
+        $this->silenceBetweenFile = $silenceBetweenFile;
     }
 }
