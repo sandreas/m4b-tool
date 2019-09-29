@@ -32,7 +32,7 @@ trait CacheAdapterTrait
     public function cacheAdapterGet($cacheKey, callable $expensiveFunction, $expiresAfter = null)
     {
         if (!($this->cacheAdapter instanceof AdapterInterface)) {
-            throw new Exception("cachedAdapterValue cannot be used without a cacheAdapter");
+            throw new Exception("cacheAdapterGet cannot be used without a cacheAdapter");
         }
         $cacheItem = $this->cacheAdapter->getItem($cacheKey);
         if (!$cacheItem->isHit()) {

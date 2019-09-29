@@ -159,7 +159,7 @@ class AbstractCommand extends Command implements LoggerInterface
         parent::__construct($name);
 
         $this->cache = new FilesystemAdapter();
-
+        $this->setCacheAdapter($this->cache);
         $this->ffmpeg = new Ffmpeg();
         $this->ffmpeg->setLogger($this);
         $this->ffmpeg->setCacheAdapter($this->cache);

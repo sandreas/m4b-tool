@@ -358,7 +358,17 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
         if ($options->trimSilence) {
             $command[] = "-af";
-            $command[] = "silenceremove=0:0:0:-1:5:" . static::SILENCE_DEFAULT_DB;
+
+            // https://ffmpeg.org/ffmpeg-filters.html#silenceremove
+            // start_periods=1 -> trim silence from start (default=0)
+            // start_duration=0 -> amount of "non-silence" to stop trimming
+            // start_threshold=0 -> 0 for digital audio, higher for analog
+            // start_silence=0 -> trim all silence
+
+            // start_periods=1:stop_periods=1
+
+            //  silenceremove=1:0:-30dB
+            $command[] = sprintf("silenceremove=start_periods=1:start_threshold=%s:stop_periods=1", static::SILENCE_DEFAULT_DB);
         }
 
         // backwards compatibility: ffmpeg needed experimental flag in earlier versions

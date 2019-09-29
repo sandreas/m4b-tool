@@ -546,11 +546,15 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         if ($silence instanceof TimeUnit) {
             if (!$silenceBaseFile->isFile()) {
                 $this->ffmpeg->createSilence($silence, $silenceBaseFile);
+            }
+
+            if (!$this->optDebug && $silenceBaseFile->isFile()) {
                 $this->filesToDelete[] = $silenceBaseFile;
             }
-            $this->silenceBetweenFile = $this->submitConversionTask($outputTempDir, "", $silenceBaseFile, $taskPool);
+            $this->silenceBetweenFile = $this->submitConversionTask($outputTempDir, "silence", $silenceBaseFile, $taskPool);
         }
 
+        // TODO first and last file add silence? trimming is bad
         $lastIndex = count($this->filesToConvert) - 1;
         foreach ($this->filesToConvert as $index => $file) {
             $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
@@ -642,7 +646,12 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         if ($outputFile->isFile()) {
             unlink($outputFile);
         }
+
+
         $options = $this->buildFileConverterOptions($file, $outputFile, $outputTempDir);
+        if ($pad === "silence") {
+            $options->trimSilence = false;
+        }
         $taskPool->submit(new ConversionTask($this->metaHandler, $options)/*, $taskWeight*/);
         return $finishedOutputFile;
     }
