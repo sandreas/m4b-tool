@@ -14,7 +14,6 @@ use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Audio\Tag\OpenPackagingFormat;
 use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
-use M4bTool\Chapter\MetaReaderInterface;
 use M4bTool\Audio\Silence;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Executables\FileConverterOptions;
@@ -24,7 +23,6 @@ use M4bTool\Filesystem\DirectoryLoader;
 use M4bTool\Filesystem\FileLoader;
 use M4bTool\M4bTool\Audio\Tag\ChaptersFromFileTracks;
 use M4bTool\M4bTool\Audio\Tag\ChaptersFromMusicBrainz;
-use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use RecursiveDirectoryIterator;
 use Sandreas\Strings\Format\FormatParser;
@@ -37,7 +35,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
 
-class MergeCommand extends AbstractConversionCommand implements MetaReaderInterface
+class MergeCommand extends AbstractConversionCommand
 {
 
     const ARGUMENT_MORE_INPUT_FILES = "more-input-files";
@@ -459,6 +457,9 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
         $this->notice(sprintf("successfully merged %d files to %s", count($this->filesToMerge), $this->outputFile));
     }
 
+    /**
+     * @throws Exception
+     */
     protected function loadInputMetadataFromFirstFile()
     {
         reset($this->filesToConvert);
@@ -468,9 +469,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
             return;
         }
 
-        /** @var FfmetaDataParser $metaData */
-        $metaData = $this->readFileMetaData($file);
-        $this->setMissingCommandLineOptionsFromTag($metaData->toTag());
+        $this->setMissingCommandLineOptionsFromTag($this->metaHandler->readTag($file));
     }
 
 
@@ -729,7 +728,7 @@ class MergeCommand extends AbstractConversionCommand implements MetaReaderInterf
 
         if ($mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID)) {
             $mbChapterParser = new MusicBrainzChapterParser($mbId);
-            $mbChapterParser->setCacheAdapter($this->cache);
+            $mbChapterParser->setCacheAdapter($this->cacheAdapter);
             $tagChanger->add(new ChaptersFromMusicBrainz($this->chapterMarker, $mbChapterParser));
         }
         if ($this->silenceBetweenFile instanceof SplFileInfo) {

@@ -10,7 +10,6 @@ use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Filesystem\FileLoader;
-use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -261,28 +260,7 @@ Codecs:
             return null;
         }
 
-        $metaData = new FfmetaDataParser();
-        $metaData->parse($this->readFileMetaDataOutput($file), $this->readFileMetaDataStreamInfo($file));
-
-        if ($metaData->getFormat() === FfmetaDataParser::FORMAT_MP4) {
-            $this->mp4art([
-                "--art-index", "0",
-                "--extract", $file
-            ]);
-
-            $extractedCoverFile = $this->audioFileToExtractedCoverFile($file);
-            if (!$extractedCoverFile->isFile()) {
-                $this->warning("extracting cover to " . $extractedCoverFile . " failed");
-                return null;
-            }
-
-            if (!rename($extractedCoverFile, $coverTargetFile)) {
-                $this->error("renaming cover " . $extractedCoverFile . " => " . $coverTargetFile . " failed");
-                return null;
-            }
-        } else {
-            $this->ffmpeg(["-i", $file, "-an", "-vcodec", "copy", $coverTargetFile], "try to extract cover from " . $file);
-        }
+        $this->metaHandler->exportCover($file, $coverTargetFile);
 
         if (!$coverTargetFile->isFile()) {
             $this->warning("extracting cover to " . $coverTargetFile . " failed");

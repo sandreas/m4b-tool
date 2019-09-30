@@ -256,8 +256,7 @@ class SplitCommand extends AbstractConversionCommand
         }
         $metaDataTag = new Tag();
         try {
-            $metaData = $this->readFileMetaData($this->argInputFile);
-            $metaDataTag = $metaData->toTag();
+            $metaDataTag = $this->metaHandler->readTag($this->argInputFile);
         } catch (Throwable $t) {
             $this->warning("Could not read extended metadata for Tag: " . $t->getMessage());
         }

@@ -9,7 +9,6 @@ use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
-use M4bTool\Parser\SilenceParser;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -41,11 +40,6 @@ class ChaptersCommand extends AbstractCommand
      * @var MusicBrainzChapterParser
      */
     protected $mbChapterParser;
-
-    /**
-     * @var SilenceParser
-     */
-    protected $silenceParser;
 
     /**
      * @var SplFileInfo
@@ -95,13 +89,15 @@ class ChaptersCommand extends AbstractCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-
-
         $this->initExecution($input, $output);
         $this->initParsers();
         $this->loadFileToProcess();
 
-        $this->silenceDetectionOutput = $this->detectSilencesForChapterGuessing($this->filesToProcess);
+        $silenceMinLength = new TimeUnit((int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH));
+        if ($silenceMinLength->milliseconds() < 1) {
+            throw new Exception("%s must be a positive integer value", static::OPTION_SILENCE_MIN_LENGTH);
+        }
+        $this->silences = $this->metaHandler->detectSilences($this->filesToProcess, $silenceMinLength);
 
         $parsedChapters = [];
 
@@ -125,9 +121,14 @@ class ChaptersCommand extends AbstractCommand
             $parsedChapters = $this->mbChapterParser->parseRecordings($mbXml);
         }
 
-        $this->buildChapters($parsedChapters);
+        $duration = $this->metaHandler->estimateDuration($this->filesToProcess);
+        if (!($duration instanceof TimeUnit)) {
+            throw new Exception(sprintf("Could not detect duration for file %s", $this->filesToProcess));
+        }
+
+        $this->buildChapters($parsedChapters, $duration);
         if (!$this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
-            $this->normalizeChapters();
+            $this->normalizeChapters($duration);
         }
         $this->exportChaptersToTxt($chaptersTxtFile);
         $this->importChaptersToM4b();
@@ -138,10 +139,8 @@ class ChaptersCommand extends AbstractCommand
         $mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID);
         if ($mbId) {
             $this->mbChapterParser = new MusicBrainzChapterParser($mbId);
-            $this->mbChapterParser->setCacheAdapter($this->cache);
+            $this->mbChapterParser->setCacheAdapter($this->cacheAdapter);
         }
-
-        $this->silenceParser = new SilenceParser();
     }
 
     private function loadFileToProcess()
@@ -168,24 +167,20 @@ class ChaptersCommand extends AbstractCommand
 
     /**
      * @param array $mbChapters
+     * @param TimeUnit $duration
      * @throws Exception
      */
-    private function buildChapters(array $mbChapters)
+    private function buildChapters(array $mbChapters, TimeUnit $duration)
     {
-        $this->silences = $this->silenceParser->parse($this->silenceDetectionOutput);
-
-        $duration = $this->metaHandler->estimateDuration($this->filesToProcess);
-        if(!($duration instanceof TimeUnit)) {
-            throw new Exception(sprintf("Could not detect duration for file %s", $this->filesToProcess));
-        }
         $this->notice(sprintf("found %s musicbrainz chapters and %s silences within length %s", count($mbChapters), count($this->silences), $duration->format()));
         $this->chapters = $this->chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $duration);
     }
 
     /**
+     * @param TimeUnit $duration
      * @throws Exception
      */
-    private function normalizeChapters()
+    private function normalizeChapters(TimeUnit $duration)
     {
 
         $options = [
@@ -203,6 +198,7 @@ class ChaptersCommand extends AbstractCommand
         $specialOffsetChapterNumbers = $this->parseSpecialOffsetChaptersOption();
 
         if (count($specialOffsetChapterNumbers)) {
+
             /**
              * @var Chapter[] $numberedChapters
              */
@@ -214,7 +210,7 @@ class ChaptersCommand extends AbstractCommand
 
                 if (in_array($index, $specialOffsetChapterNumbers)) {
                     $start = isset($numberedChapters[$index - 1]) ? $numberedChapters[$index - 1]->getEnd()->milliseconds() : 0;
-                    $end = isset($numberedChapters[$index + 1]) ? $numberedChapters[$index + 1]->getStart()->milliseconds() : $this->silenceParser->getDuration()->milliseconds();
+                    $end = isset($numberedChapters[$index + 1]) ? $numberedChapters[$index + 1]->getStart()->milliseconds() : $duration->milliseconds();
 
                     $maxOffsetMilliseconds = (int)$this->input->getOption(static::OPTION_FIND_MISPLACED_OFFSET) * 1000;
                     if ($maxOffsetMilliseconds > 0) {

@@ -3,7 +3,6 @@
 
 namespace M4bTool\Command;
 
-use DateTime;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\BinaryWrapper;
@@ -17,13 +16,11 @@ use M4bTool\Executables\Mp4info;
 use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
 use M4bTool\M4bTool\Audio\Traits\CacheAdapterTrait;
-use M4bTool\Parser\FfmetaDataParser;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
 use Psr\Log\LogLevel;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
-use Symfony\Component\Cache\Adapter\AbstractAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -94,11 +91,6 @@ class AbstractCommand extends Command implements LoggerInterface
     protected $startTime;
 
     /**
-     * @var AbstractAdapter
-     */
-    protected $cache;
-
-    /**
      * @var InputInterface
      */
     protected $input;
@@ -158,11 +150,12 @@ class AbstractCommand extends Command implements LoggerInterface
     {
         parent::__construct($name);
 
-        $this->cache = new FilesystemAdapter();
-        $this->setCacheAdapter($this->cache);
+        $this->setCacheAdapter(new FilesystemAdapter());
+
+
         $this->ffmpeg = new Ffmpeg();
         $this->ffmpeg->setLogger($this);
-        $this->ffmpeg->setCacheAdapter($this->cache);
+        $this->ffmpeg->setCacheAdapter($this->cacheAdapter);
         $mp4v2 = new Mp4v2Wrapper(
             new Mp4art(),
             new Mp4chaps(),
@@ -187,45 +180,7 @@ class AbstractCommand extends Command implements LoggerInterface
     public function readDuration(SplFileInfo $file)
     {
         $this->debug(sprintf("reading duration for file %s", $file));
-        $isMp4 = $this->hasMp4AudioFileExtension($file);
-        $meta = null;
-        // loading metadata with ffmpeg takes a long time, so only load it when its really necessary
-        if (!$isMp4) {
-            $meta = $this->readFileMetaData($file);
-            $isMp4 = ($meta->getFormat() === FfmetaDataParser::FORMAT_MP4);
-        }
-
-        if ($isMp4) {
-
-            $cacheItem = $this->cache->getItem("duration." . hash('sha256', $file->getRealPath()));
-            if ($cacheItem->isHit()) {
-                return new TimeUnit($cacheItem->get(), TimeUnit::SECOND);
-            }
-            $proc = $this->shell([
-                "mp4info", $file
-            ], "getting duration for " . $file);
-
-            $output = $proc->getOutput() . $proc->getErrorOutput();
-
-            $this->debug(sprintf("file is mp4, trying mp4info, output: %s", $output));
-            preg_match("/([1-9][0-9]*\.[0-9]{3}) secs,/isU", $output, $matches);
-            $seconds = isset($matches[1]) ? $matches[1] : 0;
-            if ($seconds) {
-                $cacheItem->set($seconds);
-                $this->cache->save($cacheItem);
-                return new TimeUnit($seconds, TimeUnit::SECOND);
-            }
-            $this->warning("could not get mp4 duration with mp4info, trying to use ffmpeg");
-            $this->debug(sprintf("mp4info output: %s", $output));
-        }
-
-        if (!$meta) {
-            $meta = $this->readFileMetaData($file);
-        }
-
-        $this->debug(sprintf("meta: %s", print_r($meta, true)));
-
-        return $meta->getDuration();
+        return $this->metaHandler->inspectExactDuration($file);
     }
 
     public function hasMp4AudioFileExtension(SplFileInfo $file)
@@ -233,22 +188,7 @@ class AbstractCommand extends Command implements LoggerInterface
         return in_array($file->getExtension(), [static::AUDIO_EXTENSION_M4A, static::AUDIO_EXTENSION_M4B, static::AUDIO_EXTENSION_MP4], true);
     }
 
-    /**
-     * @param SplFileInfo $file
-     * @return FfmetaDataParser
-     * @throws Exception
-     */
-    public function readFileMetaData(SplFileInfo $file)
-    {
-        if (!$file->isFile()) {
-            throw new Exception("cannot read metadata, file " . $file . " does not exist");
-        }
 
-        $this->notice(sprintf("reading metadata and streaminfo for file %s", $file));
-        $metaData = new FfmetaDataParser();
-        $metaData->parse($this->readFileMetaDataOutput($file), $this->readFileMetaDataStreamInfo($file));
-        return $metaData;
-    }
 
     /**
      * Logs with an arbitrary level.
@@ -297,52 +237,6 @@ class AbstractCommand extends Command implements LoggerInterface
         file_put_contents($this->optLogFile, $logLevel . " " . $logTime . " " . $message . PHP_EOL, FILE_APPEND);
     }
 
-    /**
-     * @param SplFileInfo $file
-     * @return mixed|string
-     * @throws Exception
-     */
-    protected function readFileMetaDataOutput(SplFileInfo $file)
-    {
-        $cacheKey = "metadata." . hash('sha256', $file->getRealPath());
-        return $this->runCachedFfmpeg([
-            "-hide_banner",
-            "-i", $file,
-            "-f", "ffmetadata",
-            "-"
-        ], $cacheKey);
-    }
-
-    /**
-     * @param array $command
-     * @param $cacheKey
-     * @param null $message
-     * @return mixed|string
-     * @throws Exception
-     */
-    private function runCachedFfmpeg(array $command, $cacheKey, $message = null)
-    {
-
-        $cacheItem = $this->cache->getItem($cacheKey);
-        $cacheItem->expiresAt(new DateTime("+12 hours"));
-        if ($cacheItem->isHit()) {
-            return $cacheItem->get();
-        }
-
-        $process = $this->ffmpeg($command, $message);
-        $metaDataOutput = $process->getOutput() . PHP_EOL . $process->getErrorOutput();
-
-        // ensure metadata is utf-8
-        if (!preg_match("//u", $metaDataOutput)) {
-            $metaDataOutput = mb_scrub($metaDataOutput, "utf-8");
-        }
-
-        $this->debug($metaDataOutput);
-
-        $cacheItem->set($metaDataOutput);
-        $this->cache->save($cacheItem);
-        return $metaDataOutput;
-    }
 
     /**
      * @param $command
@@ -352,6 +246,8 @@ class AbstractCommand extends Command implements LoggerInterface
      */
     protected function ffmpeg($command, $introductionMessage = null)
     {
+        // TODO get rid of this function
+        // TODO regard FFMPEG_THREADS option in Ffmpeg-class
         if (!in_array("-hide_banner", $command)) {
             array_unshift($command, "-hide_banner");
         }
@@ -456,22 +352,6 @@ class AbstractCommand extends Command implements LoggerInterface
         }
     }
 
-    /**
-     * @param SplFileInfo $file
-     * @return mixed|string
-     * @throws Exception
-     */
-    protected function readFileMetaDataStreamInfo(SplFileInfo $file)
-    {
-        $cacheKey = "streaminfo." . hash('sha256', $file->getRealPath());
-        return $this->runCachedFfmpeg([
-            "-hide_banner",
-            "-i", $file,
-            "-f", "null",
-            "-"
-        ], $cacheKey);
-    }
-
     protected function configure()
     {
         $className = get_class($this);
@@ -504,7 +384,7 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->loadArguments();
 
         if ($this->input->getOption(static::OPTION_NO_CACHE)) {
-            $this->cache->clear();
+            $this->cacheAdapter->clear();
         }
     }
 
@@ -566,6 +446,7 @@ class AbstractCommand extends Command implements LoggerInterface
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . "cover.jpg");
     }
 
+    // todo: find out where this method was used before
     protected function stripInvalidFilenameChars($fileName)
     {
         if ($this->isWindows()) {
@@ -600,6 +481,7 @@ class AbstractCommand extends Command implements LoggerInterface
         }
     }
 
+    // todo remove this unused method
     protected function appendKeyValueParameterToCommand(&$command, $key, $value, $preParam)
     {
         if ($value === null || $value === "") {
@@ -609,6 +491,7 @@ class AbstractCommand extends Command implements LoggerInterface
         $command[] = $key . '=' . $value;
     }
 
+    // todo remove this unused method
     protected function splitLines($chapterString)
     {
         return preg_split("/\r\n|\n|\r/", $chapterString);
@@ -712,37 +595,6 @@ class AbstractCommand extends Command implements LoggerInterface
                 throw new Exception("could not rename file with fixed mimetype - check possibly remaining garbage files " . $file . " and " . $fixedFile);
             }
         }
-    }
-
-    /**
-     * @param SplFileInfo $file
-     * @return mixed|string
-     * @throws Exception
-     */
-    protected function detectSilencesForChapterGuessing(SplFileInfo $file)
-    {
-        $fileNameHash = hash('sha256', $file->getRealPath());
-
-        $cacheItem = $this->cache->getItem("chapter.silences." . $fileNameHash);
-        if ($cacheItem->isHit()) {
-            return $cacheItem->get();
-        }
-
-
-        $process = $this->ffmpeg([
-            "-i", $file,
-            "-af", "silencedetect=noise=-30dB:d=" . ((float)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH) / 1000),
-            "-f", "null",
-            "-",
-
-        ], "detecting silence of " . $file);
-        $silenceDetectionOutput = $process->getOutput();
-        $silenceDetectionOutput .= $process->getErrorOutput();
-
-
-        $cacheItem->set($silenceDetectionOutput);
-        $this->cache->save($cacheItem);
-        return $silenceDetectionOutput;
     }
 
     /**
