@@ -123,9 +123,10 @@ class Fdkaac extends AbstractExecutable implements TagReaderInterface, TagWriter
         // Pipe usage does not work with new Process, so the command has to be put together manually
         $command = ["ffmpeg", "-i", $options->source, "-vn"];
 
-        if ($options->trimSilence) {
+        // https://ffmpeg.org/ffmpeg-filters.html#silenceremove
+        if ($options->trimSilenceStart || $options->trimSilenceEnd) {
             $command[] = "-af";
-            $command[] = "silenceremove=0:0:0:-1:5:" . static::SILENCE_DEFAULT_DB;
+            $command[] = sprintf("silenceremove=start_periods=%s:start_threshold=%s:stop_periods=%s", (int)$options->trimSilenceStart, static::SILENCE_DEFAULT_DB, (int)$options->trimSilenceEnd);
         }
 
 

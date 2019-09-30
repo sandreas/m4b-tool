@@ -19,7 +19,10 @@ class FileConverterOptions
     public $profile;
 
     /** @var bool */
-    public $trimSilence;
+    public $trimSilenceStart;
+
+    /** @var bool */
+    public $trimSilenceEnd;
 
     /** @var SplFileInfo */
     public $tempDir;

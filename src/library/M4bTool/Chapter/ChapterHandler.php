@@ -101,7 +101,7 @@ class ChapterHandler
 
             $duration = $this->meta->inspectExactDuration($file);
 
-            if ($file === $this->silenceBetweenFile) {
+            if ($this->silenceBetweenFile && $file === $this->silenceBetweenFile) {
                 $lastChapter = end($chapters);
                 if ($lastChapter instanceof Chapter) {
                     $newEnd = new TimeUnit($lastChapter->getEnd()->milliseconds() + ($duration->milliseconds() / 2));
@@ -435,7 +435,7 @@ class ChapterHandler
         return $newChapters;
     }
 
-    public function setSilenceBetweenFile(SplFileInfo $silenceBetweenFile)
+    public function setSilenceBetweenFile(SplFileInfo $silenceBetweenFile = null)
     {
         $this->silenceBetweenFile = $silenceBetweenFile;
     }

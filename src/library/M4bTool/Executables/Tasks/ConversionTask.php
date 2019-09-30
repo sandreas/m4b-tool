@@ -15,6 +15,9 @@ use Throwable;
 
 class ConversionTask extends AbstractTask
 {
+
+    const CONVERTING_SUFFIX = "-converting";
+    const FINISHED_SUFFIX = "-finished";
     /**
      * @var Ffmpeg
      */
@@ -46,7 +49,7 @@ class ConversionTask extends AbstractTask
         $this->metaDataHandler = $metaDataHandler;
         $this->options = $options;
 
-        $this->finishedOutputFile = new SplFileInfo(str_replace("-converting", "-finished", $options->destination));
+        $this->finishedOutputFile = new SplFileInfo(str_replace(static::CONVERTING_SUFFIX, static::FINISHED_SUFFIX, $options->destination));
     }
 
     public function run()
