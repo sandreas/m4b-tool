@@ -7,7 +7,6 @@ namespace M4bTool\Command;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
-use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
@@ -18,8 +17,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class ChaptersCommand extends AbstractCommand
 {
-
-
     const OPTION_MERGE_SIMILAR = "merge-similar";
 
     const OPTION_FIND_MISPLACED_CHAPTERS = "find-misplaced-chapters";
@@ -101,7 +98,6 @@ class ChaptersCommand extends AbstractCommand
 
         $parsedChapters = [];
 
-        $chaptersTxtFile = null;
         if ($this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
             $this->loadOutputFile();
             if ($this->optForce && file_exists($this->outputFile)) {
@@ -110,12 +106,8 @@ class ChaptersCommand extends AbstractCommand
             if (!copy($this->argInputFile, $this->outputFile)) {
                 throw new Exception("Could not copy " . $this->argInputFile . " to " . $this->outputFile);
             }
-            $chaptersTxtFile = $this->exportChaptersForFile(new SplFileInfo($this->outputFile));
-            $chapterParser = new Mp4ChapsChapterParser();
-            $parsedChapters = $chapterParser->parse(file_get_contents($chaptersTxtFile));
-            if (!$this->optDebug) {
-                unlink($chaptersTxtFile);
-            }
+            $tag = $this->metaHandler->readTag(new SplFileInfo($this->outputFile));
+            $parsedChapters = $tag->chapters;
         } else if ($this->mbChapterParser) {
             $mbXml = $this->mbChapterParser->loadRecordings();
             $parsedChapters = $this->mbChapterParser->parseRecordings($mbXml);
@@ -130,8 +122,14 @@ class ChaptersCommand extends AbstractCommand
         if (!$this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
             $this->normalizeChapters($duration);
         }
-        $this->exportChaptersToTxt($chaptersTxtFile);
-        $this->importChaptersToM4b();
+
+        if (!$this->input->getOption(static::OPTION_NO_CHAPTER_IMPORT)) {
+            $this->metaHandler->importChapters($this->outputFile, $this->chapters);
+        }
+
+        $chaptersTxtFile = $this->audioFileToChaptersFile($this->outputFile);
+        $this->metaHandler->exportChapters($this->outputFile, $chaptersTxtFile);
+
     }
 
     private function initParsers()
@@ -151,7 +149,6 @@ class ChaptersCommand extends AbstractCommand
             return;
         }
     }
-
 
     private function loadOutputFile()
     {
@@ -280,46 +277,5 @@ class ChaptersCommand extends AbstractCommand
         return $specialOffsetChapters;
     }
 
-    /**
-     * @param null $chaptersTxtFile
-     * @throws Exception
-     */
-    protected function exportChaptersToTxt($chaptersTxtFile = null)
-    {
-        $chapterLines = $this->chaptersToMp4v2Format($this->chapters);
-        $chapterLinesAsString = implode(PHP_EOL, $chapterLines);
-        $this->debug($chapterLinesAsString);
 
-        if ($chaptersTxtFile === null) {
-            $this->loadOutputFile();
-            $chaptersTxtFile = $this->outputFile;
-        }
-
-        if ($chaptersTxtFile) {
-            $outputDir = dirname($this->outputFile);
-            if (!is_dir($outputDir) && !mkdir($outputDir, 0777, true)) {
-                $this->notice("Could not create output directory: " . $outputDir);
-            } elseif (!file_put_contents($chaptersTxtFile, $chapterLinesAsString)) {
-                $this->notice("Could not write output file: " . $chaptersTxtFile);
-            } else {
-                $this->notice("Chapters successfully exported to file: " . $chaptersTxtFile);
-            }
-        }
-    }
-
-    /**
-     * @throws Exception
-     */
-    protected function importChaptersToM4b()
-    {
-        $fileToImport = preg_replace("/(.*)(.chapters.txt)$/i", "$1.m4b", $this->outputFile);
-
-        if (file_exists($fileToImport) && !$this->input->getOption(static::OPTION_NO_CHAPTER_IMPORT)) {
-            $process = $this->mp4chaps([
-                "-i", $fileToImport
-            ], "importing chapters to " . $fileToImport);
-            $this->notice($process->getOutput() . $process->getErrorOutput());
-        }
-
-    }
 }

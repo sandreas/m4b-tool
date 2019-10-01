@@ -4,7 +4,6 @@
 namespace M4bTool\Command;
 
 use Exception;
-use M4bTool\Audio\Chapter;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\ChapterMarker;
@@ -286,6 +285,9 @@ class AbstractCommand extends Command implements LoggerInterface
             $platformCharset = "windows-1252";
         }
 
+
+        // TODO IS THIS STILL REQUIRED, if so, add it to binary wrapper (Mp4v2)
+        // new Mp4v2($platformCharset)
         if ($platformCharset && in_array($command[0], ["mp4art", "mp4chaps", "mp4extract", "mp4file", "mp4info", "mp4subtitle", "mp4tags", "mp4track", "mp4trackdump"])) {
             if (function_exists("mb_convert_encoding")) {
                 $availableCharsets = array_map('strtolower', mb_list_encodings());
@@ -325,6 +327,7 @@ class AbstractCommand extends Command implements LoggerInterface
         return $process;
     }
 
+    // TODO replace this with Symfony formatting or just remove it
     protected function formatShellCommand(array $command)
     {
 
@@ -433,41 +436,6 @@ class AbstractCommand extends Command implements LoggerInterface
         return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . "." . $audioExtension);
     }
 
-    protected function audioFileToExtractedCoverFile(SplFileInfo $audioFile, $index = 0)
-    {
-        $dirName = dirname($audioFile);
-        $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
-        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".art[" . $index . "].jpg");
-    }
-
-    protected function audioFileToCoverFile(SplFileInfo $audioFile)
-    {
-        $dirName = dirname($audioFile);
-        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . "cover.jpg");
-    }
-
-    // todo: find out where this method was used before
-    protected function stripInvalidFilenameChars($fileName)
-    {
-        if ($this->isWindows()) {
-            $invalidFilenameChars = [
-                ' < ',
-                '>',
-                ':',
-                '"',
-                '/',
-                '\\',
-                '|',
-                '?',
-                '*',
-            ];
-            $replacedFileName = str_replace($invalidFilenameChars, '-', $fileName);
-            return mb_convert_encoding($replacedFileName, 'Windows-1252', 'UTF-8');
-        }
-        $invalidFilenameChars = [" / ", "\0"];
-        return str_replace($invalidFilenameChars, '-', $fileName);
-    }
-
     protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)
     {
         if (is_bool($parameterValue)) {
@@ -479,49 +447,6 @@ class AbstractCommand extends Command implements LoggerInterface
             $command[] = $parameterName;
             $command[] = $parameterValue;
         }
-    }
-
-    // todo remove this unused method
-    protected function appendKeyValueParameterToCommand(&$command, $key, $value, $preParam)
-    {
-        if ($value === null || $value === "") {
-            return;
-        }
-        $command[] = $preParam;
-        $command[] = $key . '=' . $value;
-    }
-
-    // todo remove this unused method
-    protected function splitLines($chapterString)
-    {
-        return preg_split("/\r\n|\n|\r/", $chapterString);
-    }
-
-    /**
-     * @param SplFileInfo $file
-     * @return SplFileInfo
-     * @throws Exception
-     */
-    protected function exportChaptersForFile(SplFileInfo $file)
-    {
-
-        if (!$file->isFile()) {
-            throw new Exception("File " . $file . " does not exist - could not export chapters");
-        }
-
-        $chaptersFile = $this->audioFileToChaptersFile($file);
-        if ($chaptersFile->isFile()) {
-            if (!$this->optForce) {
-                throw new Exception("Chapter file  " . $chaptersFile . " already exists - use --force to override");
-            }
-            unlink($chaptersFile);
-        }
-
-        $this->mp4chaps(["-x", $file], "exporting chapters for " . $file);
-        if (!$chaptersFile->isFile()) {
-            throw new Exception("Chapter file  " . $chaptersFile . " does not exist - export failed");
-        }
-        return $chaptersFile;
     }
 
     protected function audioFileToChaptersFile(SplFileInfo $audioFile)
@@ -542,74 +467,4 @@ class AbstractCommand extends Command implements LoggerInterface
         array_unshift($command, "mp4chaps");
         return $this->shell($command, $introductionMessage);
     }
-
-    /**
-     * @param $command
-     * @param null $introductionMessage
-     * @return Process
-     * @throws Exception
-     */
-    protected function fdkaac($command, $introductionMessage = null)
-    {
-        array_unshift($command, "fdkaac");
-        return $this->shell($command, $introductionMessage);
-    }
-
-    /**
-     * @param $command
-     * @param null $introductionMessage
-     * @return Process
-     * @throws Exception
-     */
-    protected function mp4art($command, $introductionMessage = null)
-    {
-        array_unshift($command, "mp4art");
-        return $this->shell($command, $introductionMessage);
-    }
-
-    /**
-     * @param $command
-     * @param null $introductionMessage
-     * @return Process
-     * @throws Exception
-     */
-    protected function mp4tags($command, $introductionMessage = null)
-    {
-        array_unshift($command, "mp4tags");
-        return $this->shell($command, $introductionMessage);
-    }
-
-    /**
-     * @param SplFileInfo $file
-     * @throws Exception
-     */
-    protected function fixMimeType(SplFileInfo $file)
-    {
-        $fixedFile = new SplFileInfo((string)$file . "-tmp." . $file->getExtension());
-        $this->ffmpeg([
-            "-i", $file, "-vn", "-acodec", "copy", "-map_metadata", "0",
-            $fixedFile
-        ], "fixing mimetype to audio/mp4");
-        if ($fixedFile->isFile()) {
-            if (!unlink($file) || !rename($fixedFile, $file)) {
-                throw new Exception("could not rename file with fixed mimetype - check possibly remaining garbage files " . $file . " and " . $fixedFile);
-            }
-        }
-    }
-
-    /**
-     * @param Chapter[] $chapters
-     * @return array
-     * @throws Exception
-     */
-    protected function chaptersToMp4v2Format(array $chapters)
-    {
-        $chaptersAsLines = [];
-        foreach ($chapters as $chapter) {
-            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
-        }
-        return $chaptersAsLines;
-    }
-
-
 }

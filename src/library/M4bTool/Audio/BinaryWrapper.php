@@ -236,6 +236,7 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
     /**
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
+     * @return SplFileInfo|null
      * @throws Exception
      */
     public function exportChapters(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
@@ -244,6 +245,7 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         $this->ensureFileDoesNotExist($destinationFile);
         $tag = $this->readTag($audioFile);
         file_put_contents($destinationFile, $this->mp4v2->chaptersToMp4v2Format($tag->chapters));
+        return $destinationFile;
     }
 
     public function toMp4v2ChaptersFormat($chapters)
@@ -257,14 +259,26 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
      * @param Flags|null $flags
      * @throws Exception
      */
-    public function importChapters(SplFileInfo $audioFile, SplFileInfo $chaptersFile = null, Flags $flags = null)
+    public function importChaptersFile(SplFileInfo $audioFile, SplFileInfo $chaptersFile = null, Flags $flags = null)
     {
         $destinationFile = $this->normalizeDefaultFile($audioFile, $chaptersFile, "chapters.txt");
         $this->ensureFileExists($destinationFile);
 
         $chapterParser = new Mp4ChapsChapterParser();
+        $chapters = $chapterParser->parse(file_get_contents($destinationFile));
+        $this->importChapters($audioFile, $chapters, $flags);
+    }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param array $chapters
+     * @param Flags|null $flags
+     * @throws Exception
+     */
+    public function importChapters(SplFileInfo $audioFile, array $chapters, Flags $flags = null)
+    {
         $tag = $this->readTag($audioFile);
-        $tag->chapters = $chapterParser->parse(file_get_contents($destinationFile));
+        $tag->chapters = $chapters;
         $this->writeTag($audioFile, $tag, $flags);
     }
 

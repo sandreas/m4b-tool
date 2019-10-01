@@ -132,6 +132,7 @@ class SplitCommand extends AbstractConversionCommand
      */
     private function loadChaptersFile()
     {
+        // TODO: implement this into binary wrapper
         $chaptersFile = $this->input->getOption(static::OPTION_CHAPTERS_FILENAME);
         if ($chaptersFile === "") {
             if (!$this->input->getOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE) && $this->hasMp4AudioFileExtension($this->argInputFile)) {
@@ -265,6 +266,7 @@ class SplitCommand extends AbstractConversionCommand
         $extractedCoverFile = $this->extractCover($this->argInputFile, new SplFileInfo($this->outputDirectory . "/cover.jpg"), $this->optForce);
 
         $index = 0;
+        // TODO split by chapters should be implemented into BinaryWrapper
         foreach ($this->chapters as $chapter) {
             $tag = $this->inputOptionsToTag();
             $tag->cover = $this->input->getOption(static::OPTION_COVER) === null ? $extractedCoverFile : $this->input->getOption('cover');
@@ -405,6 +407,7 @@ class SplitCommand extends AbstractConversionCommand
      */
     private function extractChapterMp4(Chapter $chapter, SplFileInfo $outputFile, Tag $tag)
     {
+        // todo: implement this into binary wrapper
 
         if ($outputFile->isFile()) {
             return $outputFile;

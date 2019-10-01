@@ -196,7 +196,7 @@ Codecs:
             // todo: https://dbojan.github.io/howto_pc/media,%20How%20to%20add%20chapter%20marks%20to%20audio%20books,%20using%20opus%20codec.htm
             // -> see mimetype options and do this in one command when using ffmpeg below
             $this->debug(sprintf("fixing mimetype of file %s to audio/mp4", $file));
-            $this->fixMimeType($file);
+            $this->ffmpeg->forceAudioMimeType($file);
         }
 
         try {
