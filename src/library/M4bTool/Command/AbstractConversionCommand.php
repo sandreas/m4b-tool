@@ -9,6 +9,7 @@ use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Common\ConditionalFlags;
+use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Filesystem\FileLoader;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
@@ -27,6 +28,10 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     const OPTION_AUDIO_PROFILE = "audio-profile";
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
     const OPTION_FIX_MIME_TYPE = "fix-mime-type";
+
+    const OPTION_ADD_SILENCE = "add-silence";
+    const OPTION_TRIM_SILENCE = "trim-silence";
+
 
     const DEFAULT_SUPPORTED_AUDIO_EXTENSIONS = ["aac", "alac", "flac", "m4a", "m4b", "mp3", "oga", "ogg", "wav", "wma", "mp4"];
     const DEFAULT_SUPPORTED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
@@ -75,6 +80,9 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $this->addOption(static::OPTION_AUDIO_PROFILE, null, InputOption::VALUE_OPTIONAL, "audio profile, when using extra low bitrate - valid values: aac_he, aac_he_v2", "");
         $this->addOption(static::OPTION_ADJUST_FOR_IPOD, null, InputOption::VALUE_NONE, "auto adjust bitrate and sampling rate for ipod, if track is too long (may result in low audio quality)");
         $this->addOption(static::OPTION_FIX_MIME_TYPE, null, InputOption::VALUE_NONE, "try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent an empty video window", null);
+        $this->addOption(static::OPTION_TRIM_SILENCE, null, InputOption::VALUE_NONE, "Try to trim silences at the start and end of files");
+        $this->addOption(static::OPTION_ADD_SILENCE, null, InputOption::VALUE_OPTIONAL, "Silence length in ms to add between merged files");
+
     }
 
     /**
@@ -100,7 +108,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         if (!$this->optAudioCodec) {
             if (isset(static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat])) {
                 if ($this->optAudioFormat === static::AUDIO_FORMAT_MP4) {
-                    $this->optAudioCodec = $this->loadHighestAvailableQualityAacCodec();
+                    $this->optAudioCodec = $this->ffmpeg->loadHighestAvailableQualityAacCodec();
                 } else {
                     $this->optAudioCodec = static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat];
                 }
@@ -126,65 +134,6 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     }
 
     /**
-     * @return mixed|string
-     * @throws Exception
-     */
-    protected function loadHighestAvailableQualityAacCodec()
-    {
-        // libfdk_aac (best quality)
-        // libfaac (high quality)
-        // aac -strict experimental (decent quality, but use higher bitrates)
-        // libvo_aacenc (bad quality)
-
-        $aacQualityOrder = [
-            "libfdk_aac",
-            "libfaac",
-            "aac"
-        ];
-
-        $process = $this->ffmpeg(["-hide_banner", "-codecs"], "determine highest available audio codec");
-        $process->stop(10);
-        /*
-Codecs:
- D..... = Decoding supported
- .E.... = Encoding supported
- ..V... = Video codec
- ..A... = Audio codec
- ..S... = Subtitle codec
- ...I.. = Intra frame-only codec
- ....L. = Lossy compression
- .....S = Lossless compression
- -------
- D.VI.. 012v                 Uncompressed 4:2:2 10-bit
- D.V.L. 4xm                  4X Movie
- D.VI.S 8bps                 QuickTime 8BPS video
- .EVIL. a64_multi            Multicolor charset for Commodore 64 (encoders: a64multi )
- .EVIL. a64_multi5           Multicolor charset for Commodore 64, extended with 5th color (colram) (encoders: a64multi5 )
- D.V..S aasc                 Autodesk RLE
- D.VIL. aic                  Apple Intermediate Codec
- DEVI.S alias_pix            Alias/Wavefront PIX image
- DEVIL. amv                  AMV Video
-         */
-//        $aacQualityOrder
-        $codecOutput = $process->getOutput() . $process->getErrorOutput();
-
-        $index = 1;
-        $returnValue = "libvo_aacenc";
-        foreach ($aacQualityOrder as $index => $encoderName) {
-            if (preg_match("/\b" . preg_quote($encoderName) . "\b/i", $codecOutput)) {
-                $returnValue = $encoderName;
-                break;
-            }
-        }
-
-        if ($index > 0) {
-            $this->warning("Your ffmpeg version cannot produce top quality aac using encoder " . $returnValue . " instead of " . $aacQualityOrder[0] . "");
-        }
-
-        return $returnValue;
-    }
-
-    /**
      * @param SplFileInfo $file
      * @param Tag $tag
      * @throws Exception
@@ -193,7 +142,6 @@ Codecs:
     {
         $this->debug(sprintf("tagFile - filename: %s\nfull tag:\n%s", $file, print_r($tag, true)));
         if ($this->input->getOption(static::OPTION_FIX_MIME_TYPE)) {
-            // todo: https://dbojan.github.io/howto_pc/media,%20How%20to%20add%20chapter%20marks%20to%20audio%20books,%20using%20opus%20codec.htm
             // -> see mimetype options and do this in one command when using ffmpeg below
             $this->debug(sprintf("fixing mimetype of file %s to audio/mp4", $file));
             $this->ffmpeg->forceAudioMimeType($file);
@@ -203,6 +151,7 @@ Codecs:
             $this->metaHandler->writeTag($file, $tag);
         } catch (Throwable $e) {
             $this->error(sprintf("could not tag file %s, error: %s", $file, $e->getMessage()));
+            $this->error($e->getTraceAsString());
             $this->debug(sprintf("trace: %s", $e->getTraceAsString()));
         }
     }
@@ -240,7 +189,7 @@ Codecs:
     protected function extractCover(SplFileInfo $file, SplFileInfo $coverTargetFile, $force = false)
     {
         if ($this->extractAlreadyTried($coverTargetFile)) {
-            return null;
+            return $this->getExtractAlreadyTriedFile($coverTargetFile);
         }
 
         if (!$file->isFile()) {
@@ -272,18 +221,23 @@ Codecs:
 
     private function extractAlreadyTried(SplFileInfo $extractTargetFile)
     {
-        $realPath = $extractTargetFile->getRealPath();
-        if (in_array($realPath, $this->extractFilesAlreadyTried, true)) {
-            return true;
+        $path = (string)$extractTargetFile;
+        if (!isset($this->extractFilesAlreadyTried[$path])) {
+            $this->extractFilesAlreadyTried[$path] = $extractTargetFile;
+            return false;
         }
-        $this->extractFilesAlreadyTried[] = $realPath;
-        return false;
+        return true;
+    }
+
+    private function getExtractAlreadyTriedFile(SplFileInfo $extractTargetFile)
+    {
+        return $extractTargetFile->isFile() ? $extractTargetFile : null;
     }
 
     protected function extractDescription(Tag $tag, SplFileInfo $descriptionTargetFile)
     {
         if ($this->extractAlreadyTried($descriptionTargetFile)) {
-            return null;
+            return $this->getExtractAlreadyTriedFile($descriptionTargetFile);
         }
 
         if ($descriptionTargetFile->isFile() && !$this->optForce) {
@@ -454,73 +408,24 @@ Codecs:
         }
     }
 
-    protected function appendFfmpegTagParametersToCommand(&$command, Tag $tag)
+    public function buildFileConverterOptions($sourceFile, $destinationFile, $outputTempDir)
     {
-        if ($tag->title) {
-            $command[] = '-metadata';
-            $command[] = 'title=' . $tag->title;
-        }
-
-        if ($tag->artist) {
-            $command[] = '-metadata';
-            $command[] = 'artist=' . $tag->artist;
-        }
-
-
-        if ($tag->album) {
-            $command[] = '-metadata';
-            $command[] = 'album=' . $tag->album;
-        }
-
-
-        if ($tag->genre) {
-            $command[] = '-metadata';
-            $command[] = 'genre=' . $tag->genre;
-        }
-
-        if ($tag->description) {
-            $command[] = '-metadata';
-            $command[] = 'description=' . $tag->description;
-        }
-
-        if ($tag->writer) {
-            $command[] = '-metadata';
-            $command[] = 'composer=' . $tag->writer;
-        }
-
-
-        if ($tag->track && $tag->tracks) {
-            $command[] = '-metadata';
-            $command[] = 'track=' . $tag->track . "/" . $tag->tracks;
-        }
-
-        if ($tag->albumArtist) {
-            $command[] = '-metadata';
-            $command[] = 'album_artist=' . $tag->albumArtist;
-        }
-
-
-        if ($tag->year) {
-            $command[] = '-metadata';
-            $command[] = 'date=' . $tag->year;
-        }
-
-        if ($tag->comment) {
-            $command[] = '-metadata';
-            $command[] = 'comment=' . $tag->comment;
-        }
-
-
-        if ($tag->copyright) {
-            $command[] = '-metadata';
-            $command[] = 'copyright=' . $tag->copyright;
-        }
-
-
-        if ($tag->encodedBy) {
-            $command[] = '-metadata';
-            $command[] = 'encoded_by=' . $tag->encodedBy;
-        }
+        $options = new FileConverterOptions();
+        $options->source = $sourceFile;
+        $options->destination = $destinationFile;
+        $options->tempDir = $outputTempDir;
+        $options->extension = $this->optAudioExtension;
+        $options->codec = $this->optAudioCodec;
+        $options->format = $this->optAudioFormat;
+        $options->channels = $this->optAudioChannels;
+        $options->sampleRate = $this->optAudioSampleRate;
+        $options->bitRate = $this->optAudioBitRate;
+        $options->force = $this->optForce;
+        $options->debug = $this->optDebug;
+        $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
+        $options->trimSilenceStart = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
+        $options->trimSilenceEnd = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
+        return $options;
     }
 
 }

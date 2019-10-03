@@ -60,9 +60,22 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 //        "network" => "",
     ];
 
+    protected $threads;
+    protected $extraArguments = [];
+
     public function __construct($pathToBinary = "ffmpeg", ProcessHelper $processHelper = null, OutputInterface $output = null)
     {
         parent::__construct($pathToBinary, $processHelper, $output);
+    }
+
+    public function setThreads($threadsValue)
+    {
+        $this->threads = $threadsValue;
+    }
+
+    public function setExtraArguments($extraArguments)
+    {
+        $this->extraArguments = $extraArguments;
     }
 
     /**
@@ -76,31 +89,17 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         $outputFile = $this->createTempFileInSameDirectory($file);
         $command = ["-i", $file];
 
-        $commandAddition = [];
-        $metaDataFileIndex = 1;
-        if ($tag->hasCoverFile()) {
-            $command = array_merge($command, ["-i", $tag->cover]);
-            $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
-            $metaDataFileIndex++;
-        }
 
-        $ffmetadata = $this->buildFfmetadata($tag);
-        $fpPath = tempnam(sys_get_temp_dir(), "");
-        if (file_put_contents($fpPath, $ffmetadata) === false) {
-            throw new Exception(sprintf("Could not create metadatafile %s", $fpPath));
-        }
-        $command = array_merge($command, ["-i", $fpPath, "-map_metadata", (string)$metaDataFileIndex]);
-
-        if (count($commandAddition) > 0) {
-            $command = array_merge($command, $commandAddition);
-        }
+        $metaDataFile = $this->appendTagFilesToCommand($command, $tag);
 
         $command[] = $outputFile;
-        $this->ffmpeg($command);
+        $process = $this->ffmpeg($command);
+        if ($process->getExitCode() > 0) {
+            throw new Exception(sprintf("Could not write tag for file %s: %s (%s)", $file, $process->getErrorOutput(), $process->getExitCode()));
+        }
 
-        if ($fpPath && file_exists($fpPath)/* && !$this->optDebug*/) {
-            // $this->debug("deleting ffmetadata file");
-            unlink($fpPath);
+        if ($metaDataFile && $metaDataFile->isFile()) {
+            unlink($metaDataFile);
         }
 
         if (!$outputFile->isFile()) {
@@ -112,9 +111,52 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         }
     }
 
+
     protected function createTempFileInSameDirectory(SplFileInfo $file)
     {
         return new SplFileInfo((string)$file . "-" . uniqid("", true) . "." . $file->getExtension());
+    }
+
+    /**
+     * @param $command
+     * @param Tag|null $tag
+     * @return SplFileInfo|null
+     * @throws Exception
+     */
+    protected function appendTagFilesToCommand(&$command, Tag $tag = null)
+    {
+        if ($tag === null) {
+            return null;
+        }
+        $commandAddition = [];
+        $metaDataFileIndex = 1;
+        if ($tag->hasCoverFile()) {
+            $command = array_merge($command, ["-i", $tag->cover]);
+            $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
+            $metaDataFileIndex++;
+        }
+
+        $ffmetadata = $this->buildFfmetadata($tag);
+        $ffmetadataFile = new SplFileInfo(tempnam(sys_get_temp_dir(), ""));
+        if (file_put_contents($ffmetadataFile, $ffmetadata) === false) {
+            throw new Exception(sprintf("Could not create metadatafile %s", $ffmetadataFile));
+        }
+
+
+        $command = array_merge($command, ["-i", $ffmetadataFile, "-map_metadata", (string)$metaDataFileIndex]);
+        if (count($commandAddition) > 0) {
+            $command = array_merge($command, $commandAddition);
+        }
+
+
+        // todo make sure the temporary file will be deleted
+//        register_shutdown_function(function() use($ffmetadataFile) {
+//            if(file_exists($ffmetadataFile)) {
+//                @unlink($ffmetadataFile);
+//            }
+//        });
+
+        return $ffmetadataFile;
     }
 
     public function buildFfmetadata(Tag $tag)
@@ -171,10 +213,33 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         ]);
     }
 
+    /**
+     * @param $arguments
+     * @return Process
+     */
     protected function ffmpeg($arguments)
     {
+        $adjustedArguments = $this->ffmpegAdjustArguments($arguments);
+        return $this->runProcess($adjustedArguments);
+    }
+
+    protected function ffmpegAdjustArguments($arguments)
+    {
         array_unshift($arguments, "-hide_banner");
-        return $this->runProcess($arguments);
+        $extraArguments = $this->extraArguments;
+        if ($this->threads !== null) {
+            $extraArguments[] = "-threads";
+            $extraArguments[] = $this->threads;
+        }
+
+        if (count($extraArguments) > 0) {
+            $output = array_pop($arguments);
+            foreach ($extraArguments as $argument) {
+                $arguments[] = $argument;
+            }
+            $arguments[] = $output;
+        }
+        return $arguments;
     }
 
     /**
@@ -302,13 +367,13 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         $checksum = $this->audioChecksum($file);
         $cacheKey = "m4b-tool.audiochecksum." . $checksum;
         $silenceDetectionOutput = $this->cacheAdapterGet($cacheKey, function () use ($file, $silenceLength) {
-            $process = $this->createNonBlockingProcess([
+            $process = $this->createNonBlockingProcess($this->ffmpegAdjustArguments([
                 "-hide_banner",
                 "-i", $file,
                 "-af", "silencedetect=noise=" . static::SILENCE_DEFAULT_DB . ":d=" . ($silenceLength->milliseconds() / 1000),
                 "-f", "null",
                 "-",
-            ]);
+            ]));
             $this->notice(sprintf("running silence detection for file %s with max length %s", $file, $silenceLength->format()));
             $process->run();
             $this->notice("silence detection finished");
@@ -319,7 +384,6 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         $silenceParser = new SilenceParser();
         return $silenceParser->parse($silenceDetectionOutput);
     }
-
 
     /**
      * @param SplFileInfo $audioFile
@@ -342,58 +406,6 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
     }
 
-
-    /**
-     * @param FileConverterOptions $options
-     * @return Process
-     */
-    public function convertFile(FileConverterOptions $options): Process
-    {
-        $inputFile = $options->source;
-        $command = [
-            "-i", $inputFile,
-            "-max_muxing_queue_size", "9999",
-            "-map_metadata", "0",
-        ];
-
-        // https://ffmpeg.org/ffmpeg-filters.html#silenceremove
-        if ($options->trimSilenceStart || $options->trimSilenceEnd) {
-            $command[] = "-af";
-            $command[] = sprintf("silenceremove=start_periods=%s:start_threshold=%s:stop_periods=%s", (int)$options->trimSilenceStart, static::SILENCE_DEFAULT_DB, (int)$options->trimSilenceEnd);
-        }
-
-        // backwards compatibility: ffmpeg needed experimental flag in earlier versions
-        if ($options->codec == BinaryWrapper::CODEC_AAC) {
-            $command[] = "-strict";
-            $command[] = "experimental";
-        }
-
-
-        // Relocating moov atom to the beginning of the file can facilitate playback before the file is completely downloaded by the client.
-        $command[] = "-movflags";
-        $command[] = "+faststart";
-
-        // no video for files is required because chapters will not work if video is embedded and shorter than audio length
-        $command[] = "-vn";
-
-        $this->appendParameterToCommand($command, "-y", $options->force);
-        $this->appendParameterToCommand($command, "-ab", $options->bitRate);
-        $this->appendParameterToCommand($command, "-ar", $options->sampleRate);
-        $this->appendParameterToCommand($command, "-ac", $options->channels);
-        $this->appendParameterToCommand($command, "-acodec", $options->codec);
-
-        // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
-        if ($options->format && $options->codec !== BinaryWrapper::CODEC_ALAC) {
-            $this->appendParameterToCommand($command, "-f", $options->format);
-        }
-
-        $command[] = $options->destination;
-        $process = $this->createNonBlockingProcess($command);
-        $process->setTimeout(0);
-        $process->start();
-        return $process;
-    }
-
     public function supportsConversion(FileConverterOptions $options): bool
     {
         return true;
@@ -408,23 +420,6 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
     {
 
         $this->ffmpeg(["-i", $audioFile, "-an", "-vcodec", "copy", $destinationFile]);
-    }
-
-    public function buildConcatListing(array $filesToMerge)
-    {
-        $content = "";
-        foreach ($filesToMerge as $file) {
-            $content .= $this->buildConcatListingLine($file) . "\n";
-        }
-        return $content;
-    }
-
-    private function buildConcatListingLine($file)
-    {
-        $filePath = $file instanceof SplFileInfo ? $file->getRealPath() : $file;
-        $quotedFilename = "'" . implode("'\''", explode("'", $filePath)) . "'";
-        return "file " . $quotedFilename;
-
     }
 
     /**
@@ -482,6 +477,23 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         return $outputFile;
     }
 
+    public function buildConcatListing(array $filesToMerge)
+    {
+        $content = "";
+        foreach ($filesToMerge as $file) {
+            $content .= $this->buildConcatListingLine($file) . "\n";
+        }
+        return $content;
+    }
+
+    private function buildConcatListingLine($file)
+    {
+        $filePath = $file instanceof SplFileInfo ? $file->getRealPath() : $file;
+        $quotedFilename = "'" . implode("'\''", explode("'", $filePath)) . "'";
+        return "file " . $quotedFilename;
+
+    }
+
     /**
      * @param TimeUnit $silenceLength
      * @param SplFileInfo $outputFile
@@ -498,5 +510,160 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         if (!$outputFile->isFile()) {
             throw new Exception(sprintf("Could not create silence file %s", $outputFile));
         }
+    }
+
+    /**
+     * @param TimeUnit $start
+     * @param TimeUnit $length
+     * @param FileConverterOptions $options
+     * @return Process|null
+     * @throws Exception
+     */
+    public function extractPartOfFile(TimeUnit $start, TimeUnit $length, FileConverterOptions $options)
+    {
+        $inputFile = $options->source;
+        $outputFile = $options->destination;
+        if ($outputFile->isFile() && !$options->force) {
+            return null;
+        }
+
+        $tmpOutputFile = new SplFileInfo((string)$outputFile . "-tmp." . $inputFile->getExtension());
+
+
+        if (!$tmpOutputFile->isFile() || $options->force) {
+            $command = [
+                "-i", $inputFile,
+                "-vn",
+                "-ss", $start->format(),
+            ];
+
+            if ($length->milliseconds() > 0) {
+                $command[] = "-t";
+                $command[] = $length->format();
+            }
+            $command[] = "-map_metadata";
+            $command[] = "a";
+            $command[] = "-map";
+            $command[] = "a";
+            $command[] = "-acodec";
+            $command[] = "copy";
+
+            $this->appendParameterToCommand($command, "-y", $options->force);
+
+            $command[] = $tmpOutputFile;
+            $process = $this->ffmpeg($command);
+            if ($process->getExitCode() > 0) {
+                throw new Exception(sprintf("Could not extract part of file %: %s (%s)", $inputFile, $process->getErrorOutput(), $process->getExitCode()));
+            }
+
+        }
+
+        $convertOptions = clone $options;
+        $convertOptions->source = new SplFileInfo($tmpOutputFile);
+        $process = $this->convertFile($convertOptions);
+        $process->wait();
+        unlink($tmpOutputFile);
+        return $process;
+
+    }
+    /*
+        protected function appendTagParametersToCommand(&$command, Tag $tag=null)
+        {
+            if($tag === null) {
+                return;
+            }
+            $this->appendMetadataParameterToCommand($command, "title", $tag->title);
+            $this->appendMetadataParameterToCommand($command, "artist", $tag->artist);
+            $this->appendMetadataParameterToCommand($command, "album", $tag->album);
+            $this->appendMetadataParameterToCommand($command, "genre", $tag->genre);
+            $this->appendMetadataParameterToCommand($command, "description", $tag->description);
+            $this->appendMetadataParameterToCommand($command, "composer", $tag->writer);
+            $this->appendMetadataParameterToCommand($command, "album_artist", $tag->albumArtist);
+            $this->appendMetadataParameterToCommand($command, "date", $tag->year);
+            $this->appendMetadataParameterToCommand($command, "comment", $tag->comment);
+            $this->appendMetadataParameterToCommand($command, "copyright", $tag->copyright);
+            $this->appendMetadataParameterToCommand($command, "encoded_by", $tag->encodedBy);
+
+
+
+            if ($tag->track) {
+                $value = (int)$tag->track;
+                if($tag->tracks) {
+                    $value.= "/".(int)$tag->tracks;
+                }
+                $command[] = '-metadata';
+                $command[] = 'track=' . $value;
+            }
+
+
+        }
+
+        private function appendMetadataParameterToCommand(&$command, $key, $value) {
+            if($value) {
+                $command[] = '-metadata';
+                $command[] = $key.'=' . $value;
+            }
+        }
+    */
+
+    /**
+     * @param FileConverterOptions $options
+     * @return Process
+     * @throws Exception
+     */
+    public function convertFile(FileConverterOptions $options): Process
+    {
+        $inputFile = $options->source;
+        $command = [
+            "-i", $inputFile,
+        ];
+
+        $metaDataFile = $this->appendTagFilesToCommand($command, $options->tag);
+        if (!$metaDataFile && !$metaDataFile->isFile()) {
+            $command[] = "-map_metadata";
+            $command[] = "0";
+        }
+
+        $command[] = "-max_muxing_queue_size";
+        $command[] = "9999";
+
+        // https://ffmpeg.org/ffmpeg-filters.html#silenceremove
+        if ($options->trimSilenceStart || $options->trimSilenceEnd) {
+            $command[] = "-af";
+            $command[] = sprintf("silenceremove=start_periods=%s:start_threshold=%s:stop_periods=%s", (int)$options->trimSilenceStart, static::SILENCE_DEFAULT_DB, (int)$options->trimSilenceEnd);
+        }
+
+        // backwards compatibility: ffmpeg needed experimental flag in earlier versions
+        if ($options->codec == BinaryWrapper::CODEC_AAC) {
+            $command[] = "-strict";
+            $command[] = "experimental";
+        }
+
+
+        // Relocating moov atom to the beginning of the file can facilitate playback before the file is completely downloaded by the client.
+        $command[] = "-movflags";
+        $command[] = "+faststart";
+
+        // no video for files is required because chapters will not work if video is embedded and shorter than audio length
+        $command[] = "-vn";
+
+        $this->appendParameterToCommand($command, "-y", $options->force);
+        $this->appendParameterToCommand($command, "-ab", $options->bitRate);
+        $this->appendParameterToCommand($command, "-ar", $options->sampleRate);
+        $this->appendParameterToCommand($command, "-ac", $options->channels);
+        $this->appendParameterToCommand($command, "-acodec", $options->codec);
+
+        // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
+        if ($options->format && $options->codec !== BinaryWrapper::CODEC_ALAC) {
+            $this->appendParameterToCommand($command, "-f", $options->format);
+        }
+
+        $command[] = $options->destination;
+
+        $process = $this->createNonBlockingProcess($this->ffmpegAdjustArguments($command));
+        $process->setTimeout(0);
+        $process->start();
+
+        return $process;
     }
 }

@@ -4,6 +4,7 @@
 namespace M4bTool\Executables;
 
 
+use M4bTool\Audio\Tag;
 use SplFileInfo;
 
 class FileConverterOptions
@@ -32,5 +33,8 @@ class FileConverterOptions
 
     /** @var SplFileInfo */
     public $destination;
+
+    /** @var Tag */
+    public $tag;
 
 }

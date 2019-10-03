@@ -389,6 +389,13 @@ class AbstractCommand extends Command implements LoggerInterface
         if ($this->input->getOption(static::OPTION_NO_CACHE)) {
             $this->cacheAdapter->clear();
         }
+
+        $ffmpegThreads = $this->input->getOption(static::OPTION_FFMPEG_THREADS);
+        if ($ffmpegThreads !== "") {
+            $this->ffmpeg->setThreads($ffmpegThreads === "auto" ? $ffmpegThreads : (int)$ffmpegThreads);
+        }
+
+        $this->ffmpeg->setExtraArguments($this->input->getOption(static::OPTION_FFMPEG_PARAM));
     }
 
     protected function loadArguments()

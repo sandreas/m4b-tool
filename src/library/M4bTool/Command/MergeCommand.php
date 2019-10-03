@@ -16,7 +16,6 @@ use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Audio\Silence;
 use M4bTool\Common\ConditionalFlags;
-use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Executables\Tasks\ConversionTask;
 use M4bTool\Executables\Tasks\Pool;
 use M4bTool\Filesystem\DirectoryLoader;
@@ -49,8 +48,6 @@ class MergeCommand extends AbstractConversionCommand
 
     const OPTION_CHAPTER_NO_REINDEXING = "no-chapter-reindexing";
     const OPTION_CHAPTER_USE_FILENAMES = "use-filenames-as-chapters";
-    const OPTION_ADD_SILENCE = "add-silence";
-    const OPTION_TRIM_SILENCE = "trim-silence";
 
     const MAPPING_OPTIONS_PLACEHOLDERS = [
         self::OPTION_TAG_NAME => "n",
@@ -133,8 +130,6 @@ class MergeCommand extends AbstractConversionCommand
         $this->addOption(static::OPTION_CHAPTER_USE_FILENAMES, null, InputOption::VALUE_NONE, "Use filenames for chapter titles instead of tag contents");
         $this->addOption(static::OPTION_CHAPTER_NO_REINDEXING, null, InputOption::VALUE_NONE, "Do not perform any reindexing for index-only chapter names (by default m4b-tool will try to detect index-only chapters like Chapter 1, Chapter 2 and reindex it with its numbers only)");
 
-        $this->addOption(static::OPTION_TRIM_SILENCE, null, InputOption::VALUE_NONE, "Try to trim silences at the start and end before merging files");
-        $this->addOption(static::OPTION_ADD_SILENCE, null, InputOption::VALUE_OPTIONAL, "Silence length in ms to add between merged files");
 
     }
 
@@ -672,25 +667,6 @@ class MergeCommand extends AbstractConversionCommand
         return $finishedOutputFile;
     }
 
-    public function buildFileConverterOptions($sourceFile, $destinationFile, $outputTempDir)
-    {
-        $options = new FileConverterOptions();
-        $options->source = $sourceFile;
-        $options->destination = $destinationFile;
-        $options->tempDir = $outputTempDir;
-        $options->extension = $this->optAudioExtension;
-        $options->codec = $this->optAudioCodec;
-        $options->format = $this->optAudioFormat;
-        $options->channels = $this->optAudioChannels;
-        $options->sampleRate = $this->optAudioSampleRate;
-        $options->bitRate = $this->optAudioBitRate;
-        $options->force = $this->optForce;
-        $options->debug = $this->optDebug;
-        $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
-        $options->trimSilenceStart = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
-        $options->trimSilenceEnd = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
-        return $options;
-    }
 
     /**
      * @return SplFileInfo
@@ -698,8 +674,6 @@ class MergeCommand extends AbstractConversionCommand
      */
     private function mergeFiles()
     {
-        // TODO integrate this method into BinaryWrapper / FFMPEG => $this->>metaHandler->mergeFiles($this->>filesToMerge, $outputFile)
-
         $outputTempFile = new SplFileInfo($this->createOutputTempDir() . "tmp_" . $this->outputFile->getBasename());
 
         if ($outputTempFile->isFile() && !unlink($outputTempFile)) {
