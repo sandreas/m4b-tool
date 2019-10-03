@@ -7,6 +7,7 @@ use Exception;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\ChapterMarker;
+use M4bTool\Executables\AbstractMp4v2Executable;
 use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\Mp4art;
@@ -26,7 +27,6 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Process\Process;
 
 class AbstractCommand extends Command implements LoggerInterface
 {
@@ -133,16 +133,17 @@ class AbstractCommand extends Command implements LoggerInterface
     protected $optLogFile;
 
 
-
     /** @var BinaryWrapper */
     protected $metaHandler;
 
-    /** @var ChapterHandler */
-    protected $chapterHandler;
     /** @var Ffmpeg */
     protected $ffmpeg;
+    /** @var Mp4v2Wrapper */
+    protected $mp4v2;
     /** @var ChapterMarker */
     protected $chapterMarker;
+    /** @var ChapterHandler */
+    protected $chapterHandler;
 
 
     public function __construct(string $name = null)
@@ -155,14 +156,14 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->ffmpeg = new Ffmpeg();
         $this->ffmpeg->setLogger($this);
         $this->ffmpeg->setCacheAdapter($this->cacheAdapter);
-        $mp4v2 = new Mp4v2Wrapper(
+        $this->mp4v2 = new Mp4v2Wrapper(
             new Mp4art(),
             new Mp4chaps(),
             new Mp4info(),
             new Mp4tags()
         );
         $fdkaac = new Fdkaac();
-        $this->metaHandler = new BinaryWrapper($this->ffmpeg, $mp4v2, $fdkaac);
+        $this->metaHandler = new BinaryWrapper($this->ffmpeg, $this->mp4v2, $fdkaac);
 
         // todo: merge these two classes?
         $this->chapterHandler = new ChapterHandler($this->metaHandler);
@@ -186,8 +187,6 @@ class AbstractCommand extends Command implements LoggerInterface
     {
         return in_array($file->getExtension(), [static::AUDIO_EXTENSION_M4A, static::AUDIO_EXTENSION_M4B, static::AUDIO_EXTENSION_MP4], true);
     }
-
-
 
     /**
      * Logs with an arbitrary level.
@@ -218,7 +217,7 @@ class AbstractCommand extends Command implements LoggerInterface
             case LogLevel::ERROR:
             case LogLevel::CRITICAL:
             case LogLevel::EMERGENCY:
-            $formattedLogMessage = "<fg=black;bg=red>" . $formattedLogMessage . "</>";
+                $formattedLogMessage = "<fg=black;bg=red>" . $formattedLogMessage . "</>";
                 break;
         }
 
@@ -236,124 +235,6 @@ class AbstractCommand extends Command implements LoggerInterface
         file_put_contents($this->optLogFile, $logLevel . " " . $logTime . " " . $message . PHP_EOL, FILE_APPEND);
     }
 
-
-    /**
-     * @param $command
-     * @param null $introductionMessage
-     * @return Process
-     * @throws Exception
-     */
-    protected function ffmpeg($command, $introductionMessage = null)
-    {
-        // TODO get rid of this function
-        // TODO regard FFMPEG_THREADS option in Ffmpeg-class
-        if (!in_array("-hide_banner", $command)) {
-            array_unshift($command, "-hide_banner");
-        }
-        $threads = (int)$this->input->getOption(static::OPTION_FFMPEG_THREADS);
-        if ($threads > 0) {
-            array_unshift($command, $threads);
-            array_unshift($command, "-threads");
-        }
-
-        $ffmpegArgs = $this->input->getOption(static::OPTION_FFMPEG_PARAM);
-        if (count($ffmpegArgs) > 0) {
-            foreach ($ffmpegArgs as $arg) {
-                array_push($command, $arg);
-            }
-        }
-
-        array_unshift($command, "ffmpeg");
-        return $this->shell($command, $introductionMessage);
-    }
-
-    /**
-     * @param array $command
-     * @param null $introductionMessage
-     * @return Process
-     * @throws Exception
-     */
-    protected function shell(array $command, $introductionMessage = null)
-    {
-        $this->debug($this->formatShellCommand($command));
-        if ($introductionMessage) {
-            $this->notice($introductionMessage);
-        }
-
-        $platformCharset = strtolower($this->input->getOption(static::OPTION_PLATFORM_CHARSET));
-        if ($platformCharset == "" && $this->isWindows()) {
-            $platformCharset = "windows-1252";
-        }
-
-
-        // TODO IS THIS STILL REQUIRED, if so, add it to binary wrapper (Mp4v2)
-        // new Mp4v2($platformCharset)
-        if ($platformCharset && in_array($command[0], ["mp4art", "mp4chaps", "mp4extract", "mp4file", "mp4info", "mp4subtitle", "mp4tags", "mp4track", "mp4trackdump"])) {
-            if (function_exists("mb_convert_encoding")) {
-                $availableCharsets = array_map('strtolower', mb_list_encodings());
-                if (!in_array($platformCharset, $availableCharsets, true)) {
-                    throw new Exception("charset " . $platformCharset . " is not supported - use one of these instead: " . implode(", ", $availableCharsets) . " ");
-                }
-
-                $this->debug("using charset " . $platformCharset);
-                foreach ($command as $key => $part) {
-                    $command[$key] = mb_convert_encoding($part, "UTF-8", $platformCharset);
-                }
-            } else if (!$this->optForce) {
-                throw new Exception("mbstring extension is not loaded - please enable in php.ini or use --force to try with unexpected results");
-            }
-        }
-
-        $process = new Process($command);
-        $process->setTimeout(null);
-        $process->start();
-
-
-        usleep(250000);
-        $shouldShowEmptyLine = false;
-        $i = 0;
-        while ($process->isRunning()) {
-            $shouldShowEmptyLine = true;
-            $this->updateProgress($i);
-        }
-        if ($shouldShowEmptyLine) {
-            $this->notice('');
-        }
-
-        if ($process->getExitCode() != 0) {
-            $this->debug($process->getOutput() . $process->getErrorOutput());
-        }
-
-        return $process;
-    }
-
-    // TODO replace this with Symfony formatting or just remove it
-    protected function formatShellCommand(array $command)
-    {
-
-        $cmd = array_map(function ($part) {
-            if (preg_match('/\s/', $part)) {
-                return '"' . $part . '"';
-            }
-            return $part;
-        }, $command);
-        return implode(" ", $cmd);
-    }
-
-    protected function isWindows()
-    {
-        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-    }
-
-    protected function updateProgress(&$i)
-    {
-        if (++$i % 60 == 0) {
-            $this->notice('+');
-        } else {
-            $this->output->write('+', false, OutputInterface::VERBOSITY_VERBOSE);
-            usleep(1000000);
-        }
-    }
 
     protected function configure()
     {
@@ -390,6 +271,14 @@ class AbstractCommand extends Command implements LoggerInterface
             $this->cacheAdapter->clear();
         }
 
+        $platformCharset = strtolower($this->input->getOption(static::OPTION_PLATFORM_CHARSET));
+        if ($platformCharset === "" && $this->isWindows()) {
+            $platformCharset = AbstractMp4v2Executable::CHARSET_WIN_1252;
+        }
+        if ($platformCharset) {
+            $this->mp4v2->setPlatformCharset($platformCharset);
+        }
+
         $ffmpegThreads = $this->input->getOption(static::OPTION_FFMPEG_THREADS);
         if ($ffmpegThreads !== "") {
             $this->ffmpeg->setThreads($ffmpegThreads === "auto" ? $ffmpegThreads : (int)$ffmpegThreads);
@@ -415,6 +304,11 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->optNoCache = $this->input->getOption(static::OPTION_NO_CACHE);
     }
 
+    protected function isWindows()
+    {
+        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+    }
+
     /**
      * @throws Exception
      */
@@ -436,42 +330,8 @@ class AbstractCommand extends Command implements LoggerInterface
         }
     }
 
-    protected function chaptersFileToAudioFile(SplFileInfo $chaptersFile, $audioExtension = "m4b")
-    {
-        $dirName = dirname($chaptersFile);
-        $fileName = $chaptersFile->getBasename(".chapters." . $chaptersFile->getExtension());
-        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . "." . $audioExtension);
-    }
-
-    protected function appendParameterToCommand(&$command, $parameterName, $parameterValue = null)
-    {
-        if (is_bool($parameterValue)) {
-            $command[] = $parameterName;
-            return;
-        }
-
-        if ($parameterValue) {
-            $command[] = $parameterName;
-            $command[] = $parameterValue;
-        }
-    }
-
     protected function audioFileToChaptersFile(SplFileInfo $audioFile)
     {
-        $dirName = dirname($audioFile);
-        $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
-        return new SplFileInfo($dirName . DIRECTORY_SEPARATOR . $fileName . ".chapters.txt");
-    }
-
-    /**
-     * @param $command
-     * @param null $introductionMessage
-     * @return Process
-     * @throws Exception
-     */
-    protected function mp4chaps($command, $introductionMessage = null)
-    {
-        array_unshift($command, "mp4chaps");
-        return $this->shell($command, $introductionMessage);
+        return AbstractMp4v2Executable::createConventionalFile($audioFile, AbstractMp4v2Executable::SUFFIX_CHAPTERS, "txt");
     }
 }

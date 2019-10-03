@@ -30,6 +30,14 @@ class Mp4v2Wrapper implements TagWriterInterface, DurationDetectorInterface
         $this->tags = $tags;
     }
 
+    public function setPlatformCharset($charset)
+    {
+        $this->art->setPlatformCharset($charset);
+        $this->chaps->setPlatformCharset($charset);
+        $this->info->setPlatformCharset($charset);
+        $this->tags->setPlatformCharset($charset);
+    }
+
     /**
      * @param SplFileInfo $file
      * @return TimeUnit

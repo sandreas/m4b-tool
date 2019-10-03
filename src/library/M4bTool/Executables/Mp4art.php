@@ -11,7 +11,7 @@ use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class Mp4art extends AbstractExecutable implements TagWriterInterface
+class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
 {
 
     public function __construct($pathToBinary = "mp4art", ProcessHelper $processHelper = null, OutputInterface $output = null)

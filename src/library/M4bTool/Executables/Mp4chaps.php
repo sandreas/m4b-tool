@@ -11,7 +11,7 @@ use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class Mp4chaps extends AbstractExecutable implements TagWriterInterface
+class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
 {
 
     public function __construct($pathToBinary = "mp4chaps", ProcessHelper $processHelper = null, OutputInterface $output = null)
@@ -63,7 +63,7 @@ class Mp4chaps extends AbstractExecutable implements TagWriterInterface
             return;
         }
 
-        $chaptersFile = $this->audioFileToChaptersFile($file);
+        $chaptersFile = static::createConventionalFile($file, static::SUFFIX_CHAPTERS, "txt");
         $chaptersFileAlreadyExisted = $chaptersFile->isFile();
         if ($chaptersFileAlreadyExisted && $flags && !$flags->contains(static::FLAG_FORCE)) {
             throw new Exception(sprintf("Chapters file %s already exists", $chaptersFile));

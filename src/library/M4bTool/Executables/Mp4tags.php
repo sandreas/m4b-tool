@@ -11,7 +11,7 @@ use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class Mp4tags extends AbstractExecutable implements TagWriterInterface
+class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
 {
     // since --remove does require short-tags, the mapping only refers to these
     const PROPERTY_PARAMETER_MAPPING = [

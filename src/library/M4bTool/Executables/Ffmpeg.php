@@ -619,7 +619,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         ];
 
         $metaDataFile = $this->appendTagFilesToCommand($command, $options->tag);
-        if (!$metaDataFile && !$metaDataFile->isFile()) {
+        if (!$metaDataFile || !$metaDataFile->isFile()) {
             $command[] = "-map_metadata";
             $command[] = "0";
         }

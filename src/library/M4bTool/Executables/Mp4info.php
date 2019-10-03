@@ -10,7 +10,7 @@ use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class Mp4info extends AbstractExecutable implements DurationDetectorInterface
+class Mp4info extends AbstractMp4v2Executable implements DurationDetectorInterface
 {
 
     public function __construct($pathToBinary = "mp4info", ProcessHelper $processHelper = null, OutputInterface $output = null)
