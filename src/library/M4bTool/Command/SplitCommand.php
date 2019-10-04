@@ -266,12 +266,13 @@ class SplitCommand extends AbstractConversionCommand
         $index = 0;
         foreach ($this->chapters as $chapter) {
             $tag = $this->inputOptionsToTag();
+            $tag->mergeMissing($metaDataTag);
+            // chapter specific tags are overwritten
             $tag->cover = $this->input->getOption(static::OPTION_COVER) === null ? $extractedCoverFile : $this->input->getOption('cover');
             $tag->title = $chapter->getName();
             $tag->track = $index + 1;
             $tag->tracks = count($this->chapters);
-            $tag->mergeMissing($metaDataTag);
-
+            $tag->chapters = []; // after splitting the chapters must not be restored into the extracted file part
             $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($tag));
 
             if (!is_dir($outputFile->getPath()) && !mkdir($outputFile->getPath(), 0777, true)) {
