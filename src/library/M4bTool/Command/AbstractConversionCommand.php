@@ -33,7 +33,31 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     const OPTION_TRIM_SILENCE = "trim-silence";
 
 
-    const DEFAULT_SUPPORTED_AUDIO_EXTENSIONS = ["aac", "alac", "flac", "m4a", "m4b", "mp3", "oga", "ogg", "wav", "wma", "mp4"];
+    const DEFAULT_SUPPORTED_AUDIO_EXTENSIONS = [
+        BinaryWrapper::EXTENSION_AAC,
+        BinaryWrapper::EXTENSION_AAX,
+        BinaryWrapper::EXTENSION_AIF,
+        BinaryWrapper::EXTENSION_AIFF,
+        BinaryWrapper::EXTENSION_ALAC,
+        BinaryWrapper::EXTENSION_APE,
+        BinaryWrapper::EXTENSION_AU,
+        BinaryWrapper::EXTENSION_CAF,
+        BinaryWrapper::EXTENSION_FLAC,
+        BinaryWrapper::EXTENSION_M4A,
+        BinaryWrapper::EXTENSION_M4B,
+        BinaryWrapper::EXTENSION_M4P,
+        BinaryWrapper::EXTENSION_M4R,
+        BinaryWrapper::EXTENSION_MKA,
+        BinaryWrapper::EXTENSION_MP2,
+        BinaryWrapper::EXTENSION_MP3,
+        BinaryWrapper::EXTENSION_MP4,
+        BinaryWrapper::EXTENSION_MPA,
+        BinaryWrapper::EXTENSION_RIF,
+        BinaryWrapper::EXTENSION_OGA,
+        BinaryWrapper::EXTENSION_OGG,
+        BinaryWrapper::EXTENSION_WAV,
+        BinaryWrapper::EXTENSION_WMA,
+    ];
     const DEFAULT_SUPPORTED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
     const DEFAULT_SUPPORTED_DATA_EXTENSIONS = ["txt", "opf", "json"];
 
@@ -373,7 +397,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
             $this->notice(sprintf("success: found %s for import", $nameOfFile));
             return file_get_contents($autoDescriptionFile);
         } else {
-            $this->notice(sprintf("file %s not found or too big", $nameOfFile));
+            $this->notice(sprintf("file %s not found or too big - skipping...", $nameOfFile));
         }
         return null;
     }

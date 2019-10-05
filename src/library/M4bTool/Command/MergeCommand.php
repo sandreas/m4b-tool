@@ -144,6 +144,11 @@ class MergeCommand extends AbstractConversionCommand
     {
 
         try {
+            $outputFileOption = $input->getOption(static::OPTION_OUTPUT_FILE);
+            if ($outputFileOption === null || $outputFileOption === "") {
+                throw new Exception(sprintf("--%s is required", static::OPTION_OUTPUT_FILE));
+            }
+
             $this->output = $output;
             $flags = new ConditionalFlags();
             $flags->insertIf(ChapterHandler::NO_REINDEXING, $input->getOption(static::OPTION_CHAPTER_NO_REINDEXING));
