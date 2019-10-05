@@ -16,5 +16,10 @@ class AbstractMp4v2ExecutableTest extends TestCase
 
         $actual = AbstractMp4v2Executable::createConventionalFile($file, AbstractMp4v2Executable::SUFFIX_ART, "png", 1);
         $this->assertEquals("../test.art[1].png", (string)$actual);
+
+        $otherFile = new SplFileInfo("merged.m4b");
+        $actual = AbstractMp4v2Executable::createConventionalFile($otherFile, AbstractMp4v2Executable::SUFFIX_CHAPTERS, "txt");
+        $this->assertEquals("merged.chapters.txt", (string)$actual);
+
     }
 }

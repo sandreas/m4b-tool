@@ -35,8 +35,11 @@ abstract class AbstractMp4v2Executable extends AbstractExecutable
     public static function createConventionalFile(SplFileInfo $audioFile, $suffix, $extension, $index = null)
     {
         $dirName = $audioFile->getPath();
+        if ($dirName !== "") {
+            $dirName .= DIRECTORY_SEPARATOR;
+        }
         $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
-        $conventionalFile = $dirName . DIRECTORY_SEPARATOR . $fileName . "." . $suffix;
+        $conventionalFile = $dirName . $fileName . "." . $suffix;
         if ($index !== null) {
             $conventionalFile .= "[" . (int)$index . "]";
         }

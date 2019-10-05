@@ -399,7 +399,7 @@ class MergeCommand extends AbstractConversionCommand
     {
 
         if ($this->outputFile->isFile() && !$this->optForce) {
-            throw new Exception("Output file  " . $this->outputFile . " already exists - use --force to overwrite");
+            throw new Exception(sprintf("Output file %s already exists - use --force to overwrite", $this->outputFile));
         }
 
         $this->debug("== load input files ==");
@@ -628,8 +628,11 @@ class MergeCommand extends AbstractConversionCommand
      */
     private function createOutputTempDir()
     {
+        $basename = $this->outputFile->getBasename("." . $this->outputFile->getExtension());
+        $basename = $basename === "" ? "m4b-tool" : $basename;
+
         $dir = $this->outputFile->getPath() ? $this->outputFile->getPath() . DIRECTORY_SEPARATOR : "";
-        $dir .= $this->outputFile->getBasename("." . $this->outputFile->getExtension()) . "-tmpfiles" . DIRECTORY_SEPARATOR;
+        $dir .= $basename . "-tmpfiles" . DIRECTORY_SEPARATOR;
 
         if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
             $message = sprintf("Could not create temp directory %s", $dir);
