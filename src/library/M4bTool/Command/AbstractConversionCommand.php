@@ -8,7 +8,8 @@ use Exception;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\InputOptions;
-use M4bTool\Common\ConditionalFlags;
+use M4bTool\Audio\Tag\TagInterface;
+use M4bTool\Common\Flags;
 use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Filesystem\FileLoader;
 use M4bTool\Tags\StringBuffer;
@@ -26,6 +27,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     const OPTION_AUDIO_SAMPLE_RATE = "audio-samplerate";
     const OPTION_AUDIO_CODEC = "audio-codec";
     const OPTION_AUDIO_PROFILE = "audio-profile";
+
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
     const OPTION_FIX_MIME_TYPE = "fix-mime-type";
 
@@ -87,10 +89,36 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
 
     public function inputOptionsToTag()
     {
-        $flags = new ConditionalFlags();
-        $flags->insertIf(InputOptions::FLAG_ADJUST_FOR_IPOD, $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD));
-        $loader = new InputOptions($this->input, $flags);
+        $loader = new InputOptions($this->input, $this->buildTagFlags());
         return $loader->improve(new Tag());
+    }
+
+
+    protected function buildTagFlags()
+    {
+        $flags = parent::buildTagFlags();
+        $flags->insertIf(TagInterface::FLAG_ADJUST_FOR_IPOD, $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD));
+        return $flags;
+    }
+
+    public function buildFileConverterOptions($sourceFile, $destinationFile, $outputTempDir)
+    {
+        $options = new FileConverterOptions();
+        $options->source = $sourceFile;
+        $options->destination = $destinationFile;
+        $options->tempDir = $outputTempDir;
+        $options->extension = $this->optAudioExtension;
+        $options->codec = $this->optAudioCodec;
+        $options->format = $this->optAudioFormat;
+        $options->channels = $this->optAudioChannels;
+        $options->sampleRate = $this->optAudioSampleRate;
+        $options->bitRate = $this->optAudioBitRate;
+        $options->force = $this->optForce;
+        $options->debug = $this->optDebug;
+        $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
+        $options->trimSilenceStart = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
+        $options->trimSilenceEnd = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
+        return $options;
     }
 
     protected function configure()
@@ -102,6 +130,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $this->addOption(static::OPTION_AUDIO_SAMPLE_RATE, null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...", ""); // -ar 44100
         $this->addOption(static::OPTION_AUDIO_CODEC, null, InputOption::VALUE_OPTIONAL, "audio codec, e.g. libmp3lame, aac, ...", ""); // -ar 44100
         $this->addOption(static::OPTION_AUDIO_PROFILE, null, InputOption::VALUE_OPTIONAL, "audio profile, when using extra low bitrate - valid values: aac_he, aac_he_v2", "");
+
         $this->addOption(static::OPTION_ADJUST_FOR_IPOD, null, InputOption::VALUE_NONE, "auto adjust bitrate and sampling rate for ipod, if track is too long (may result in low audio quality)");
         $this->addOption(static::OPTION_FIX_MIME_TYPE, null, InputOption::VALUE_NONE, "try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent an empty video window", null);
         $this->addOption(static::OPTION_TRIM_SILENCE, null, InputOption::VALUE_NONE, "Try to trim silences at the start and end of files");
@@ -160,9 +189,10 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     /**
      * @param SplFileInfo $file
      * @param Tag $tag
+     * @param Flags|null $flags
      * @throws Exception
      */
-    protected function tagFile(SplFileInfo $file, Tag $tag)
+    protected function tagFile(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
         $this->debug(sprintf("tagFile - filename: %s\nfull tag:\n%s", $file, print_r($tag, true)));
         if ($this->input->getOption(static::OPTION_FIX_MIME_TYPE)) {
@@ -172,14 +202,13 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         }
 
         try {
-            $this->metaHandler->writeTag($file, $tag);
+            $this->metaHandler->writeTag($file, $tag, $flags);
         } catch (Throwable $e) {
             $this->error(sprintf("could not tag file %s, error: %s", $file, $e->getMessage()));
             $this->error($e->getTraceAsString());
             $this->debug(sprintf("trace: %s", $e->getTraceAsString()));
         }
     }
-
 
     /**
      * @return float|int
@@ -430,26 +459,6 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         } else {
             $this->notice("cover not found or not specified");
         }
-    }
-
-    public function buildFileConverterOptions($sourceFile, $destinationFile, $outputTempDir)
-    {
-        $options = new FileConverterOptions();
-        $options->source = $sourceFile;
-        $options->destination = $destinationFile;
-        $options->tempDir = $outputTempDir;
-        $options->extension = $this->optAudioExtension;
-        $options->codec = $this->optAudioCodec;
-        $options->format = $this->optAudioFormat;
-        $options->channels = $this->optAudioChannels;
-        $options->sampleRate = $this->optAudioSampleRate;
-        $options->bitRate = $this->optAudioBitRate;
-        $options->force = $this->optForce;
-        $options->debug = $this->optDebug;
-        $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
-        $options->trimSilenceStart = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
-        $options->trimSilenceEnd = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
-        return $options;
     }
 
 }

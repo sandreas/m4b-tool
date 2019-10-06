@@ -7,6 +7,8 @@ namespace M4bTool\Executables;
 
 use Exception;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Tag\TagReaderInterface;
+use M4bTool\Audio\Tag\TagWriterInterface;
 use M4bTool\Common\Flags;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;

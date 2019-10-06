@@ -6,6 +6,7 @@ namespace M4bTool\Executables;
 
 use Exception;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Tag\TagWriterInterface;
 use M4bTool\Common\Flags;
 use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;

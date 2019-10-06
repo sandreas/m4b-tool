@@ -5,6 +5,8 @@ namespace M4bTool\Audio;
 
 
 use Exception;
+use M4bTool\Audio\Tag\TagReaderInterface;
+use M4bTool\Audio\Tag\TagWriterInterface;
 use M4bTool\Common\Flags;
 use M4bTool\Executables\DurationDetectorInterface;
 use M4bTool\Executables\Fdkaac;
@@ -12,8 +14,6 @@ use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterInterface;
 use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Executables\Mp4v2Wrapper;
-use M4bTool\Executables\TagReaderInterface;
-use M4bTool\Executables\TagWriterInterface;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Tags\StringBuffer;
 use Psr\Cache\InvalidArgumentException;

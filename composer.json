@@ -13,7 +13,9 @@
     "ext-json": "*",
     "ext-mbstring": "*",
     "ext-dom": "*",
-    "ext-libxml": "*"
+    "ext-libxml": "*",
+    "ext-zip": "*",
+    "ext-curl": "*"
   },
   "autoload": {
     "psr-4": {

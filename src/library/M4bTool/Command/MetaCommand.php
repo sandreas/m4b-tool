@@ -15,7 +15,6 @@ use M4bTool\Audio\Tag\OpenPackagingFormat;
 use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Common\Flags;
-use M4bTool\Executables\TagWriterInterface;
 use M4bTool\M4bTool\Common\TaggingFlags;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
@@ -271,11 +270,7 @@ class MetaCommand extends AbstractMetadataCommand
         foreach ($outputLines as $outputLine) {
             $this->notice($outputLine);
         }
-        $writeTagFlags = new ConditionalFlags();
-        $writeTagFlags->insertIf(TagWriterInterface::FLAG_FORCE, $this->optForce);
-        $writeTagFlags->insertIf(TagWriterInterface::FLAG_DEBUG, $this->optDebug);
-        $writeTagFlags->insert(TagWriterInterface::FLAG_CLEANUP);
-        $this->metaHandler->writeTag($this->argInputFile, $tag, $writeTagFlags);
+        $this->metaHandler->writeTag($this->argInputFile, $tag, $this->buildTagFlags());
 
     }
 

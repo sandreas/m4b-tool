@@ -5,8 +5,10 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\BinaryWrapper;
+use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\ChapterMarker;
+use M4bTool\Common\ConditionalFlags;
 use M4bTool\Executables\AbstractMp4v2Executable;
 use M4bTool\Executables\Fdkaac;
 use M4bTool\Executables\Ffmpeg;
@@ -62,6 +64,7 @@ class AbstractCommand extends Command implements LoggerInterface
     const OPTION_DEBUG = "debug";
     const OPTION_LOG_FILE = "logfile";
     const OPTION_FORCE = "force";
+    const OPTION_NO_CLEANUP = "no-cleanup";
     const OPTION_NO_CACHE = "no-cache";
     const OPTION_FFMPEG_THREADS = "ffmpeg-threads";
     const OPTION_FFMPEG_PARAM = "ffmpeg-param";
@@ -245,6 +248,7 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->addOption(static::OPTION_LOG_FILE, null, InputOption::VALUE_OPTIONAL, "file to log all output", "");
         $this->addOption(static::OPTION_DEBUG, null, InputOption::VALUE_NONE, "enable debug mode - sets verbosity to debug, logfile to m4b-tool.log and temporary encoded files are not deleted");
         $this->addOption(static::OPTION_FORCE, "f", InputOption::VALUE_NONE, "force overwrite of existing files");
+        $this->addOption(static::OPTION_NO_CLEANUP, null, InputOption::VALUE_NONE, "do not cleanup generated metadata files (e.g. <filename>.chapters.txt)");
         $this->addOption(static::OPTION_NO_CACHE, null, InputOption::VALUE_NONE, "clear cache completely before doing anything");
         $this->addOption(static::OPTION_FFMPEG_THREADS, null, InputOption::VALUE_OPTIONAL, "specify -threads parameter for ffmpeg - you should also consider --jobs when merge is used", "");
         $this->addOption(static::OPTION_PLATFORM_CHARSET, null, InputOption::VALUE_OPTIONAL, "Convert from this filesystem charset to utf-8, when tagging files (e.g. Windows-1252, mainly used on Windows Systems)", "");
@@ -258,6 +262,15 @@ class AbstractCommand extends Command implements LoggerInterface
     function dasherize($string)
     {
         return strtolower(preg_replace('/(?<!^)([A-Z])/', '-$1', str_replace('_', '-', $string)));
+    }
+
+    protected function buildTagFlags()
+    {
+        $flags = new ConditionalFlags();
+        $flags->insertIf(TagInterface::FLAG_FORCE, $this->input->getOption(static::OPTION_FORCE));
+        $flags->insertIf(TagInterface::FLAG_DEBUG, $this->input->getOption(static::OPTION_DEBUG));
+        $flags->insertIf(TagInterface::FLAG_NO_CLEANUP, $this->input->getOption(static::OPTION_NO_CLEANUP));
+        return $flags;
     }
 
     protected function initExecution(InputInterface $input, OutputInterface $output)

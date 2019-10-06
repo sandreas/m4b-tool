@@ -12,7 +12,7 @@ use Symfony\Component\Console\Input\InputInterface;
 
 class InputOptions implements TagImproverInterface
 {
-    const FLAG_ADJUST_FOR_IPOD = 1 << 0;
+
     /** @var InputInterface */
     protected $input;
     /**

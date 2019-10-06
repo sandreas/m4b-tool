@@ -8,6 +8,8 @@ use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Tag\TagReaderInterface;
+use M4bTool\Audio\Tag\TagWriterInterface;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\Flags;
 use M4bTool\M4bTool\Audio\Traits\CacheAdapterTrait;

@@ -1,18 +1,16 @@
 <?php
 
 
-namespace M4bTool\Executables;
+namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
 use M4bTool\Common\Flags;
 use SplFileInfo;
 
-interface TagWriterInterface
+interface TagWriterInterface extends TagInterface
 {
-    const FLAG_FORCE = 1 << 0;
-    const FLAG_DEBUG = 1 << 1;
-    const FLAG_CLEANUP = 1 << 2;
+
 
     /**
      * @param SplFileInfo $file

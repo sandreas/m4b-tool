@@ -150,6 +150,7 @@ class MergeCommand extends AbstractConversionCommand
             }
 
             $this->output = $output;
+            // todo: transfer these flags into TagInterface-Flags? or create an InputFlags-Class? => there should be no dependency needed for flags
             $flags = new ConditionalFlags();
             $flags->insertIf(ChapterHandler::NO_REINDEXING, $input->getOption(static::OPTION_CHAPTER_NO_REINDEXING));
             $flags->insertIf(ChapterHandler::USE_FILENAMES, $input->getOption(static::OPTION_CHAPTER_USE_FILENAMES));
@@ -728,12 +729,12 @@ class MergeCommand extends AbstractConversionCommand
         $tagChanger->add(Tag\AudibleTxt::fromFile($this->argInputFile, "audible.txt"));
         $tagChanger->add(Tag\Description::fromFile($this->argInputFile, "description.txt"));
 
-        $flags = new ConditionalFlags();
-        $flags->insertIf(InputOptions::FLAG_ADJUST_FOR_IPOD, $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD));
+        $flags = $this->buildTagFlags();
+
         $tagChanger->add(new InputOptions($this->input, $flags));
 
         $tag = $tagChanger->improve($tag);
-        $this->tagFile($outputTmpFile, $tag);
+        $this->tagFile($outputTmpFile, $tag, $flags);
         $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputTmpFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
     }
 

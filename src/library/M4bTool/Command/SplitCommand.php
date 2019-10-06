@@ -9,7 +9,9 @@ use M4bTool\Audio\Chapter;
 use M4bTool\Audio\CueSheet;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Chapter\ChapterHandler;
+use M4bTool\Common\ConditionalFlags;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
@@ -262,6 +264,9 @@ class SplitCommand extends AbstractConversionCommand
 
         $this->extractDescription($metaDataTag, new SplFileInfo($this->outputDirectory . "/description.txt"));
         $extractedCoverFile = $this->extractCover($this->argInputFile, new SplFileInfo($this->outputDirectory . "/cover.jpg"), $this->optForce);
+
+        $flags = new ConditionalFlags();
+        $flags->insertIf(TagInterface::FLAG_NO_CLEANUP, $this->input->getOption(static::OPTION_NO_CLEANUP));
 
         $index = 0;
         foreach ($this->chapters as $chapter) {
