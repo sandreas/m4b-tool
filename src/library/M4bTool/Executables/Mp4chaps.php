@@ -6,7 +6,6 @@ namespace M4bTool\Executables;
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Audio\Tag\TagWriterInterface;
 use M4bTool\Common\Flags;
 use SplFileInfo;
@@ -80,7 +79,9 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
             throw new Exception(sprintf("Could not import chapters for file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
         }
 
-        if (!$chaptersFileAlreadyExisted && $flags && $flags->contains(InputOptions::FLAG_NO_CLEANUP)) {
+        $keepChapterFile = $flags && $flags->contains(static::FLAG_NO_CLEANUP);
+
+        if (!$chaptersFileAlreadyExisted && !$keepChapterFile) {
             unlink($chaptersFile);
         }
     }
