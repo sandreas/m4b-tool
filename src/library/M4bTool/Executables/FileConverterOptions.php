@@ -13,6 +13,7 @@ class FileConverterOptions
     public $force;
     public $debug;
     public $bitRate;
+    public $vbrQuality;
     public $sampleRate;
     public $channels;
     public $format;

@@ -414,7 +414,7 @@ class FfmetaDataParser
 
     public function getProperty($propertyName)
     {
-        if (!isset($this->metaDataProperties[$propertyName])) {
+        if (!isset($this->metaDataProperties[$propertyName]) || $this->metaDataProperties[$propertyName] === "") {
             return null;
         }
         return $this->metaDataProperties[$propertyName];

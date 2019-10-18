@@ -11,6 +11,7 @@ use SplFileInfo;
 
 class ContentMetadataJson implements TagImproverInterface
 {
+    const BOM = "\xEF\xBB\xBF";
     protected $chaptersContent;
 
     public function __construct($fileContents = "")
@@ -38,9 +39,17 @@ class ContentMetadataJson implements TagImproverInterface
 
         $fileToLoad = new SplFileInfo($files[0]);
         if ($fileToLoad->isFile()) {
-            return new static(file_get_contents($fileToLoad));
+            return new static(static::stripBOM(file_get_contents($fileToLoad)));
         }
         return new static();
+    }
+
+    private static function stripBOM($contents)
+    {
+        if (substr($contents, 0, 3) === static::BOM) {
+            return substr($contents, 3);
+        }
+        return $contents;
     }
 
 
@@ -53,7 +62,7 @@ class ContentMetadataJson implements TagImproverInterface
         if (trim($this->chaptersContent) === "") {
             return $tag;
         }
-        $decoded = @json_decode($this->chaptersContent, true);
+        $decoded = @json_decode($this->chaptersContent, true, 512, JSON_BIGINT_AS_STRING);
         $decodedChapters = $decoded["content_metadata"]["chapter_info"]["chapters"] ?? [];
         if (count($decodedChapters) === 0) {
             return $tag;
@@ -76,6 +85,11 @@ class ContentMetadataJson implements TagImproverInterface
             $chapters[] = new Chapter(new TimeUnit(0), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"]), "Outro");
         }
         $tag->chapters = $chapters;
+
+        $audibleId = $decoded["content_metadata"]["content_reference"]["asin"] ?? null;
+        if ($audibleId !== null) {
+            $tag->extraProperties["audible_id"] = $audibleId;
+        }
         return $tag;
     }
 }

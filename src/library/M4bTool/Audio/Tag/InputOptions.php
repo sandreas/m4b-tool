@@ -60,7 +60,23 @@ class InputOptions implements TagImproverInterface
 
         $tag->series = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES);
         $tag->seriesPart = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES_PART);
-
+        $this->removeTags($tag);
         return $tag;
+    }
+
+    private function removeTags(Tag $tag)
+    {
+        $tagPropertiesToRemove = [];
+        foreach ($this->input->getOption(AbstractConversionCommand::OPTION_REMOVE) as $removeTag) {
+            $tagPropertiesToRemove = array_merge($tagPropertiesToRemove, explode(",", $removeTag));
+        }
+        if (count($tagPropertiesToRemove) > 0) {
+            $tag->removeProperties = $tagPropertiesToRemove;
+            foreach ($tagPropertiesToRemove as $tagPropertyName) {
+                if (property_exists($tag, $tagPropertyName) && !$tag->isTransientProperty($tagPropertyName)) {
+                    $tag->$tagPropertyName = is_array($tag->$tagPropertyName) ? [] : null;
+                }
+            }
+        }
     }
 }

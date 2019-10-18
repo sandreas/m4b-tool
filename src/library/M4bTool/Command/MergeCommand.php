@@ -46,6 +46,8 @@ class MergeCommand extends AbstractConversionCommand
     const OPTION_DRY_RUN = "dry-run";
     const OPTION_JOBS = "jobs";
 
+    const OPTION_PREPEND_SERIES_TO_LONGDESC = "prepend-series-to-longdesc";
+
     const OPTION_CHAPTER_NO_REINDEXING = "no-chapter-reindexing";
     const OPTION_CHAPTER_USE_FILENAMES = "use-filenames-as-chapters";
 
@@ -80,6 +82,7 @@ class MergeCommand extends AbstractConversionCommand
         'chapter-remove-chars' => "„“”",
     ];
     const SILENCE_INDEX_MARKER = -1;
+    const OPTION_EQUATE = "equate";
 
 
     protected $outputDirectory;
@@ -129,8 +132,9 @@ class MergeCommand extends AbstractConversionCommand
 
         $this->addOption(static::OPTION_CHAPTER_USE_FILENAMES, null, InputOption::VALUE_NONE, "Use filenames for chapter titles instead of tag contents");
         $this->addOption(static::OPTION_CHAPTER_NO_REINDEXING, null, InputOption::VALUE_NONE, "Do not perform any reindexing for index-only chapter names (by default m4b-tool will try to detect index-only chapters like Chapter 1, Chapter 2 and reindex it with its numbers only)");
+        $this->addOption(static::OPTION_PREPEND_SERIES_TO_LONGDESC, null, InputOption::VALUE_NONE, "Prepend series and part to description, if available (e.g. Harry Potter 1: Harry Potter and the Philosopher's Stone is a...) - this option is mainly meant for iPods not showing the series or part in the listing");
 
-
+        $this->addOption(static::OPTION_EQUATE, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, sprintf("Forces the same value for specific tag fields (e.g. --%s=artist,albumartist,sortArtist takes value of artist and forces albumartist and sortartist to contain the same value)", static::OPTION_EQUATE), []);
     }
 
     /**
@@ -389,7 +393,9 @@ class MergeCommand extends AbstractConversionCommand
         if (isset(static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext]) && $this->input->getOption(static::OPTION_AUDIO_FORMAT) === static::AUDIO_EXTENSION_M4B) {
             $this->optAudioExtension = $ext;
             $this->optAudioFormat = static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext];
-            $this->optAudioCodec = static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat];
+            if (!$this->optAudioCodec) {
+                $this->optAudioCodec = static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat];
+            }
         }
     }
 
@@ -728,12 +734,30 @@ class MergeCommand extends AbstractConversionCommand
         $tagChanger->add(OpenPackagingFormat::fromFile($this->argInputFile, "metadata.opf"));
         $tagChanger->add(Tag\AudibleTxt::fromFile($this->argInputFile, "audible.txt"));
         $tagChanger->add(Tag\Description::fromFile($this->argInputFile, "description.txt"));
+        $tagChanger->add(Tag\ContentMetadataJson::fromFile($this->argInputFile));
+
+        $equateInstructions = $this->input->getOption(static::OPTION_EQUATE);
+
 
         $flags = $this->buildTagFlags();
 
         $tagChanger->add(new InputOptions($this->input, $flags));
 
+        if (is_array($equateInstructions) && count($equateInstructions) > 0) {
+            $tagChanger->add(new Tag\Equate($equateInstructions, $this->keyMapper));
+        }
+
         $tag = $tagChanger->improve($tag);
+
+        // todo: this can be done in a tagimprover
+        if ($this->input->getOption(static::OPTION_PREPEND_SERIES_TO_LONGDESC) && $tag->longDescription) {
+            $seriesString = trim($tag->series . " " . $tag->seriesPart);
+            if ($seriesString !== "") {
+                $tag->longDescription = $seriesString . ": " . ltrim($tag->longDescription);
+            }
+        }
+
+
         $this->tagFile($outputTmpFile, $tag, $flags);
         $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputTmpFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
     }

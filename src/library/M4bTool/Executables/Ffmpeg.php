@@ -171,7 +171,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
                 foreach ($tagProperty as $subProperty) {
                     $propertyValue = $this->makeTagProperty($tag, $metaDataKey, $subProperty);
                     if ($propertyValue !== "") {
-                        $returnValue .= $metaDataKey . "=" . $this->quote($tag->$subProperty) . "\n";
+                        $returnValue .= $propertyValue;
                         break;
                     }
                 }
@@ -179,7 +179,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
             }
             $propertyValue = $this->makeTagProperty($tag, $metaDataKey, $tagProperty);
             if ($propertyValue !== "") {
-                $returnValue .= $metaDataKey . "=" . $this->quote($tag->$tagProperty) . "\n";
+                $returnValue .= $propertyValue . "\n";
             }
 
         }
@@ -198,7 +198,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
     private function makeTagProperty(Tag $tag, string $metaDataKey, string $tagProperty)
     {
-        if (!property_exists($tag, $tagProperty) || (string)$tag->$tagProperty === "") {
+        if (!property_exists($tag, $tagProperty) || $tag->$tagProperty === null) {
             return "";
         }
         return $metaDataKey . "=" . $this->quote($tag->$tagProperty) . "\n";
@@ -650,7 +650,14 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         $command[] = "-vn";
 
         $this->appendParameterToCommand($command, "-y", $options->force);
-        $this->appendParameterToCommand($command, "-ab", $options->bitRate);
+
+        if ($options->vbrQuality > 0) {
+            $this->appendVbrOption($command, $options);
+        } else if ($options->codec === static::AAC_BEST_QUALITY_NON_FREE_CODEC) {
+            $this->appendParameterToCommand($command, "-b:a", $options->bitRate);
+        } else {
+            $this->appendParameterToCommand($command, "-ab", $options->bitRate);
+        }
         $this->appendParameterToCommand($command, "-ar", $options->sampleRate);
         $this->appendParameterToCommand($command, "-ac", $options->channels);
         $this->appendParameterToCommand($command, "-acodec", $options->codec);
@@ -667,5 +674,42 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         $process->start();
 
         return $process;
+    }
+
+    private function appendVbrOption(&$command, FileConverterOptions $options)
+    {
+        static $lastVbrMessage = "";
+
+        if ($options->codec === static::AAC_BEST_QUALITY_NON_FREE_CODEC) {
+            $min = 1;
+            $max = 5;
+            $value = $this->percentToValue($options->vbrQuality, $min, $max);
+            $this->appendParameterToCommand($command, "-vbr", $value);
+        } else {
+            $min = 0.1;
+            $max = 2;
+            $value = $this->percentToValue($options->vbrQuality, $min, $max, 1);
+
+            $this->appendParameterToCommand($command, "-q:a", $value);
+        }
+
+        $vbrMessage = sprintf("using vbr quality %d - value %d (min: %d, max: %d)", $options->vbrQuality, $value, $min, $max);
+        if ($lastVbrMessage !== $vbrMessage) {
+            $this->notice($vbrMessage);
+            $lastVbrMessage = $vbrMessage;
+        }
+
+    }
+
+    private function percentToValue($percent, $min, $max, $decimals = 0)
+    {
+        $value = round((($percent * ($max - $min)) / 100) + $min, $decimals);
+        if ($value < $min) {
+            $value = $min;
+        } else if ($value > $max) {
+            $value = $max;
+        }
+
+        return $value;
     }
 }

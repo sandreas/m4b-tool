@@ -5,6 +5,7 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\BinaryWrapper;
+use M4bTool\Audio\OptionNameTagPropertyMapper;
 use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\ChapterMarker;
@@ -147,6 +148,8 @@ class AbstractCommand extends Command implements LoggerInterface
     protected $chapterMarker;
     /** @var ChapterHandler */
     protected $chapterHandler;
+    /** @var OptionNameTagPropertyMapper */
+    protected $keyMapper;
 
 
     public function __construct(string $name = null)
@@ -173,6 +176,8 @@ class AbstractCommand extends Command implements LoggerInterface
 
         $this->chapterMarker = new ChapterMarker();
         $this->chapterMarker->setLogger($this);
+
+        $this->keyMapper = new OptionNameTagPropertyMapper();
     }
 
     /**

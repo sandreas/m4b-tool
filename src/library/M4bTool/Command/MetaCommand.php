@@ -42,7 +42,6 @@ class MetaCommand extends AbstractMetadataCommand
     const OPTION_IMPORT_OPF = "import-opf";
     const OPTION_IMPORT_CHAPTERS = "import-chapters";
 
-    const OPTION_REMOVE = "remove";
     const EMPTY_MARKER = "Empty tag fields";
 
 
@@ -68,7 +67,6 @@ class MetaCommand extends AbstractMetadataCommand
         // $this->addOption(static::OPTION_EXPORT_OPF, null, InputOption::VALUE_OPTIONAL, "export metadata from opf format (e.g. metadata.opf)", false);
         $this->addOption(static::OPTION_EXPORT_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "export chapters from mp4v2 format (e.g. chapters.txt)", false);
 
-        $this->addOption(static::OPTION_REMOVE, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "remove these tags (either comma separated --remove='title,album' or multiple usage '--remove=title --remove=album'", []);
 
 
     }
@@ -89,6 +87,7 @@ class MetaCommand extends AbstractMetadataCommand
         $importFlags->insertIf(TaggingFlags::FLAG_FFMETADATA, $input->getOption(static::OPTION_IMPORT_FFMETADATA));
         $importFlags->insertIf(TaggingFlags::FLAG_OPF, $input->getOption(static::OPTION_IMPORT_OPF));
         $importFlags->insertIf(TaggingFlags::FLAG_CHAPTERS, $input->getOption(static::OPTION_IMPORT_CHAPTERS));
+        $importFlags->insertIf(TaggingFlags::FLAG_TAG_BY_COMMAND_LINE_ARGUMENTS, (count($input->getOption(static::OPTION_REMOVE)) > 0));
 
         foreach (static::ALL_TAG_OPTIONS as $tagOption) {
             if ($input->getOption($tagOption) !== null) {
@@ -157,7 +156,7 @@ class MetaCommand extends AbstractMetadataCommand
         $emptyTagNames = [];
         $outputTagValues = [];
         foreach ($tag as $propertyName => $value) {
-            $mappedKey = $this->mapTagKey($propertyName);
+            $mappedKey = $this->keyMapper->mapTagPropertyToOption($propertyName);
 
             if ($tag->isTransientProperty($propertyName) || in_array($propertyName, $tag->removeProperties, true)) {
                 continue;
@@ -201,11 +200,6 @@ class MetaCommand extends AbstractMetadataCommand
         return $output;
     }
 
-    private function mapTagKey($key)
-    {
-        return $key;
-    }
-
     /**
      * @param Flags $tagChangerFlags
      * @throws Exception
@@ -247,22 +241,6 @@ class MetaCommand extends AbstractMetadataCommand
 
         $tag = $tagLoaderComposite->improve($tag);
 
-        $tagPropertiesToRemove = [];
-        foreach ($this->input->getOption(static::OPTION_REMOVE) as $removeTag) {
-            $tagPropertiesToRemove = array_merge($tagPropertiesToRemove, explode(",", $removeTag));
-        }
-        if (count($tagPropertiesToRemove) > 0) {
-            $this->notice("NOTE: removing tags is still experimental - and it only works for m4a, m4b and mp4 files");
-            $this->notice(sprintf("trying to remove following tag properties: %s", implode(", ", $tagPropertiesToRemove)));
-            $this->notice("");
-            $tag->removeProperties = $tagPropertiesToRemove;
-
-            foreach ($tagPropertiesToRemove as $tagPropertyName) {
-                if (property_exists($tag, $tagPropertyName)) {
-                    $tag->$tagPropertyName = is_array($tag->$tagPropertyName) ? [] : null;
-                }
-            }
-        }
 
         $this->notice("storing tags:");
 

@@ -27,6 +27,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     const OPTION_AUDIO_SAMPLE_RATE = "audio-samplerate";
     const OPTION_AUDIO_CODEC = "audio-codec";
     const OPTION_AUDIO_PROFILE = "audio-profile";
+    const OPTION_AUDIO_QUALITY = "audio-quality";
 
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
     const OPTION_FIX_MIME_TYPE = "fix-mime-type";
@@ -83,6 +84,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     protected $optAudioSampleRate;
     protected $optAudioCodec;
     protected $optAdjustBitrateForIpod;
+    protected $optAudioVbrQuality;
 
     /** @var SplFileInfo[] */
     protected $extractFilesAlreadyTried = [];
@@ -112,6 +114,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $options->format = $this->optAudioFormat;
         $options->channels = $this->optAudioChannels;
         $options->sampleRate = $this->optAudioSampleRate;
+        $options->vbrQuality = (float)$this->optAudioVbrQuality ?? 0;
         $options->bitRate = $this->optAudioBitRate;
         $options->force = $this->optForce;
         $options->debug = $this->optDebug;
@@ -126,9 +129,10 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         parent::configure();
         $this->addOption(static::OPTION_AUDIO_FORMAT, null, InputOption::VALUE_OPTIONAL, "output format, that ffmpeg will use to create files", static::AUDIO_EXTENSION_M4B);
         $this->addOption(static::OPTION_AUDIO_CHANNELS, null, InputOption::VALUE_OPTIONAL, "audio channels, e.g. 1, 2", ""); // -ac 1
-        $this->addOption(static::OPTION_AUDIO_BIT_RATE, null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...", ""); // -ab 128k
-        $this->addOption(static::OPTION_AUDIO_SAMPLE_RATE, null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...", ""); // -ar 44100
-        $this->addOption(static::OPTION_AUDIO_CODEC, null, InputOption::VALUE_OPTIONAL, "audio codec, e.g. libmp3lame, aac, ...", ""); // -ar 44100
+        $this->addOption(static::OPTION_AUDIO_BIT_RATE, null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...", "");
+        $this->addOption(static::OPTION_AUDIO_SAMPLE_RATE, null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...", "");
+        $this->addOption(static::OPTION_AUDIO_CODEC, null, InputOption::VALUE_OPTIONAL, "audio codec, e.g. libmp3lame, aac, ...", "");
+        $this->addOption(static::OPTION_AUDIO_QUALITY, null, InputOption::VALUE_OPTIONAL, sprintf("Use variable bitrate for encoding - value is in percent (e.g. --%s=80)", static::OPTION_AUDIO_QUALITY), null);
         $this->addOption(static::OPTION_AUDIO_PROFILE, null, InputOption::VALUE_OPTIONAL, "audio profile, when using extra low bitrate - valid values: aac_he, aac_he_v2", "");
 
         $this->addOption(static::OPTION_ADJUST_FOR_IPOD, null, InputOption::VALUE_NONE, "auto adjust bitrate and sampling rate for ipod, if track is too long (may result in low audio quality)");
@@ -172,6 +176,11 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $this->optAudioChannels = (int)$this->input->getOption(static::OPTION_AUDIO_CHANNELS);
         $this->optAudioBitRate = $this->input->getOption(static::OPTION_AUDIO_BIT_RATE);
         $this->optAudioSampleRate = $this->input->getOption(static::OPTION_AUDIO_SAMPLE_RATE);
+        $this->optAudioVbrQuality = $this->input->getOption(static::OPTION_AUDIO_QUALITY) ?? 0;
+
+        if ($this->optAudioVbrQuality < 0 || $this->optAudioVbrQuality > 100) {
+            throw new Exception(sprintf("%s must contain a value between 0 and 100", static::OPTION_AUDIO_QUALITY));
+        }
 
     }
 
@@ -181,7 +190,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         if ($input === null) {
             $input = $this->input;
         }
-        if (!$input->getOption($optionName) && $optionValue !== "") {
+        if ($input->getOption($optionName) === null && $optionValue !== "") {
             $input->setOption($optionName, $optionValue);
         }
     }
