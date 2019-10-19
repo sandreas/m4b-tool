@@ -408,24 +408,6 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         return (int)str_ireplace("hz", "", $this->optAudioSampleRate);
     }
 
-    protected function setMissingCommandLineOptionsFromTag(Tag $tag)
-    {
-        $this->setOptionIfUndefined(static::OPTION_TAG_NAME, $tag->title);
-        $this->setOptionIfUndefined(static::OPTION_TAG_SORT_NAME, $tag->sortTitle);
-        $this->setOptionIfUndefined(static::OPTION_TAG_ALBUM, $tag->album);
-        $this->setOptionIfUndefined(static::OPTION_TAG_SORT_ALBUM, $tag->sortAlbum);
-        $this->setOptionIfUndefined(static::OPTION_TAG_ARTIST, $tag->artist);
-        $this->setOptionIfUndefined(static::OPTION_TAG_SORT_ARTIST, $tag->sortArtist);
-        $this->setOptionIfUndefined(static::OPTION_TAG_ALBUM_ARTIST, $tag->albumArtist);
-        $this->setOptionIfUndefined(static::OPTION_TAG_YEAR, $tag->year);
-        $this->setOptionIfUndefined(static::OPTION_TAG_GENRE, $tag->genre);
-        $this->setOptionIfUndefined(static::OPTION_TAG_WRITER, $tag->writer);
-        $this->setOptionIfUndefined(static::OPTION_TAG_DESCRIPTION, $tag->description);
-        $this->setOptionIfUndefined(static::OPTION_TAG_LONG_DESCRIPTION, $tag->longDescription);
-        $this->setOptionIfUndefined(static::OPTION_TAG_COMMENT, $tag->comment);
-        $this->setOptionIfUndefined(static::OPTION_TAG_COPYRIGHT, $tag->copyright);
-    }
-
     protected function lookupFileContents(SplFileInfo $referenceFile, $nameOfFile, $maxSize = 1024 * 1024)
     {
         $nameOfFileDir = $referenceFile->isDir() ? $referenceFile : new SplFileInfo($referenceFile->getPath());

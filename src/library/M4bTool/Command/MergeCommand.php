@@ -439,9 +439,7 @@ class MergeCommand extends AbstractConversionCommand
         }
 
         // todo load only if required (not on ignore_source_tags...)
-        $sourceFilesTag = $this->loadTagFromFirstSourceFile();
         $this->lookupAndAddCover();
-        $this->lookupAndAddDescription();
 
         if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
             $this->prepareMergeWithoutConversion();
@@ -456,7 +454,7 @@ class MergeCommand extends AbstractConversionCommand
         $outputTempFile = $this->mergeFiles();
 
 
-        $this->tagMergedFile($outputTempFile, $sourceFilesTag);
+        $this->tagMergedFile($outputTempFile);
 
         $this->moveFinishedOutputFile($outputTempFile, $this->outputFile);
 
@@ -479,16 +477,6 @@ class MergeCommand extends AbstractConversionCommand
 
         return $this->metaHandler->readTag($file);
     }
-
-
-    private function lookupAndAddDescription()
-    {
-        $descriptionFileContents = $this->lookupFileContents($this->argInputFile, "description.txt");
-        if ($descriptionFileContents !== null) {
-            $this->setOptionIfUndefined(static::OPTION_TAG_DESCRIPTION, $descriptionFileContents);
-        }
-    }
-
 
     /**
      * @throws Exception
@@ -705,7 +693,7 @@ class MergeCommand extends AbstractConversionCommand
      * @param Tag|null $sourceFilesTag
      * @throws Exception
      */
-    private function tagMergedFile(SplFileInfo $outputTmpFile, Tag $sourceFilesTag = null)
+    private function tagMergedFile(SplFileInfo $outputTmpFile)
     {
 
         $tag = new Tag();
@@ -757,8 +745,12 @@ class MergeCommand extends AbstractConversionCommand
                 $tag->longDescription = $seriesString . ": " . ltrim($tag->longDescription);
             }
         }
-        if (!$this->input->getOption(static::OPTION_IGNORE_SOURCE_TAGS) && $sourceFilesTag instanceof Tag) {
-            $tag->mergeMissing($sourceFilesTag);
+
+        if (!$this->input->getOption(static::OPTION_IGNORE_SOURCE_TAGS)) {
+            $sourceFilesTag = $this->loadTagFromFirstSourceFile();
+            if ($sourceFilesTag instanceof Tag) {
+                $tag->mergeMissing($sourceFilesTag);
+            }
         }
 
 
