@@ -19,6 +19,7 @@ class FileConverterOptions
     public $format;
     public $extension;
     public $profile;
+    public $ignoreSourceTags;
 
     /** @var bool */
     public $trimSilenceStart;

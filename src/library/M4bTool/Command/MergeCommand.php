@@ -438,7 +438,8 @@ class MergeCommand extends AbstractConversionCommand
             return;
         }
 
-        $this->loadInputMetadataFromFirstFile();
+        // todo load only if required (not on ignore_source_tags...)
+        $sourceFilesTag = $this->loadTagFromFirstSourceFile();
         $this->lookupAndAddCover();
         $this->lookupAndAddDescription();
 
@@ -455,7 +456,7 @@ class MergeCommand extends AbstractConversionCommand
         $outputTempFile = $this->mergeFiles();
 
 
-        $this->tagMergedFile($outputTempFile);
+        $this->tagMergedFile($outputTempFile, $sourceFilesTag);
 
         $this->moveFinishedOutputFile($outputTempFile, $this->outputFile);
 
@@ -467,16 +468,16 @@ class MergeCommand extends AbstractConversionCommand
     /**
      * @throws Exception
      */
-    protected function loadInputMetadataFromFirstFile()
+    protected function loadTagFromFirstSourceFile()
     {
         reset($this->filesToConvert);
 
         $file = current($this->filesToConvert);
         if (!$file) {
-            return;
+            return null;
         }
 
-        $this->setMissingCommandLineOptionsFromTag($this->metaHandler->readTag($file));
+        return $this->metaHandler->readTag($file);
     }
 
 
@@ -701,10 +702,10 @@ class MergeCommand extends AbstractConversionCommand
 
     /**
      * @param SplFileInfo $outputTmpFile
-     * @throws InvalidArgumentException
+     * @param Tag|null $sourceFilesTag
      * @throws Exception
      */
-    private function tagMergedFile(SplFileInfo $outputTmpFile)
+    private function tagMergedFile(SplFileInfo $outputTmpFile, Tag $sourceFilesTag = null)
     {
 
         $tag = new Tag();
@@ -756,6 +757,10 @@ class MergeCommand extends AbstractConversionCommand
                 $tag->longDescription = $seriesString . ": " . ltrim($tag->longDescription);
             }
         }
+        if (!$this->input->getOption(static::OPTION_IGNORE_SOURCE_TAGS) && $sourceFilesTag instanceof Tag) {
+            $tag->mergeMissing($sourceFilesTag);
+        }
+
 
 
         $this->tagFile($outputTmpFile, $tag, $flags);

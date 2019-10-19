@@ -60,7 +60,8 @@ class AudibleTxt implements TagImproverInterface
         // $tag->sortAlbum = $this->getProperty("sort_album") ?? $this->getProperty("album-sort");
         // $tag->sortTitle = $this->getProperty("sort_name") ?? $this->getProperty("title-sort");
         // $tag->sortArtist = $this->getProperty("sort_artist") ?? $this->getProperty("artist-sort");
-        // $tag->writer = $this->getProperty("writer") ?? $this->getProperty("composer");
+        $narrators = $decoded["narrators"] ?? [];
+        $mergeTag->writer = count($narrators) ? implode(", ", $narrators) : null;
         $mergeTag->genre = $decoded["genre"] ?? null;
 
         $mergeTag->copyright = $decoded["audibleMeta"]["publisher"] ?? null;

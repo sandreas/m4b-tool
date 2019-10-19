@@ -80,18 +80,9 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
             }
 
             $this->appendParameterToCommand($command, "-" . $parameterName, $tag->$tagPropertyName);
-
         }
 
         if ($this->doesMp4tagsSupportSorting()) {
-            if (!$tag->sortTitle && $tag->series) {
-                $tag->sortTitle = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
-            }
-
-            if (!$tag->sortAlbum && $tag->series) {
-                $tag->sortAlbum = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
-            }
-
             $this->appendParameterToCommand($command, "-sortname", $tag->sortTitle);
             $this->appendParameterToCommand($command, "-sortalbum", $tag->sortAlbum);
             $this->appendParameterToCommand($command, "-sortartist", $tag->sortArtist);

@@ -33,6 +33,8 @@ class AbstractMetadataCommand extends AbstractCommand
     const OPTION_TAG_SERIES_PART = "series-part";
 
     const OPTION_REMOVE = "remove";
+    const OPTION_IGNORE_SOURCE_TAGS = "ignore-source-tags";
+
 
     const ALL_TAG_OPTIONS = [
         self::OPTION_TAG_NAME,
@@ -85,5 +87,6 @@ class AbstractMetadataCommand extends AbstractCommand
         $this->addOption(static::OPTION_TAG_SERIES_PART, null, InputOption::VALUE_OPTIONAL, "custom series part, this pseudo tag will be used to auto create sort order (e.g. 1 or 2.5)");
 
         $this->addOption(static::OPTION_REMOVE, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "remove these tags (either comma separated --remove='title,album' or multiple usage '--remove=title --remove=album'", []);
+        $this->addOption(static::OPTION_IGNORE_SOURCE_TAGS, null, InputOption::VALUE_NONE, "ignore all tags from source files");
     }
 }

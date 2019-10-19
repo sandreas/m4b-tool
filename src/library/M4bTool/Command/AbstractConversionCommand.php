@@ -121,6 +121,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $options->profile = $this->input->getOption(static::OPTION_AUDIO_PROFILE);
         $options->trimSilenceStart = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
         $options->trimSilenceEnd = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
+        $options->ignoreSourceTags = $this->input->getOption(static::OPTION_IGNORE_SOURCE_TAGS);
         return $options;
     }
 

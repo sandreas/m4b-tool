@@ -543,10 +543,12 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
                 $command[] = "-t";
                 $command[] = $length->format();
             }
-            $command[] = "-map_metadata";
-            $command[] = "a";
-            $command[] = "-map";
-            $command[] = "a";
+            if (!$options->ignoreSourceTags) {
+                $command[] = "-map_metadata";
+                $command[] = "a";
+                $command[] = "-map";
+                $command[] = "a";
+            }
             $command[] = "-acodec";
             $command[] = "copy";
 
@@ -621,7 +623,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         ];
 
         $metaDataFile = $this->appendTagFilesToCommand($command, $options->tag);
-        if (!$metaDataFile || !$metaDataFile->isFile()) {
+        if (!$options->ignoreSourceTags && (!$metaDataFile || !$metaDataFile->isFile())) {
             $command[] = "-map_metadata";
             $command[] = "0";
         }

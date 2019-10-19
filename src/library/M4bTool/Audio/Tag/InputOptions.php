@@ -28,38 +28,52 @@ class InputOptions implements TagImproverInterface
 
     public function improve(Tag $tag): Tag
     {
-        $tag->title = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_NAME);
-        $tag->sortTitle = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SORT_NAME);
+        $mergeTag = new Tag();
+        $mergeTag->title = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_NAME);
+        $mergeTag->sortTitle = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SORT_NAME);
 
-        $tag->album = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ALBUM);
-        $tag->sortAlbum = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SORT_ALBUM);
+        $mergeTag->album = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ALBUM);
+        $mergeTag->sortAlbum = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SORT_ALBUM);
 
         // on ipods / itunes, album is for title of the audio book
         if ($this->flags->contains(static::FLAG_ADJUST_FOR_IPOD)) {
-            if ($tag->title && !$tag->album) {
-                $tag->album = $tag->title;
+            if ($mergeTag->title && !$mergeTag->album) {
+                $mergeTag->album = $mergeTag->title;
             }
 
-            if ($tag->sortTitle && !$tag->sortAlbum) {
-                $tag->sortAlbum = $tag->sortTitle;
+            if ($mergeTag->sortTitle && !$mergeTag->sortAlbum) {
+                $mergeTag->sortAlbum = $mergeTag->sortTitle;
             }
         }
 
-        $tag->artist = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ARTIST);
-        $tag->sortArtist = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SORT_ARTIST);
-        $tag->genre = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_GENRE);
-        $tag->writer = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_WRITER);
-        $tag->albumArtist = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ALBUM_ARTIST);
-        $tag->year = ReleaseDate::createFromValidString($this->input->getOption(AbstractConversionCommand::OPTION_TAG_YEAR));
-        $tag->cover = $this->input->getOption(AbstractConversionCommand::OPTION_COVER);
-        $tag->description = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_DESCRIPTION);
-        $tag->longDescription = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_LONG_DESCRIPTION);
-        $tag->comment = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_COMMENT);
-        $tag->copyright = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_COPYRIGHT);
-        $tag->encodedBy = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ENCODED_BY);
+        $mergeTag->artist = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ARTIST);
+        $mergeTag->sortArtist = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SORT_ARTIST);
+        $mergeTag->genre = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_GENRE);
+        $mergeTag->writer = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_WRITER);
+        $mergeTag->albumArtist = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ALBUM_ARTIST);
+        $mergeTag->year = ReleaseDate::createFromValidString($this->input->getOption(AbstractConversionCommand::OPTION_TAG_YEAR));
+        $mergeTag->cover = $this->input->getOption(AbstractConversionCommand::OPTION_COVER);
+        $mergeTag->description = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_DESCRIPTION);
+        $mergeTag->longDescription = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_LONG_DESCRIPTION);
+        $mergeTag->comment = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_COMMENT);
+        $mergeTag->copyright = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_COPYRIGHT);
+        $mergeTag->encodedBy = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ENCODED_BY);
 
-        $tag->series = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES);
-        $tag->seriesPart = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES_PART);
+        $mergeTag->series = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES);
+        $mergeTag->seriesPart = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES_PART);
+        $tag->mergeOverwrite($mergeTag);
+
+        // todo: extract this into an extra improver?
+        if (!$tag->sortTitle && $tag->series) {
+            $tag->sortTitle = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
+        }
+
+        if (!$tag->sortAlbum && $tag->series) {
+            $tag->sortAlbum = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
+        }
+
+        // todo: extract this into a constant and make it possible to override it, if needed
+        $tag->encoder = "m4b-tool";
         $this->removeTags($tag);
         return $tag;
     }
