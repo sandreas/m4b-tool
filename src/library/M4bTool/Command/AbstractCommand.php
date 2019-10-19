@@ -35,6 +35,7 @@ class AbstractCommand extends Command implements LoggerInterface
 {
     use LoggerTrait, CacheAdapterTrait;
 
+    const APP_NAME = "m4b-tool";
     const AUDIO_EXTENSION_MP3 = "mp3";
     const AUDIO_EXTENSION_MP4 = "mp4";
     const AUDIO_EXTENSION_M4A = "m4a";

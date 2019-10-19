@@ -15,9 +15,7 @@ class InputOptions implements TagImproverInterface
 
     /** @var InputInterface */
     protected $input;
-    /**
-     * @var Flags
-     */
+    /** @var Flags */
     protected $flags;
 
     public function __construct(InputInterface $input, Flags $flags = null)
@@ -58,6 +56,7 @@ class InputOptions implements TagImproverInterface
         $mergeTag->comment = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_COMMENT);
         $mergeTag->copyright = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_COPYRIGHT);
         $mergeTag->encodedBy = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ENCODED_BY);
+        $mergeTag->encoder = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ENCODER);
 
         $mergeTag->series = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES);
         $mergeTag->seriesPart = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES_PART);
@@ -72,8 +71,6 @@ class InputOptions implements TagImproverInterface
             $tag->sortAlbum = trim($tag->series . " " . $tag->seriesPart) . " - " . $tag->title;
         }
 
-        // todo: extract this into a constant and make it possible to override it, if needed
-        $tag->encoder = "m4b-tool";
         $this->removeTags($tag);
         return $tag;
     }

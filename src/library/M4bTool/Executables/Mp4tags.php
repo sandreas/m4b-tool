@@ -30,6 +30,7 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
         "comment" => "c", //"comment",
         "copyright" => "C", //"copyright",
         "encodedBy" => "e", // "encodedby",
+        "encoder" => "E", // "encoder",
         "lyrics" => "L", // "lyrics",
         "type" => "i", // "type",
         "sortTitle" => "f", // "sortname",

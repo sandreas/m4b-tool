@@ -25,6 +25,7 @@ class AbstractMetadataCommand extends AbstractCommand
     const OPTION_TAG_COMMENT = "comment";
     const OPTION_TAG_COPYRIGHT = "copyright";
     const OPTION_TAG_ENCODED_BY = "encoded-by";
+    const OPTION_TAG_ENCODER = "encoder";
     const OPTION_SKIP_COVER = "skip-cover";
     const OPTION_COVER = "cover";
 
@@ -53,6 +54,7 @@ class AbstractMetadataCommand extends AbstractCommand
         self::OPTION_TAG_COMMENT,
         self::OPTION_TAG_COPYRIGHT,
         self::OPTION_TAG_ENCODED_BY,
+        self::OPTION_TAG_ENCODER,
         self::OPTION_TAG_SERIES,
         self::OPTION_TAG_SERIES_PART,
     ];
@@ -79,6 +81,7 @@ class AbstractMetadataCommand extends AbstractCommand
         $this->addOption(static::OPTION_TAG_COMMENT, null, InputOption::VALUE_OPTIONAL, "custom comment, otherwise the existing metadata will be used");
         $this->addOption(static::OPTION_TAG_COPYRIGHT, null, InputOption::VALUE_OPTIONAL, "custom copyright, otherwise the existing metadata will be used");
         $this->addOption(static::OPTION_TAG_ENCODED_BY, null, InputOption::VALUE_OPTIONAL, "custom encoded-by, otherwise the existing metadata will be used");
+        $this->addOption(static::OPTION_TAG_ENCODER, null, InputOption::VALUE_OPTIONAL, sprintf("custom encoder, otherwise %s will be used", static::APP_NAME));
         $this->addOption(static::OPTION_TAG_COVER, null, InputOption::VALUE_OPTIONAL, "custom cover, otherwise the existing metadata will be used");
         $this->addOption(static::OPTION_SKIP_COVER, null, InputOption::VALUE_NONE, "skip extracting and embedding covers");
 

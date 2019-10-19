@@ -149,6 +149,8 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     protected function loadArguments()
     {
         parent::loadArguments();
+        $encoder = trim(static::APP_NAME . " " . str_replace('@package_version@', '', $this->getApplication()->getVersion()));
+        $this->setOptionIfUndefined("encoder", $encoder);
 
         $this->optAdjustBitrateForIpod = $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD);
         if ($this->optAdjustBitrateForIpod) {

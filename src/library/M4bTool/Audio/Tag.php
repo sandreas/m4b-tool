@@ -59,7 +59,7 @@ class Tag implements ArrayAccess
         "seriesPart"
     ];
 
-    public $encoder = "m4b-tool";
+    public $encoder;
     public $title;
     public $sortTitle; // -sortname on mp4tags (means sort chapter title in itunes)
     public $artist;
