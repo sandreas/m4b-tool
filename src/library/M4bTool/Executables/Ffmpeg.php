@@ -653,12 +653,18 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
         $this->appendParameterToCommand($command, "-y", $options->force);
 
-        if ($options->vbrQuality > 0) {
-            $this->appendVbrOption($command, $options);
-        } else if ($options->codec === static::AAC_BEST_QUALITY_NON_FREE_CODEC) {
-            $this->appendParameterToCommand($command, "-b:a", $options->bitRate);
+        if ($options->vbrQuality <= 0) {
+            if ($options->codec === static::AAC_BEST_QUALITY_NON_FREE_CODEC) {
+                $this->appendParameterToCommand($command, "-b:a", $options->bitRate);
+            } else {
+                $this->appendParameterToCommand($command, "-ab", $options->bitRate);
+            }
+// ffmpeg -i test.wav -c:a libfdk_aac -b:a 256k -y test.aac –
+//            $this->appendParameterToCommand($command, "-minrate", $options->bitRate);
+//            $this->appendParameterToCommand($command, "-maxrate", $options->bitRate);
+//            $this->appendParameterToCommand($command, "-bufsize", $options->bitRate);
         } else {
-            $this->appendParameterToCommand($command, "-ab", $options->bitRate);
+            $this->appendVbrOption($command, $options);
         }
         $this->appendParameterToCommand($command, "-ar", $options->sampleRate);
         $this->appendParameterToCommand($command, "-ac", $options->channels);
