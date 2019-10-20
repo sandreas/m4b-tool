@@ -24,7 +24,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
 
 
-class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
+class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
 {
     use LogTrait, CacheAdapterTrait;
     const AAC_FALLBACK_CODEC = "aac";
@@ -617,6 +617,8 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
      */
     public function convertFile(FileConverterOptions $options): Process
     {
+        $options = $this->setEncodingQualityIfUndefined($options);
+
         $inputFile = $options->source;
         $command = [
             "-i", $inputFile,
@@ -631,11 +633,7 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
         $command[] = "-max_muxing_queue_size";
         $command[] = "9999";
 
-        // https://ffmpeg.org/ffmpeg-filters.html#silenceremove
-        if ($options->trimSilenceStart || $options->trimSilenceEnd) {
-            $command[] = "-af";
-            $command[] = sprintf("silenceremove=start_periods=%s:start_threshold=%s:stop_periods=%s", (int)$options->trimSilenceStart, static::SILENCE_DEFAULT_DB, (int)$options->trimSilenceEnd);
-        }
+        $this->appendTrimSilenceOptionsToCommand($command, $options);
 
         // backwards compatibility: ffmpeg needed experimental flag in earlier versions
         if ($options->codec == BinaryWrapper::CODEC_AAC) {
@@ -709,15 +707,4 @@ class Ffmpeg extends AbstractExecutable implements TagReaderInterface, TagWriter
 
     }
 
-    private function percentToValue($percent, $min, $max, $decimals = 0)
-    {
-        $value = round((($percent * ($max - $min)) / 100) + $min, $decimals);
-        if ($value < $min) {
-            $value = $min;
-        } else if ($value > $max) {
-            $value = $max;
-        }
-
-        return $value;
-    }
 }
