@@ -14,7 +14,6 @@ use SplFileInfo;
 class FileLoader
 {
     const NOT_READABLE = "file not readable";
-    const LINKS_ARE_SKIPPED = "links are skipped";
 
     /** @var string[] */
     protected $includeExtensions = [];
@@ -90,10 +89,6 @@ class FileLoader
                 continue;
             }
 
-            if ($itFile->isLink()) {
-                $this->skipFileOrDirectory($itFile, static::LINKS_ARE_SKIPPED);
-                continue;
-            }
             $files[] = $itFile;
         }
 
