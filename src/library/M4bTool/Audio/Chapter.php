@@ -9,11 +9,13 @@
 namespace M4bTool\Audio;
 
 
+use JsonSerializable;
 use Sandreas\Time\TimeUnit;
 
-class Chapter extends AbstractPart
+class Chapter extends AbstractPart implements JsonSerializable
 {
     protected $name;
+    protected $introduction;
     /**
      * @var Tag
      */
@@ -43,16 +45,39 @@ class Chapter extends AbstractPart
     /**
      * @return string
      */
-    public function getTag()
+    public function getIntroduction()
     {
-        return $this->tag;
+        return $this->introduction;
     }
 
     /**
-     * @param string $tag
+     * @param string $introduction
      */
-    public function setTag($tag)
+    public function setIntroduction($introduction)
     {
-        $this->tag = $tag;
+        $this->introduction = $introduction;
+    }
+
+
+    /**
+     * Specify data which should be serialized to JSON
+     * @link https://php.net/manual/en/jsonserializable.jsonserialize.php
+     * @return mixed data which can be serialized by <b>json_encode</b>,
+     * which is a value of any type other than a resource.
+     * @since 5.4.0
+     */
+    public function jsonSerialize()
+    {
+
+        return array_filter([
+            "name" => $this->getName(),
+            "introduction" => $this->getIntroduction(),
+            "start" => ($this->getStart() instanceof TimeUnit) ? $this->getStart()->milliseconds() : null,
+            "length" => ($this->getLength() instanceof TimeUnit) ? $this->getLength()->milliseconds() : null,
+        ], function ($value) {
+            return $value !== "" && $value !== null;
+        });
+
+
     }
 }

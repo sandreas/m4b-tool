@@ -15,7 +15,8 @@
     "ext-dom": "*",
     "ext-libxml": "*",
     "ext-zip": "*",
-    "ext-curl": "*"
+    "ext-curl": "*",
+    "lywzx/php-epub": "^0.1.2"
   },
   "autoload": {
     "psr-4": {
