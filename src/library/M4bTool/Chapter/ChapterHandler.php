@@ -534,4 +534,39 @@ class ChapterHandler
         }
         return array_filter($trackChapters);
     }
+
+    /**
+     * @param Chapter[] $chapters
+     * @return Chapter[]
+     */
+    public function mergeSubChapters($chapters)
+    {
+        $mergeGroups = [];
+        foreach ($chapters as $chapter) {
+            $mergeGroup = preg_replace("/^(.*)\.[0-9]+$/isU", "$1", $chapter->getName());
+            if (!isset($mergeGroups[$mergeGroup])) {
+                $mergeGroups[$mergeGroup] = [];
+            }
+            $mergeGroups[$mergeGroup][] = $chapter;
+        }
+
+        $resultChapters = [];
+        foreach ($mergeGroups as $mergeGroupName => $mergeGroup) {
+            $count = count($mergeGroup);
+            $firstChapter = current($mergeGroup);
+
+            if ($firstChapter === false) {
+                continue;
+            }
+
+            if ($count > 1) {
+                $lastChapter = end($mergeGroup);
+                $firstChapter->setEnd($lastChapter->getEnd());
+            }
+
+            $firstChapter->setName($mergeGroupName);
+            $resultChapters[] = $firstChapter;
+        }
+        return $resultChapters;
+    }
 }

@@ -7,6 +7,10 @@ namespace M4bTool\Command;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
+use M4bTool\Audio\Tag;
+use M4bTool\Audio\Tag\AdjustTooLongChapters;
+use M4bTool\Audio\Tag\TagImproverComposite;
+use M4bTool\M4bTool\Audio\Tag\ChaptersFromEpub;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
@@ -33,6 +37,9 @@ class ChaptersCommand extends AbstractCommand
     const OPTION_NO_CHAPTER_IMPORT = "no-chapter-import";
     const OPTION_ADJUST_BY_SILENCE = "adjust-by-silence";
 
+    const OPTION_EPUB = "epub";
+    const OPTION_EPUB_IGNORE_CHAPTERS = "epub-ignore-chapters";
+
     /**
      * @var MusicBrainzChapterParser
      */
@@ -56,6 +63,9 @@ class ChaptersCommand extends AbstractCommand
         parent::configure();
         $this->setDescription('Adds chapters to m4b file');         // the short description shown while running "php bin/console list"
         $this->setHelp('Can add Chapters to m4b files via different types of inputs'); // the full command description shown when running the command with the "--help" option
+
+        $this->addOption(static::OPTION_EPUB, null, InputOption::VALUE_OPTIONAL, "use this epub to extract chapter names", false);
+        $this->addOption(static::OPTION_EPUB_IGNORE_CHAPTERS, null, InputOption::VALUE_OPTIONAL, sprintf("Chapter indexes that are present in the epub file but not in the audiobook (0 for the first, -1 for the last - e.g. --%s=0,1,-1 would remove the first, second and last epub chapter)", static::OPTION_EPUB_IGNORE_CHAPTERS), "");
 
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
         $this->addOption(static::OPTION_MERGE_SIMILAR, "s", InputOption::VALUE_NONE, "merge similar chapter names");
@@ -89,6 +99,12 @@ class ChaptersCommand extends AbstractCommand
         $this->initExecution($input, $output);
         $this->initParsers();
         $this->loadFileToProcess();
+
+
+        if ($input->getOption(static::OPTION_EPUB) !== false) {
+            $this->handleEpub($input->getOption(static::OPTION_EPUB));
+            return;
+        }
 
         $silenceMinLength = new TimeUnit((int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH));
         if ($silenceMinLength->milliseconds() < 1) {
@@ -177,7 +193,7 @@ class ChaptersCommand extends AbstractCommand
      * @param TimeUnit $duration
      * @throws Exception
      */
-    private function normalizeChapters(TimeUnit $duration)
+    protected function normalizeChapters(TimeUnit $duration)
     {
 
         $options = [
@@ -275,6 +291,54 @@ class ChaptersCommand extends AbstractCommand
             }
         }
         return $specialOffsetChapters;
+    }
+
+    /**
+     * @param string $epubFile
+     * @throws Exception
+     */
+    private function handleEpub(string $epubFile = null)
+    {
+        $originalTag = $this->metaHandler->readTag($this->filesToProcess);
+
+        $backupFile = new SplFileInfo($this->filesToProcess->getPath() . "/" . $this->filesToProcess->getBasename($this->filesToProcess->getExtension()) . "chapters-backup.txt");
+        if (!$backupFile->isFile()) {
+            file_put_contents($backupFile, $this->mp4v2->chaptersToMp4v2Format($originalTag->chapters));
+        }
+
+        $mergedChapters = $this->chapterHandler->mergeSubChapters($originalTag->chapters);
+        $tag = new Tag();
+        $tag->chapters = $mergedChapters;
+
+        $tagChanger = new TagImproverComposite();
+        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, $backupFile->getBasename()));
+        $tagChanger->add(ChaptersFromEpub::fromFile(
+            $this->chapterHandler,
+            $this->filesToProcess,
+            $this->metaHandler->estimateDuration($this->filesToProcess),
+            array_map(
+                function ($value) {
+                    $trimmedValue = trim($value);
+                    if (!is_numeric($trimmedValue)) {
+                        return PHP_INT_MAX;
+                    }
+                    return (int)$trimmedValue;
+                },
+                explode(",", $this->input->getOption(static::OPTION_EPUB_IGNORE_CHAPTERS))
+            ),
+            $epubFile
+        ));
+        // chapter adjustments have to be the last chapter handling option
+        $tagChanger->add(new AdjustTooLongChapters(
+            $this->metaHandler,
+            $this->chapterHandler,
+            $this->filesToProcess,
+            $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH),
+            (int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH)
+        ));
+
+        $tagChanger->improve($tag);
+        $this->metaHandler->writeTag($this->filesToProcess, $tag);
     }
 
 
