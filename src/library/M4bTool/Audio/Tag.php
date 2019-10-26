@@ -51,10 +51,16 @@ use M4bTool\Parser\EmbeddedCover;
  */
 class Tag implements ArrayAccess
 {
+    const EXTRA_PROPERTY_ISBN = "isbn";
+    const EXTRA_PROPERTY_ASIN = "asin";
+    const EXTRA_PROPERTY_AUDIBLE_ID = "audible_id";
+
     const MP4_STIK_AUDIOBOOK = 2;
+
     const TRANSIENT_PROPERTIES = [
         "chapters",
         "removeProperties",
+        "extraProperties",
         "series",
         "seriesPart"
     ];
@@ -95,6 +101,7 @@ class Tag implements ArrayAccess
     public $series;
     public $seriesPart;
 
+    public $extraProperties = [];
     public $removeProperties = [];
 
 
