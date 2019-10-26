@@ -6,26 +6,32 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
+use M4bTool\Common\Flags;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
 class ContentMetadataJson implements TagImproverInterface
 {
     const BOM = "\xEF\xBB\xBF";
-    protected $chaptersContent;
 
-    public function __construct($fileContents = "")
+    protected $chaptersContent;
+    /** @var Flags */
+    protected $flags;
+
+    public function __construct($fileContents = "", Flags $flags = null)
     {
         $this->chaptersContent = $fileContents;
+        $this->flags = $flags ?? new Flags();
     }
 
     /**
      * Cover constructor.
      * @param SplFileInfo $reference
      * @param null $fileName
+     * @param Flags|null $flags
      * @return ContentMetadataJson
      */
-    public static function fromFile(SplFileInfo $reference, $fileName = null)
+    public static function fromFile(SplFileInfo $reference, $fileName = null, Flags $flags = null)
     {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
         $fileName = $fileName ? $fileName : "content_metadata_*.json";
@@ -34,12 +40,12 @@ class ContentMetadataJson implements TagImproverInterface
         $globPattern = $path . "/" . $fileName;
         $files = glob($globPattern);
         if (!is_array($files) || count($files) === 0) {
-            return new static();
+            return new static("", $flags);
         }
 
         $fileToLoad = new SplFileInfo($files[0]);
         if ($fileToLoad->isFile()) {
-            return new static(static::stripBOM(file_get_contents($fileToLoad)));
+            return new static(static::stripBOM(file_get_contents($fileToLoad)), $flags);
         }
         return new static();
     }
@@ -81,8 +87,11 @@ class ContentMetadataJson implements TagImproverInterface
             $chapters[] = new Chapter($lastChapterEnd, new TimeUnit($lengthMs), $title);
         }
 
-        if (isset($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"])) {
-            $chapters[] = new Chapter(new TimeUnit(0), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"]), "Outro");
+        $lastChapter = end($chapters);
+
+
+        if ($lastChapter instanceof Chapter && isset($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"])) {
+            $chapters[] = new Chapter(new TimeUnit($lastChapter->getEnd()->milliseconds()), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"]), "Outro");
         }
         $tag->chapters = $chapters;
 

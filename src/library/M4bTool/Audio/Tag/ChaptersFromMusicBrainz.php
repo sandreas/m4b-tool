@@ -7,6 +7,7 @@ namespace M4bTool\M4bTool\Audio\Tag;
 use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagImproverInterface;
+use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use Psr\Cache\InvalidArgumentException;
@@ -14,14 +15,12 @@ use Psr\Cache\InvalidArgumentException;
 class ChaptersFromMusicBrainz implements TagImproverInterface
 {
 
-    /**
-     * @var ChapterMarker
-     */
+    /**  @var ChapterMarker */
     private $marker;
-    /**
-     * @var MusicBrainzChapterParser
-     */
+    /** @var MusicBrainzChapterParser */
     private $chapterParser;
+    /** @var ChapterHandler */
+    protected $chapterHandler;
 
     const NORMALIZE_CHAPTER_OPTIONS = [
         'first-chapter-offset' => 0,
@@ -32,10 +31,11 @@ class ChaptersFromMusicBrainz implements TagImproverInterface
         'chapter-remove-chars' => "„“”",
     ];
 
-    public function __construct(ChapterMarker $marker, MusicBrainzChapterParser $musicBrainsChapterParser = null)
+    public function __construct(ChapterMarker $marker, ChapterHandler $chapterHandler, MusicBrainzChapterParser $musicBrainsChapterParser = null)
     {
         $this->marker = $marker;
         $this->chapterParser = $musicBrainsChapterParser;
+        $this->chapterHandler = $chapterHandler;
     }
 
     /**
@@ -49,7 +49,7 @@ class ChaptersFromMusicBrainz implements TagImproverInterface
         if (count($tag->chapters) == 0 && $this->chapterParser) {
             $mbXml = $this->chapterParser->loadRecordings();
             $mbChapters = $this->chapterParser->parseRecordings($mbXml);
-            $chapters = $this->marker->guessChaptersByTracks($mbChapters, $tag->chapters);
+            $chapters = $this->chapterHandler->overloadTrackChapters($mbChapters, $tag->chapters);
             $tag->chapters = $this->marker->normalizeChapters($chapters, static::NORMALIZE_CHAPTER_OPTIONS);
         }
         return $tag;

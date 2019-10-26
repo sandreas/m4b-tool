@@ -33,7 +33,7 @@ class ChaptersFromEpub implements TagImproverInterface
     }
 
 
-    public static function fromFile(ChapterHandler $chapterHandler, SplFileInfo $reference, TimeUnit $totalDuration, $fileName = null)
+    public static function fromFile(ChapterHandler $chapterHandler, SplFileInfo $reference, TimeUnit $totalDuration, array $chapterIndexesToRemove = [], $fileName = null)
     {
         try {
             $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
@@ -49,7 +49,8 @@ class ChaptersFromEpub implements TagImproverInterface
             $fileToLoad = new SplFileInfo($files[0]);
             if ($fileToLoad->isFile()) {
                 $epubParser = new EpubParser($fileToLoad);
-                return new static($epubParser->parseTocToChapters($totalDuration), $chapterHandler);
+                $chapters = $epubParser->parseTocToChapters($totalDuration, $chapterIndexesToRemove);
+                return new static($chapters, $chapterHandler);
             }
         } catch (Throwable $e) {
             // ignore
@@ -68,8 +69,11 @@ class ChaptersFromEpub implements TagImproverInterface
             return $tag;
         }
 
-        $tag->chapters = $this->chapterHandler->overloadTrackChapters($this->chaptersFromEpub, $tag->chapters);
-        $this->chapterHandler->removeDuplicateFollowUps($this->chaptersFromEpub, $tag->chapters);
+        $tag->chapters = $this->chapterHandler->removeDuplicateFollowUps(
+            $this->chapterHandler->overloadTrackChaptersKeepUnique($this->chaptersFromEpub, $tag->chapters)
+        );
         return $tag;
     }
+
+
 }

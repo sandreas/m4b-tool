@@ -127,38 +127,38 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
      */
     protected function appendTagFilesToCommand(&$command, Tag $tag = null)
     {
-        if ($tag === null) {
-            return null;
-        }
-        $commandAddition = [];
-        $metaDataFileIndex = 1;
-        if ($tag->hasCoverFile()) {
-            $command = array_merge($command, ["-i", $tag->cover]);
-            $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
-            $metaDataFileIndex++;
-        }
-
-        $ffmetadata = $this->buildFfmetadata($tag);
         $ffmetadataFile = new SplFileInfo(tempnam(sys_get_temp_dir(), ""));
-        if (file_put_contents($ffmetadataFile, $ffmetadata) === false) {
-            throw new Exception(sprintf("Could not create metadatafile %s", $ffmetadataFile));
+        try {
+
+
+            if ($tag === null) {
+                return null;
+            }
+            $commandAddition = [];
+            $metaDataFileIndex = 1;
+            if ($tag->hasCoverFile()) {
+                $command = array_merge($command, ["-i", $tag->cover]);
+                $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
+                $metaDataFileIndex++;
+            }
+
+            $ffmetadata = $this->buildFfmetadata($tag);
+            if (file_put_contents($ffmetadataFile, $ffmetadata) === false) {
+                throw new Exception(sprintf("Could not create metadatafile %s", $ffmetadataFile));
+            }
+
+
+            $command = array_merge($command, ["-i", $ffmetadataFile, "-map_metadata", (string)$metaDataFileIndex]);
+            if (count($commandAddition) > 0) {
+                $command = array_merge($command, $commandAddition);
+            }
+
+            return $ffmetadataFile;
+        } finally {
+            if ($ffmetadataFile->isFile()) {
+                @unlink($ffmetadataFile);
+            }
         }
-
-
-        $command = array_merge($command, ["-i", $ffmetadataFile, "-map_metadata", (string)$metaDataFileIndex]);
-        if (count($commandAddition) > 0) {
-            $command = array_merge($command, $commandAddition);
-        }
-
-
-        // todo make sure the temporary file will be deleted
-//        register_shutdown_function(function() use($ffmetadataFile) {
-//            if(file_exists($ffmetadataFile)) {
-//                @unlink($ffmetadataFile);
-//            }
-//        });
-
-        return $ffmetadataFile;
     }
 
     public function buildFfmetadata(Tag $tag)

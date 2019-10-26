@@ -28,14 +28,25 @@ class EpubParser extends \lywzx\epub\EpubParser
         $this->parse();
     }
 
-    public function parseTocToChapters(TimeUnit $totalLength)
+    public function parseTocToChapters(TimeUnit $totalLength, array $skipChapterIndexes = [])
     {
         $toc = $this->getTOC();
         $totalSize = 0;
+        $count = count($toc);
+        $removeKeys = [];
         foreach ($toc as $key => $tocItem) {
+
+            if (in_array($key, $skipChapterIndexes, true) || in_array($key - $count, $skipChapterIndexes, true)) {
+                $removeKeys[$key] = true;
+                continue;
+            }
+
             $this->mergeContentProperties($toc, $key);
             $totalSize += $toc[$key]["size"];
         }
+
+        $toc = array_diff_key($toc, $removeKeys);
+
 
         $totalLengthMs = $totalLength->milliseconds();
         $chapters = [];

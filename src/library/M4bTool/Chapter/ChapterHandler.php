@@ -17,10 +17,10 @@ class ChapterHandler
 {
     use LogTrait;
 
-    // chapters are seen as numbered consecutively, if this ratio of all chapter names only differs by numeric values
     const CHAPTER_REINDEX_RATIO = 0.75;
-    const MIN_CHAPTER_LENGTH_MILLISECONDS = 60000;
 
+    // chapters are seen as numbered consecutively, if this ratio of all chapter names only differs by numeric values
+    const MIN_CHAPTER_LENGTH_MILLISECONDS = 60000;
     const NO_REINDEXING = 1 << 0;
     const USE_FILENAMES = 1 << 1;
     /**
@@ -31,9 +31,7 @@ class ChapterHandler
     protected $desiredLength;
     /** @var TimeUnit */
     protected $maxLength;
-
     protected $removeChars;
-
     /** @var Flags */
     protected $flags;
     /**
@@ -49,19 +47,6 @@ class ChapterHandler
         $this->flags = new Flags();
     }
 
-    /**
-     * @param Chapter[] $chapters
-     * @return string
-     */
-    public static function dumpChaptersForTest($chapters)
-    {
-        $testCode = "";
-        foreach ($chapters as $chapter) {
-            $testCode .= sprintf('$this->createChapter("%s", %d, %d, "%s");%s', $chapter->getName(), $chapter->getStart()->milliseconds(), $chapter->getLength()->milliseconds(), $chapter->getIntroduction(), PHP_EOL);
-
-        }
-        return $testCode;
-    }
 
     public function setFlags(Flags $flags)
     {
@@ -458,6 +443,35 @@ class ChapterHandler
     }
 
     /**
+     * @param Chapter[] $overLoadChapters
+     * @param Chapter[] $trackChapters
+     * @return Chapter[]
+     * @throws Exception
+     */
+    public function overloadTrackChaptersKeepUnique($overLoadChapters, $trackChapters)
+    {
+        $normalizedNames = array_map(function (Chapter $chapter) {
+            return $this->normalizeChapterName($chapter->getName());
+        }, $trackChapters);
+        $chapterNamesFrequency = array_count_values($normalizedNames);
+        $chapterNamesToKeep = array_keys(array_filter($chapterNamesFrequency, function ($count) {
+            return $count === 1;
+        }));
+
+        $chapters = $this->overloadTrackChapters($overLoadChapters, $trackChapters);
+
+        foreach ($chapterNamesToKeep as $chapterName) {
+            $index = array_search($chapterName, $normalizedNames, true);
+            if ($index !== false && isset($chapters[$index], $trackChapters[$index])) {
+                $chapters[$index]->setName($trackChapters[$index]->getName());
+                $chapters[$index]->setIntroduction($trackChapters[$index]->getIntroduction());
+            }
+        }
+        return $chapters;
+
+    }
+
+    /**
      *
      * @param Chapter[] $overLoadChapters
      * @param Chapter[] $trackChapters
@@ -504,162 +518,20 @@ class ChapterHandler
     }
 
     /**
-     * @param $overloadChapters
      * @param Chapter[] $trackChapters
+     * @return array|Chapter
      */
-    public function removeDuplicateFollowUps($overloadChapters, $trackChapters)
+    public function removeDuplicateFollowUps($trackChapters)
     {
         foreach ($trackChapters as $i => $trackChapter) {
-            if ($i === 0) {
+            if (!isset($trackChapters[$i]) || !isset($trackChapters[$i - 1])) {
                 continue;
             }
 
-            if (!isset($overloadChapters[$i]) || !isset($overloadChapters[$i - 1]) || !isset($trackChapters[$i])) {
-                continue;
-            }
-
-            if ($overloadChapters[$i]->getName() === $overloadChapters[$i - 1]->getName()) {
-                $overloadChapters[$i]->setName($trackChapters[$i]->getName());
-                $overloadChapters[$i]->setIntroduction($trackChapters[$i]->getIntroduction());
+            if ($trackChapters[$i]->getName() === $trackChapters[$i - 1]->getName()) {
+                $trackChapters[$i] = null;
             }
         }
+        return array_filter($trackChapters);
     }
-
-//    /**
-//     * @param Chapter[] $epubChapters
-//     * @param Chapter[] $existingChapters
-//     * @return array
-//     */
-//    public function xbuildEpubChapters(array $epubChapters, array $existingChapters)
-//    {
-//        // eat chapter => match into existing chapter
-//        // if chapterLength < existingChapterLength / 2 => add next chapter, overwrite (ignore first)
-//        // store shift
-//        // eat next chapter - adjust shift
-//        // go on
-//
-//
-//        $countExisting = count($existingChapters);
-//        $countEpub = count($epubChapters);
-////        $countDiff = abs($countChaptersFromEpub - $countExisting);
-////        $coreChapterCount = ceil($countExisting / 2);
-//
-//        $maxDiff = 10000;
-//        $minMatchCount = 5;
-//        for ($i = 0; $i < $countEpub; $i++) {
-//            for ($j = 0; $j < $countExisting; $j++) {
-//                $matchCount = 0;
-//                for ($x = $j, $y = $i; $y < $countEpub, $x < $countExisting; $x++, $y++) {
-//                    $epubChapter = $epubChapters[$y];
-//                    $existingChapter = $existingChapters[$x];
-//                    if (abs($epubChapter->getLength()->milliseconds() - $existingChapter->getLength()->milliseconds()) > $maxDiff) {
-//                        break;
-//                    }
-//                    $matchCount++;
-//                    if ($matchCount >= $minMatchCount) {
-//                        break 3;
-//                    }
-//                }
-//
-//            }
-//        }
-//
-//
-//        echo $y;
-//
-////        $epubOffset = 0;
-////        $epubCount = count($chaptersFromEpub);
-////        $existingOffset = 0;
-////        $existingCount = count($existingChapters);
-////        $matchFound = false;
-////        while(!$matchFound && $epubOffset < $epubCount && $existingOffset < $existingCount) {
-////            $matchFound = true;
-////            for($i=0;$i<$epubCount-$epubOffset;$i++) {
-////
-////            }
-////        }
-//
-//        $maxDiff = 10000;
-//        $minMatchCount = 5;
-//        $existingOffset = 0;
-//
-//        while (count($existingChapters) > 0) {
-//            $matchCount = 0;
-//            $epubOffset = 0;
-//            while (count($epubChapters) > 0) {
-//                do {
-//                    $epubChapter = current($epubChapters);
-//                    $existingChapter = current($existingChapters);
-//                    $matchCount++;
-//                    next($epubChapters);
-//                    next($existingChapters);
-//                } while ($epubChapter && $existingChapter && abs($epubChapter->getLength()->milliseconds() - $existingChapter->getLength()->milliseconds()) <= $maxDiff);
-//
-//                if ($matchCount >= $minMatchCount) {
-//                    break;
-//                }
-//                array_shift($epubChapters);
-//                reset($epubChapters);
-//                reset($existingChapters);
-//                $epubOffset++;
-//            }
-//            if ($matchCount >= $minMatchCount) {
-//                break;
-//            }
-//            array_shift($existingChapters);
-//            reset($epubChapters);
-//            reset($existingChapters);
-//            $existingOffset++;
-//        }
-//
-//
-//        $adjustedChapters = [];
-//        $countEpub = count($epubChapters);
-//        $epubOffset = (int)floor($countEpub / 6);
-//        $negativeOffset = $epubOffset * -1;
-//        /** @var Chapter[] $coreChapters */
-//        $coreChapters = array_values(array_slice($epubChapters, $epubOffset, $negativeOffset));
-//        $coreCount = count($coreChapters);
-//
-//        $offsetTimeDiffs = [];
-//
-//
-//        // load first chapter
-//        // search for chapter with less than 5% shift (but max 10 seconds), store offset
-//        // go through chapters until at least 1/4  chapters are matching with less than 5% shift (but max 10 seconds)
-//        // if found chapter with more shift, repeat process skipping the chapter known as falsy
-//
-//
-//        for ($i = $negativeOffset; $i < $epubOffset; $i++) {
-//            $existingChapterKey = $epubOffset + $i;
-//            $offsetTimeDiffs[$i] = 0;
-//            for ($j = 0; $j < $coreCount; $j++) {
-//                $existingLength = isset($existingChapters[$existingChapterKey]) ? $existingChapters[$existingChapterKey]->getLength()->milliseconds() : 0;
-//                $coreLength = $coreChapters[$j]->getLength()->milliseconds();
-//                $offsetTimeDiffs[$i] += abs($existingLength - $coreLength);
-//            }
-//        }
-//
-//        asort($offsetTimeDiffs);
-//
-//        return $adjustedChapters;
-//
-//        // does not work...
-//        // extract core of $chaptersFromEpub (because existing chapters should be kept)
-//        // store missing offset from start (ceil x/4)
-//        // 25 chapters from epub => ceil(25/4) => remove 7 from start, 7 from end => 11
-//        // start with offset = -7, build diffs for all chapters
-//        //      => abs(epub[0]->length - existng[0]->length) + epub[1]->...
-//        // store sum in array => [-7] => 1000
-//        // find smallest sum and according offset
-//        // overwrite existing chapter names with epub starting with offset
-//
-////        if($countExisting < 5 || $count$coreChapterCount < 5 || $countDiff > 7) {
-////
-////        }
-//
-//
-////        $coreChapters =
-//    }
-
 }
