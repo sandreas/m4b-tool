@@ -129,8 +129,27 @@ class ChapterMarker
         }
 
         if (count($guessedChapters) > 0) {
+            /** @var Chapter $lastGuessedChapter */
             $lastGuessedChapter = end($guessedChapters);
-            $lastGuessedChapter->setLength(new TimeUnit($fullLength->milliseconds() - $lastGuessedChapter->getStart()->milliseconds()));
+            $lastGuessedChapter->setEnd(new TimeUnit($fullLength->milliseconds()));
+
+            // if the last chapter is < 2500ms, it is unlikely, that it is correctly set - move last chapter start to silence before
+            $lastChapterMinMs = 2500;
+            if ($lastGuessedChapter->getLength()->milliseconds() < 2500) {
+                end($silences);
+                $prevLastSilence = prev($silences);
+                /** @var Chapter $prevLastChapter */
+                $prevLastChapter = prev($guessedChapters);
+
+                if ($prevLastSilence && $prevLastChapter && $prevLastSilence->getStart()->milliseconds() > $prevLastChapter->getStart()->milliseconds() + $lastChapterMinMs) {
+                    /** @var TimeUnit $chapterMark */
+                    $chapterMark = $prevLastSilence->getStart();
+                    $chapterMark->add($prevLastSilence->getLength()->milliseconds() / 2);
+                    $prevLastChapter->setEnd(clone $chapterMark);
+                    $lastGuessedChapter->setStart(clone $chapterMark);
+                    $lastGuessedChapter->setEnd(new TimeUnit($fullLength->milliseconds()));
+                }
+            }
         } else {
             $lastSilence = new Silence(new TimeUnit(), new TimeUnit(5, TimeUnit::SECOND));
             $lastChapter = null;
@@ -170,54 +189,6 @@ class ChapterMarker
             $normSilences[$silence->getStart()->milliseconds()] = $silence;
         }
         return $normSilences;
-    }
-
-    /**
-     *
-     * @param Chapter[] $mbChapters
-     * @param Chapter[] $trackChapters
-     * @return Chapter[] $guessedChapters
-     * @throws Exception
-     */
-    public function guessChaptersByTracks($mbChapters, $trackChapters)
-    {
-        $guessedChapters = [];
-        $index = 1;
-        foreach ($trackChapters as $key => $trackChapter) {
-            $chapter = clone $trackChapter;
-
-            $this->debug("track " . ($index) . ": " . $chapter->getStart()->format() . " - " . $chapter->getEnd()->format() . " (" . $chapter->getStart()->milliseconds() . "-" . $chapter->getEnd()->milliseconds() . ", " . $chapter->getName() . ")");
-
-            reset($mbChapters);
-            $bestMatchChapter = current($mbChapters);
-
-            $chapterStartMillis = $chapter->getStart()->milliseconds();
-            $chapterEndMillis = $chapter->getEnd()->milliseconds();
-            foreach ($mbChapters as $mbChapter) {
-                $mbStart = max($chapterStartMillis, $mbChapter->getStart()->milliseconds());
-                $mbEnd = min($chapterEndMillis, $mbChapter->getEnd()->milliseconds());
-                $mbOverlap = $mbEnd - $mbStart;
-
-                $bestMatchStart = max($chapterStartMillis, $bestMatchChapter->getStart()->milliseconds());
-                $bestMatchEnd = min($chapterEndMillis, $bestMatchChapter->getEnd()->milliseconds());
-                $bestMatchOverlap = $bestMatchEnd - $bestMatchStart;
-
-                if ($mbChapter === $bestMatchChapter || $mbOverlap > $bestMatchOverlap) {
-                    $this->debug("   +" . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
-                    $bestMatchChapter = $mbChapter;
-                } else {
-                    $this->debug("   -" . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
-                }
-            }
-
-            $chapter->setName($bestMatchChapter->getName());
-
-            $guessedChapters[$key] = $chapter;
-            $index++;
-        }
-        return $guessedChapters;
-
-
     }
 
     /**
