@@ -5,6 +5,7 @@ namespace M4bTool\M4bTool\Audio\Tag;
 
 
 use Exception;
+use M4bTool\Audio\EpubChapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagImproverInterface;
 use M4bTool\Chapter\ChapterHandler;
@@ -32,6 +33,10 @@ class ChaptersFromEpub implements TagImproverInterface
         $this->chapterHandler = $chapterHandler;
     }
 
+    public function getChaptersFromEpub()
+    {
+        return $this->chaptersFromEpub;
+    }
 
     public static function fromFile(ChapterHandler $chapterHandler, SplFileInfo $reference, TimeUnit $totalDuration, array $chapterIndexesToRemove = [], $fileName = null)
     {
@@ -65,13 +70,16 @@ class ChaptersFromEpub implements TagImproverInterface
      */
     public function improve(Tag $tag): Tag
     {
-        if (count($this->chaptersFromEpub) === 0) {
+        $chaptersWithoutIgnored = array_filter($this->chaptersFromEpub, function (EpubChapter $chapter) {
+            return !$chapter->isIgnored();
+        });
+
+
+        if (count($chaptersWithoutIgnored) === 0) {
             return $tag;
         }
 
-        $tag->chapters = $this->chapterHandler->removeDuplicateFollowUps(
-            $this->chapterHandler->overloadTrackChaptersKeepUnique($this->chaptersFromEpub, $tag->chapters)
-        );
+        $tag->chapters = $this->chapterHandler->overloadTrackChaptersKeepUnique($chaptersWithoutIgnored, $tag->chapters);
         return $tag;
     }
 

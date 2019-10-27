@@ -8,6 +8,7 @@ use DOMDocument;
 use DOMNode;
 use DOMXPath;
 use M4bTool\Audio\Chapter;
+use M4bTool\Audio\EpubChapter;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -27,72 +28,77 @@ class EpubParser extends \lywzx\epub\EpubParser
         $this->parse();
     }
 
-    public function parseTocToChapters(TimeUnit $totalLength, array $skipChapterIndexes = [])
+    public function parseTocToChapters(TimeUnit $totalLength, array $ignore = [])
     {
         $toc = $this->getTOC();
-        $totalSize = 0;
         $count = count($toc);
-        $removeKeys = [];
-        foreach ($toc as $key => $tocItem) {
+        $totalSize = 0;
 
-            if (in_array($key, $skipChapterIndexes, true) || in_array($key - $count, $skipChapterIndexes, true)) {
-                $removeKeys[$key] = true;
-                continue;
+        /** @var EpubChapter[] $epubChapters */
+        $epubChapters = [];
+        foreach ($toc as $i => $tocItem) {
+            $name = $toc[$i]["name"] ?? "";
+            $contents = $this->loadTocItemContents($tocItem);
+            $textContents = $this->extractContents($contents, $name);
+            $ignored = in_array($i, $ignore, true) || in_array($i - $count, $ignore, true);
+
+            $chapter = new EpubChapter(new TimeUnit(0), new TimeUnit(0), $name);
+            $chapter->setContents($textContents);
+            $chapter->setIgnored($ignored);
+            $chapter->setSizeInBytes(strlen($contents));
+            $epubChapters[] = $chapter;
+
+            if (!$ignored) {
+                $totalSize += strlen($contents);
             }
-
-            $this->mergeContentProperties($toc, $key);
-            $totalSize += $toc[$key]["size"];
         }
 
-        $toc = array_diff_key($toc, $removeKeys);
-
+        if ($totalSize === 0) {
+            return $epubChapters;
+        }
 
         $totalLengthMs = $totalLength->milliseconds();
-        $chapters = [];
         /** @var Chapter $lastChapter */
         $lastChapter = null;
-        foreach ($toc as $tocItem) {
-            if ($tocItem["content"] === "") {
-                continue;
+        foreach ($epubChapters as $epubChapter) {
+            if (!$epubChapter->isIgnored()) {
+                $percentage = $epubChapter->getSizeInBytes() / $totalSize;
+                $start = $lastChapter === null ? new TimeUnit(0) : $lastChapter->getEnd();
+                $length = new TimeUnit(round($totalLengthMs * $percentage));
+                $epubChapter->setStart($start);
+                $epubChapter->setLength($length);
             }
-            $percentage = $tocItem["size"] / $totalSize;
-            $start = $lastChapter === null ? new TimeUnit(0) : $lastChapter->getEnd();
-            $length = new TimeUnit(round($totalLengthMs * $percentage));
-            $name = $tocItem["name"] ?? "";
-            $lastChapter = new Chapter($start, $length, $name);
-            $contentBuffer = new StringBuffer(preg_replace("/[\s]+/", " ", $tocItem["content"]));
+
+            $lastChapter = $epubChapter;
+            $contentBuffer = new StringBuffer(preg_replace("/[\s]+/", " ", $epubChapter->getContents()));
             $lastChapter->setIntroduction($contentBuffer->softTruncateBytesSuffix(50, "..."));
-            $chapters[] = $lastChapter;
         }
 
-        if ($lastChapter) {
+        if ($lastChapter && !$lastChapter->isIgnored()) {
             $lastChapter->setEnd(clone $totalLength);
         }
-        return $chapters;
+        return $epubChapters;
     }
 
     /**
-     * @param $toc
-     * @param $key
+     * @param $tocItem
+     * @return string
      */
-    private function mergeContentProperties(&$toc, $key)
+    private function loadTocItemContents($tocItem)
     {
-        $src = $toc[$key]["src"] ?? null;
-        $fileName = $toc[$key]["file_name"] ?? $src;
-        $name = $toc[$key]["name"] ?? "";
+        $src = $tocItem["src"] ?? null;
+        $fileName = $tocItem["file_name"] ?? $src;
         $file = "zip://" . $this->epub . "#" . $fileName;
 
         $contents = @file_get_contents($file);
-        if ($contents === false) {
-            error_clear_last();
-            $toc[$key]["content"] = "";
-        } else {
-            $toc[$key]["content"] = $this->extractContent($contents, $name);
+        if ($contents !== false) {
+            return $contents;
         }
 
-        $toc[$key]["size"] = strlen($contents);
-    }
+        error_clear_last();
+        return "";
 
+    }
     private function unicodeLtrim($str)
     {
         return preg_replace('/^[\pZ\p{Cc}\x{feff}]+/ux', '', $str);
@@ -103,7 +109,7 @@ class EpubParser extends \lywzx\epub\EpubParser
         return preg_replace('/^[\pZ\p{Cc}\x{feff}]+|[\pZ\p{Cc}\x{feff}]+$/ux', '', $str);
     }
 
-    private function extractContent($content, $chapterTitle)
+    private function extractContents($content, $chapterTitle)
     {
         if ($this->unicodeTrim($content) === "") {
             return "";

@@ -47,7 +47,8 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
     {
         $chaptersAsLines = [];
         foreach ($chapters as $chapter) {
-            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
+            $suffix = $chapter->isIgnored() ? " (ignored)" : "";
+            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName() . $suffix;
         }
         return implode(PHP_EOL, $chaptersAsLines);
     }

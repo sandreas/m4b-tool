@@ -172,7 +172,6 @@ class ChaptersCommand extends AbstractCommand
     /**
      * @param string $epubFile
      * @param Silence[] $silences
-     * @throws InvalidArgumentException
      * @throws Exception
      */
     private function handleEpub(string $epubFile = null, array $silences = [])
@@ -184,21 +183,7 @@ class ChaptersCommand extends AbstractCommand
             file_put_contents($backupFile, $this->mp4v2->chaptersToMp4v2Format($originalTag->chapters));
         }
 
-
-        $tag = new Tag();
-
-        $tagChanger = new TagImproverComposite();
-        $tagChanger->mp4v2 = $this->mp4v2;
-        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, $backupFile->getBasename()));
-        $tagChanger->add(Tag\ContentMetadataJson::fromFile($this->filesToProcess));
-        $tagChanger->add(new Tag\MergeSubChapters($this->chapterHandler));
-        $tagChanger->add(
-            new Tag\GuessChaptersBySilence($this->chapterMarker,
-                $silences,
-                $this->metaHandler->inspectExactDuration($this->filesToProcess)
-            )
-        );
-        $tagChanger->add(ChaptersFromEpub::fromFile(
+        $chaptersFromEpub = ChaptersFromEpub::fromFile(
             $this->chapterHandler,
             $this->filesToProcess,
             $this->metaHandler->estimateDuration($this->filesToProcess),
@@ -213,7 +198,29 @@ class ChaptersCommand extends AbstractCommand
                 explode(",", $this->input->getOption(static::OPTION_EPUB_IGNORE_CHAPTERS))
             ),
             $epubFile
-        ));
+        );
+        $this->notice("loaded chapters from epub");
+        $this->notice("-------------------------------");
+        $this->notice($this->mp4v2->chaptersToMp4v2Format($chaptersFromEpub->getChaptersFromEpub()));
+        $this->notice("-------------------------------");
+
+
+        $tag = new Tag();
+
+        $tagChanger = new TagImproverComposite();
+        $tagChanger->mp4v2 = $this->mp4v2;
+        $tagChanger->setLogger($this);
+
+        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, $backupFile->getBasename()));
+        $tagChanger->add(Tag\ContentMetadataJson::fromFile($this->filesToProcess));
+        $tagChanger->add(new Tag\MergeSubChapters($this->chapterHandler));
+        $tagChanger->add(
+            new Tag\GuessChaptersBySilence($this->chapterMarker,
+                $silences,
+                $this->metaHandler->inspectExactDuration($this->filesToProcess)
+            )
+        );
+        $tagChanger->add($chaptersFromEpub);
         $tagChanger->add(new Tag\RemoveDuplicateFollowUpChapters($this->chapterHandler));
         // chapter adjustments have to be the last chapter handling option
         $tagChanger->add(new AdjustTooLongChapters(
@@ -226,6 +233,11 @@ class ChaptersCommand extends AbstractCommand
 
         $tagChanger->improve($tag);
         $this->metaHandler->writeTag($this->filesToProcess, $tag);
+
+        $this->notice(sprintf("wrote chapters to %s", $this->filesToProcess));
+        $this->notice("-------------------------------");
+        $this->notice($this->mp4v2->chaptersToMp4v2Format($tag->chapters));
+        $this->notice("-------------------------------");
     }
 
     private function loadOutputFile()
