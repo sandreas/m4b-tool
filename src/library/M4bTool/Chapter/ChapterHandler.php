@@ -460,6 +460,12 @@ class ChapterHandler
 
         $chapters = $this->overloadTrackChapters($overLoadChapters, $trackChapters);
 
+        if ($this->areChaptersNumberedConsecutively($chapters)) {
+            foreach ($chapters as $chapter) {
+                $chapter->setName($chapter->getIntroduction());
+            }
+        }
+
         foreach ($chapterNamesToKeep as $chapterName) {
             $index = array_search($chapterName, $normalizedNames, true);
             if ($index !== false && isset($chapters[$index], $trackChapters[$index])) {
@@ -514,6 +520,7 @@ class ChapterHandler
 
             $guessedChapters[$index] = $chapter;
         }
+
         return $guessedChapters;
     }
 
@@ -523,16 +530,25 @@ class ChapterHandler
      */
     public function removeDuplicateFollowUps($trackChapters)
     {
-        foreach ($trackChapters as $i => $trackChapter) {
-            if (!isset($trackChapters[$i]) || !isset($trackChapters[$i - 1])) {
+        $removeKeys = [];
+        $lastKey = null;
+        foreach ($trackChapters as $key => $chapter) {
+            if ($lastKey === null) {
+                $lastKey = $key;
                 continue;
             }
-
-            if ($trackChapters[$i]->getName() === $trackChapters[$i - 1]->getName()) {
-                $trackChapters[$i] = null;
+            if ($chapter->getName() === $trackChapters[$lastKey]->getName()) {
+                $removeKeys[] = $key;
+                $trackChapters[$lastKey]->setEnd($chapter->getEnd());
+                continue;
             }
+            $lastKey = $key;
         }
-        return array_filter($trackChapters);
+
+        foreach ($removeKeys as $key) {
+            unset($trackChapters[$key]);
+        }
+        return $trackChapters;
     }
 
     /**

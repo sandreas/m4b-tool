@@ -15,7 +15,6 @@ use SplFileInfo;
 class EpubParser extends \lywzx\epub\EpubParser
 {
 
-    const TRIM_CHARS = " \t\n\r\0\x0B\xC2\xA0";
     /**
      * @var SplFileInfo
      */
@@ -94,9 +93,19 @@ class EpubParser extends \lywzx\epub\EpubParser
         $toc[$key]["size"] = strlen($contents);
     }
 
+    private function unicodeLtrim($str)
+    {
+        return preg_replace('/^[\pZ\p{Cc}\x{feff}]+/ux', '', $str);
+    }
+
+    private function unicodeTrim($str)
+    {
+        return preg_replace('/^[\pZ\p{Cc}\x{feff}]+|[\pZ\p{Cc}\x{feff}]+$/ux', '', $str);
+    }
+
     private function extractContent($content, $chapterTitle)
     {
-        if (trim($content) === "") {
+        if ($this->unicodeTrim($content) === "") {
             return "";
         }
         $oldValue = libxml_use_internal_errors();
@@ -113,7 +122,8 @@ class EpubParser extends \lywzx\epub\EpubParser
             }
             $pContents = [];
             foreach ($paragraphs as $p) {
-                $pContent = ltrim($p->textContent, static::TRIM_CHARS);
+
+                $pContent = $this->unicodeLtrim($p->textContent);
                 if ($pContent === $chapterTitle) {
                     continue;
                 }
@@ -121,10 +131,10 @@ class EpubParser extends \lywzx\epub\EpubParser
             }
 
             $pContents = array_filter($pContents, function ($value) {
-                return trim($value, static::TRIM_CHARS) !== "";
+                return $this->unicodeTrim($value) !== "";
             });
             if (count($pContents) > 0) {
-                return implode(" ", $pContents);
+                return implode("\n", $pContents);
             }
             return "";
         } finally {
