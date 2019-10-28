@@ -33,12 +33,12 @@ class ChapterMarker
          */
         foreach ($mbChapters as $chapter) {
 
-            $this->debug("chapter: " . $chapter->getStart()->format());
+            $debugMessage = "chapter: " . $chapter->getStart()->format();
 
             $chapterStart = $chapter->getStart()->milliseconds();
             if ($chapterStart == 0) {
                 $guessedChapters[$chapterStart] = new Chapter(new TimeUnit($chapterStart), new TimeUnit(), $chapter->getName());
-                $this->debug(", no silence" . PHP_EOL);
+                $this->debug($debugMessage . ", no silence");
                 continue;
             }
 
@@ -95,9 +95,9 @@ class ChapterMarker
                     $marker = "+";
                 }
                 if ($index++ == 0) {
-                    $this->debug(", silence: " . $marker . $silence->getStart()->format() . ", duration: " . $silence->getLength()->format() . PHP_EOL);
+                    $this->debug($debugMessage . ", silence: " . $marker . $silence->getStart()->format() . ", duration: " . $silence->getLength()->format());
                 } else {
-                    $this->debug("                                " . $marker . $silence->getStart()->format() . ", duration: " . $silence->getLength()->format() . PHP_EOL);
+                    $this->debug($debugMessage . "                                " . $marker . $silence->getStart()->format() . ", duration: " . $silence->getLength()->format());
                 }
             }
 
@@ -113,9 +113,9 @@ class ChapterMarker
 
             $guessedChapters[$chapterMark->milliseconds()] = new Chapter($chapterMark, new TimeUnit(), $chapter->getName());
 
-            $this->debug($chapter->getName() . " - chapter-offset: " . $chapterOffset->format() . PHP_EOL);
-            $this->debug("chapter-mark: " . $chapterMark->format() . PHP_EOL);
-            $this->debug("=======================================================================" . PHP_EOL);
+            $this->debug($chapter->getName() . " - chapter-offset: " . $chapterOffset->format());
+            $this->debug("chapter-mark: " . $chapterMark->format());
+            $this->debug("=======================================================================");
         }
 
 

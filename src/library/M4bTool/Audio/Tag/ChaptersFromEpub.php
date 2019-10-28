@@ -42,7 +42,7 @@ class ChaptersFromEpub implements TagImproverInterface
     {
         try {
             $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-            $fileName = $fileName ? $fileName : "*.epub";
+            $fileName = $fileName ? $fileName : $reference->getBasename($reference->getExtension()) . "epub";
 
 
             $globPattern = $path . "/" . $fileName;

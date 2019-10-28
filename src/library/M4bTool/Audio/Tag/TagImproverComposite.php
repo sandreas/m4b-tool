@@ -46,5 +46,6 @@ class TagImproverComposite implements TagImproverInterface
         foreach ($tag->chapters as $chapter) {
             $this->debug(sprintf("%s %s", $chapter->getStart()->format(), $chapter->getName()));
         }
+        $this->debug(PHP_EOL);
     }
 }

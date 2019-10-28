@@ -506,19 +506,29 @@ class ChapterHandler
                 $bestMatchEnd = min($chapterEndMillis, $bestMatchChapter->getEnd()->milliseconds());
                 $bestMatchOverlap = $bestMatchEnd - $bestMatchStart;
 
+
+                $prefix = "-";
                 if ($mbChapter === $bestMatchChapter || $mbOverlap > $bestMatchOverlap) {
-                    $this->debug("   +" . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
                     $bestMatchChapter = $mbChapter;
-                } else {
-                    $this->debug("   -" . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
+                    $prefix = "+";
                 }
+
+                $mbOverlapUnit = new TimeUnit($mbOverlap);
+                $bmOverlapUnit = new TimeUnit($bestMatchOverlap);
+                $this->debug("   " . $prefix . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " | overlap: " . $mbOverlapUnit->format() . " <=> " . $bmOverlapUnit->format() . " bm-overlap (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
             }
+
+            $this->debug(" => used chapter " . $bestMatchChapter->getName() . " as best match");
 
             $chapter->setName($bestMatchChapter->getName());
             $chapter->setIntroduction($bestMatchChapter->getIntroduction());
 
 
             $guessedChapters[$index] = $chapter;
+        }
+
+        foreach ($guessedChapters as $chapter) {
+            $this->debug(sprintf("%s %s", $chapter->getStart()->format(), $chapter->getName()));
         }
 
         return $guessedChapters;

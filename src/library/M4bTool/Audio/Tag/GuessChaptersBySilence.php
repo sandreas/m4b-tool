@@ -14,15 +14,15 @@ class GuessChaptersBySilence implements TagImproverInterface
 {
 
     /** @var ChapterHandler */
-    protected $chapterHandler;
-    protected $silences;
+    protected $chapterMarker;
+    protected $silenceDetectionCallback;
     protected $totalDuration;
 
-    public function __construct(ChapterMarker $chapterHandler, array $silences, TimeUnit $totalDuration)
+    public function __construct(ChapterMarker $chapterMarker, TimeUnit $totalDuration, callable $silenceDetectionCallback)
     {
-        $this->chapterHandler = $chapterHandler;
-        $this->silences = $silences;
+        $this->chapterMarker = $chapterMarker;
         $this->totalDuration = $totalDuration;
+        $this->silenceDetectionCallback = $silenceDetectionCallback;
     }
 
     /**
@@ -34,8 +34,8 @@ class GuessChaptersBySilence implements TagImproverInterface
     public function improve(Tag $tag): Tag
     {
         if (count($tag->chapters) > 0) {
-            $tag->chapters = $this->chapterHandler->guessChaptersBySilences($tag->chapters, $this->silences, $this->totalDuration);
-
+            $silences = ($this->silenceDetectionCallback)();
+            $tag->chapters = $this->chapterMarker->guessChaptersBySilences($tag->chapters, $silences, $this->totalDuration);
         }
         return $tag;
     }
