@@ -58,6 +58,10 @@ class Chapter extends AbstractPart implements JsonSerializable
         $this->introduction = $introduction;
     }
 
+    public function isIgnored()
+    {
+        return false;
+    }
 
     /**
      * Specify data which should be serialized to JSON
