@@ -21,21 +21,21 @@ class ChaptersFromEpub implements TagImproverInterface
     /**
      * @var array
      */
-    protected $chaptersFromEpub;
+    protected $tagFromEpub;
     /**
      * @var ChapterHandler
      */
     protected $chapterHandler;
 
-    public function __construct(array $chaptersFromEpub = [], ChapterHandler $chapterHandler = null)
+    public function __construct(Tag $tagFromEpub = null, ChapterHandler $chapterHandler = null)
     {
-        $this->chaptersFromEpub = $chaptersFromEpub;
+        $this->tagFromEpub = $tagFromEpub ?? new Tag();
         $this->chapterHandler = $chapterHandler;
     }
 
     public function getChaptersFromEpub()
     {
-        return $this->chaptersFromEpub;
+        return $this->tagFromEpub ? $this->tagFromEpub->chapters : [];
     }
 
     public static function fromFile(ChapterHandler $chapterHandler, SplFileInfo $reference, TimeUnit $totalDuration, array $chapterIndexesToRemove = [], $fileName = null)
@@ -54,8 +54,8 @@ class ChaptersFromEpub implements TagImproverInterface
             $fileToLoad = new SplFileInfo($files[0]);
             if ($fileToLoad->isFile()) {
                 $epubParser = new EpubParser($fileToLoad);
-                $chapters = $epubParser->parseTocToChapters($totalDuration, $chapterIndexesToRemove);
-                return new static($chapters, $chapterHandler);
+                $tagWithEpubChapters = $epubParser->parseTagWithChapters($totalDuration, $chapterIndexesToRemove);
+                return new static($tagWithEpubChapters, $chapterHandler);
             }
         } catch (Throwable $e) {
             // ignore
@@ -70,10 +70,15 @@ class ChaptersFromEpub implements TagImproverInterface
      */
     public function improve(Tag $tag): Tag
     {
-        $chaptersWithoutIgnored = array_filter($this->chaptersFromEpub, function (EpubChapter $chapter) {
+        foreach ($this->tagFromEpub->extraProperties as $propertyName => $propertyValue) {
+            if (!isset($tag->extraProperties[$propertyName])) {
+                $tag->extraProperties[$propertyName] = $this->tagFromEpub->extraProperties[$propertyName];
+            }
+        }
+
+        $chaptersWithoutIgnored = array_filter($this->tagFromEpub->chapters, function (EpubChapter $chapter) {
             return !$chapter->isIgnored();
         });
-
 
         if (count($chaptersWithoutIgnored) === 0) {
             return $tag;

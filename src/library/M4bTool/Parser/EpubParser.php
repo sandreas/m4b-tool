@@ -9,6 +9,7 @@ use DOMNode;
 use DOMXPath;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\EpubChapter;
+use M4bTool\Audio\Tag;
 use M4bTool\Tags\StringBuffer;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -28,19 +29,21 @@ class EpubParser extends \lywzx\epub\EpubParser
         $this->parse();
     }
 
-    public function parseTocToChapters(TimeUnit $totalLength, array $ignore = [])
+    public function parseTagWithChapters(TimeUnit $totalLength, array $ignoreChapterIndexes = [])
     {
+        $tag = new Tag();
         $toc = $this->getTOC();
         $count = count($toc);
         $totalSize = 0;
-
+        $isbns = [];
         /** @var EpubChapter[] $epubChapters */
         $epubChapters = [];
         foreach ($toc as $i => $tocItem) {
             $name = $toc[$i]["name"] ?? "";
             $contents = $this->loadTocItemContents($tocItem);
+            $isbns = array_merge($isbns, $this->extractValidIsbns($contents));
             $textContents = $this->extractContents($contents, $name);
-            $ignored = in_array($i, $ignore, true) || in_array($i - $count, $ignore, true);
+            $ignored = in_array($i, $ignoreChapterIndexes, true) || in_array($i - $count, $ignoreChapterIndexes, true);
 
             $chapter = new EpubChapter(new TimeUnit(0), new TimeUnit(0), $name);
             $chapter->setContents($textContents);
@@ -53,8 +56,10 @@ class EpubParser extends \lywzx\epub\EpubParser
             }
         }
 
+        $isbns = array_unique($isbns);
+
         if ($totalSize === 0) {
-            return $epubChapters;
+            return $tag;
         }
 
         $totalLengthMs = $totalLength->milliseconds();
@@ -77,7 +82,12 @@ class EpubParser extends \lywzx\epub\EpubParser
         if ($lastChapter && !$lastChapter->isIgnored()) {
             $lastChapter->setEnd(clone $totalLength);
         }
-        return $epubChapters;
+
+        if (count($isbns) > 0) {
+            $tag->extraProperties[Tag::EXTRA_PROPERTY_ISBN] = $isbns[0];
+        }
+        $tag->chapters = $epubChapters;
+        return $tag;
     }
 
     /**
@@ -99,14 +109,44 @@ class EpubParser extends \lywzx\epub\EpubParser
         return "";
 
     }
-    private function unicodeLtrim($str)
+
+    private function extractValidIsbns($text)
     {
-        return preg_replace('/^[\pZ\p{Cc}\x{feff}]+/ux', '', $str);
+        $isbns = [];
+        preg_match_all("/(97[89][0-9-\s]+)/", $text, $matches);
+        if (!isset($matches[1])) {
+            return [];
+        }
+        foreach ($matches[0] as $match) {
+            $potentialIsbn = $this->normalizeIsbn($match);
+            if ($this->isValidIsbn($potentialIsbn)) {
+                $isbns[] = $potentialIsbn;
+            }
+        }
+        return $isbns;
     }
 
-    private function unicodeTrim($str)
+    private function normalizeIsbn($isbn)
     {
-        return preg_replace('/^[\pZ\p{Cc}\x{feff}]+|[\pZ\p{Cc}\x{feff}]+$/ux', '', $str);
+        return preg_replace("/[^0-9]/", "", $isbn);
+    }
+
+    private function isValidIsbn($isbn)
+    {
+        if (strlen($isbn) !== 13) {
+            return false;
+        }
+        $sum = 0;
+        for ($i = 0; $i < 12; $i++) {
+            $digit = (int)$isbn[$i];
+            $sum += ($i % 2 === 0) ? $digit : $digit * 3;
+        }
+        $checksum = 10 - ($sum % 10);
+        if ($checksum === 10) {
+            $checksum = 0;
+        }
+
+        return $checksum === (int)$isbn[12];
     }
 
     private function extractContents($content, $chapterTitle)
@@ -146,5 +186,15 @@ class EpubParser extends \lywzx\epub\EpubParser
         } finally {
             libxml_use_internal_errors($oldValue);
         }
+    }
+
+    private function unicodeTrim($str)
+    {
+        return preg_replace('/^[\pZ\p{Cc}\x{feff}]+|[\pZ\p{Cc}\x{feff}]+$/ux', '', $str);
+    }
+
+    private function unicodeLtrim($str)
+    {
+        return preg_replace('/^[\pZ\p{Cc}\x{feff}]+/ux', '', $str);
     }
 }
