@@ -376,7 +376,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
                 "-f", "null",
                 "-",
             ]));
-            $this->notice(sprintf("running silence detection for file %s with max length %s", $file, $silenceLength->format()));
+            $this->notice(sprintf("running silence detection for file %s with min length %s", $file, $silenceLength->format()));
             $process->run();
             $this->notice("silence detection finished");
             return $this->getAllProcessOutput($process);

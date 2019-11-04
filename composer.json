@@ -16,7 +16,8 @@
     "ext-libxml": "*",
     "ext-zip": "*",
     "ext-curl": "*",
-    "lywzx/php-epub": "^0.1.2"
+    "lywzx/php-epub": "^0.1.2",
+    "doctrine/collections": "^1.6"
   },
   "autoload": {
     "psr-4": {

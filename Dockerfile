@@ -53,6 +53,7 @@ echo "---- INSTALL RUNTIME PACKAGES ----" \
     php7-simplexml \
     php7-phar \
     php7-openssl \
+    php7-zip \
     pkgconf \
     pkgconfig \
     tar \

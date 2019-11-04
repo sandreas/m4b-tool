@@ -23,6 +23,7 @@ class ChapterHandler
     const MIN_CHAPTER_LENGTH_MILLISECONDS = 60000;
     const NO_REINDEXING = 1 << 0;
     const USE_FILENAMES = 1 << 1;
+    const APPEND_INTRODUCTION = 1 << 2;
     /**
      * @var BinaryWrapper
      */
@@ -119,11 +120,18 @@ class ChapterHandler
         return $this->adjustChapters($chapters);
     }
 
+    /**
+     * @param Chapter[] $chapters
+     * @param array $silences
+     * @param TimeUnit|null $totalLength
+     * @return array|Chapter[]
+     */
     public function adjustChapters(array $chapters, array $silences = [])
     {
         usort($chapters, function (Chapter $a, Chapter $b) {
             return $a->getStart()->milliseconds() - $b->getStart()->milliseconds();
         });
+
 
         if (count($silences) > 0) {
             $chapters = $this->splitTooLongChaptersBySilence($chapters, $silences);
@@ -320,6 +328,10 @@ class ChapterHandler
             return false;
         }
 
+        if ($this->isSingleWordConsecutive($chapters)) {
+            return true;
+        }
+
         $chapterCount = count($chapters);
         $chapterNamesWithoutIndexes = array_map(function (Chapter $chapter) {
             return $this->normalizeChapterName($chapter->getName());
@@ -327,7 +339,47 @@ class ChapterHandler
         $chapterNamesFrequency = array_count_values($chapterNamesWithoutIndexes);
         $mostUsedChapterNameCount = max($chapterNamesFrequency);
 
-        return $mostUsedChapterNameCount >= $chapterCount * static::CHAPTER_REINDEX_RATIO;
+        return $this->isConsecutive($chapterCount, $mostUsedChapterNameCount);
+    }
+
+    private function isSingleWordConsecutive($originalChapters)
+    {
+
+        $chapters = $this->mergeSubChapters($originalChapters);
+        $consecutiveChapterCount = 0;
+        while ($currentChapter = current($chapters)) {
+            $nextChapter = next($chapters);
+            if (!$nextChapter) {
+                break;
+            }
+            $currentWords = $this->extractWords($currentChapter->getName());
+            $nextWords = $this->extractWords($nextChapter->getName());
+
+            $diffCount = count(array_diff($currentWords, $nextWords));
+            $minWordCount = min(count($currentWords), count($nextWords));
+            if ($diffCount < 2 && $minWordCount > 1) {
+                $consecutiveChapterCount++;
+            }
+        }
+        $chapterCount = count($chapters);
+        return $this->isConsecutive($chapterCount, $consecutiveChapterCount);
+    }
+
+    private function isConsecutive($totalChapterCount, $consecutiveCount)
+    {
+        // maximum consecutive ratio is totalChapterCount - 3 (if only a few chapters are given)
+        // but cannot be < 1
+        $maxConsecutiveRatio = max($totalChapterCount - 3, 1);
+
+        // if more than 75% or totalCount-3 of all chapters are numbered consecutive
+        // consecutive is seen as true
+        $consecutiveRatio = $totalChapterCount * static::CHAPTER_REINDEX_RATIO;
+        return $consecutiveCount >= min($consecutiveRatio, $maxConsecutiveRatio);
+    }
+
+    private function extractWords($str)
+    {
+        return preg_split('/\s+/', $str);
     }
 
     private function normalizeChapterName($name)
@@ -462,7 +514,13 @@ class ChapterHandler
 
         if ($this->areChaptersNumberedConsecutively($chapters)) {
             foreach ($chapters as $chapter) {
-                $chapter->setName($chapter->getIntroduction());
+
+                if ($this->flags->contains(static::APPEND_INTRODUCTION)) {
+                    $chapter->setName(rtrim($chapter->getName(), ":") . ": " . $chapter->getIntroduction());
+                } else {
+                    $chapter->setName($chapter->getIntroduction());
+                }
+
             }
         }
 
@@ -569,7 +627,7 @@ class ChapterHandler
     {
         $mergeGroups = [];
         foreach ($chapters as $chapter) {
-            $mergeGroup = preg_replace("/^(.*)\.[0-9]+$/isU", "$1", $chapter->getName());
+            $mergeGroup = preg_replace("/^(.*)(\.[0-9]+|\([0-9]+\))$/isU", "$1", $chapter->getName());
             if (!isset($mergeGroups[$mergeGroup])) {
                 $mergeGroups[$mergeGroup] = [];
             }

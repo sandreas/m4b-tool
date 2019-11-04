@@ -6,10 +6,13 @@ namespace M4bTool\Command;
 
 use Exception;
 use M4bTool\Audio\Chapter;
+use M4bTool\Audio\ChapterCollection;
 use M4bTool\Audio\Silence;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\AdjustTooLongChapters;
 use M4bTool\Audio\Tag\TagImproverComposite;
+use M4bTool\Chapter\ChapterHandler;
+use M4bTool\Common\ConditionalFlags;
 use M4bTool\M4bTool\Audio\Tag\ChaptersFromEpub;
 use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
@@ -40,8 +43,8 @@ class ChaptersCommand extends AbstractCommand
 
     const OPTION_EPUB = "epub";
     const OPTION_EPUB_RESTORE = "epub-restore";
-    const OPTION_EPUB_DUMP_ONLY = "epub-dump-only";
     const OPTION_EPUB_IGNORE_CHAPTERS = "epub-ignore-chapters";
+    const OPTION_EPUB_APPEND_INTRODUCTION = "epub-append-introduction";
 
     /**
      * @var MusicBrainzChapterParser
@@ -72,9 +75,11 @@ class ChaptersCommand extends AbstractCommand
         $this->setHelp('Can add Chapters to m4b files via different types of inputs'); // the full command description shown when running the command with the "--help" option
 
         $this->addOption(static::OPTION_EPUB, null, InputOption::VALUE_OPTIONAL, "use this epub to extract chapter names", false);
-        $this->addOption(static::OPTION_EPUB_DUMP_ONLY, null, InputOption::VALUE_NONE, "only dump the chapters of epub instead of trying to import");
         $this->addOption(static::OPTION_EPUB_RESTORE, null, InputOption::VALUE_NONE, "try to restore chapters from a previous attempt of an epub chapter mapping");
         $this->addOption(static::OPTION_EPUB_IGNORE_CHAPTERS, null, InputOption::VALUE_OPTIONAL, sprintf("Chapter indexes that are present in the epub file but not in the audiobook (0 for the first, -1 for the last - e.g. --%s=0,1,-1 would remove the first, second and last epub chapter)", static::OPTION_EPUB_IGNORE_CHAPTERS), "");
+
+        $this->addOption(static::OPTION_EPUB_APPEND_INTRODUCTION, null, InputOption::VALUE_NONE, "If chapter names are numbered, keep original chapter name followed by the first words of the chapter, if available");
+
 
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
         $this->addOption(static::OPTION_MERGE_SIMILAR, "s", InputOption::VALUE_NONE, "merge similar chapter names");
@@ -105,8 +110,18 @@ class ChaptersCommand extends AbstractCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+
         $this->initExecution($input, $output);
         $this->initParsers();
+
+
+        $optEpub = $input->getOption(static::OPTION_EPUB);
+        $optEpubRestore = $input->getOption(static::OPTION_EPUB_RESTORE);
+
+        $chapterHandlerFlags = new ConditionalFlags();
+        $chapterHandlerFlags->insertIf(ChapterHandler::APPEND_INTRODUCTION, $input->getOption(static::OPTION_EPUB_APPEND_INTRODUCTION));
+        $this->chapterHandler->setFlags($chapterHandlerFlags);
+
         $this->loadFileToProcess();
 
         $this->optSilenceMinLength = new TimeUnit((int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH));
@@ -114,8 +129,8 @@ class ChaptersCommand extends AbstractCommand
             throw new Exception("%s must be a positive integer value", static::OPTION_SILENCE_MIN_LENGTH);
         }
 
-        if ($input->getOption(static::OPTION_EPUB) !== false || $input->getOption(static::OPTION_EPUB_RESTORE) || $input->getOption(static::OPTION_EPUB_DUMP_ONLY)) {
-            $this->handleEpub($input->getOption(static::OPTION_EPUB));
+        if ($optEpub !== false || $optEpubRestore) {
+            $this->handleEpub($optEpub);
             return;
         }
 
@@ -175,21 +190,6 @@ class ChaptersCommand extends AbstractCommand
         }
     }
 
-    private function parseEpubIgnoreChapters($option)
-    {
-        $parts = explode(",", $option);
-        return array_map(
-            function ($value) {
-                $trimmedValue = trim($value);
-                if (!is_numeric($trimmedValue)) {
-                    return PHP_INT_MAX;
-                }
-                return (int)$trimmedValue;
-            },
-            $parts
-        );
-    }
-
     /**
      * @param string $epubFile
      * @throws Exception
@@ -198,22 +198,32 @@ class ChaptersCommand extends AbstractCommand
     {
         $tag = new Tag();
 
+        $epubFileObject = $epubFile === null ? $this->filesToProcess : new SplFileInfo($epubFile);
+        $totalDuration = null;
+        if (!($this->filesToProcess instanceof SplFileInfo) || !$this->filesToProcess->isFile()) {
+            $this->error(sprintf("No valid input file provided"));
+            return;
+        }
+        $totalDuration = $this->metaHandler->estimateDuration($this->filesToProcess);
+        if ($totalDuration === null) {
+            $this->error(sprintf("Could not estimate total duration of input file %s", $totalDuration));
+            return;
+        }
+
+
         $chaptersFromEpubImprover = ChaptersFromEpub::fromFile(
             $this->chapterHandler,
-            $this->filesToProcess,
-            $this->metaHandler->estimateDuration($this->filesToProcess),
+            $epubFileObject,
+            $totalDuration,
             $this->parseEpubIgnoreChapters($this->input->getOption(static::OPTION_EPUB_IGNORE_CHAPTERS)),
             $epubFile
         );
 
         $this->notice("loaded chapters from epub");
         $this->notice("-------------------------------");
-        $this->printChaptersWithIgnoredStatus($chaptersFromEpubImprover->getChaptersFromEpub());
+        $this->printChaptersWithIgnoredStatus($chaptersFromEpubImprover->getChapterCollection());
         $this->notice("-------------------------------");
 
-        if ($this->input->getOption(self::OPTION_EPUB_DUMP_ONLY)) {
-            return;
-        }
         $chaptersBackupFile = new SplFileInfo($this->filesToProcess->getPath() . "/" . $this->filesToProcess->getBasename($this->filesToProcess->getExtension()) . "chapters.txt.bak");
 
         if ($this->input->getOption(static::OPTION_EPUB_RESTORE)) {
@@ -251,16 +261,30 @@ class ChaptersCommand extends AbstractCommand
         );
         $tagChanger->add($chaptersFromEpubImprover);
         $tagChanger->add(new Tag\RemoveDuplicateFollowUpChapters($this->chapterHandler));
-        // chapter adjustments have to be the last chapter handling option
-        $tagChanger->add(new AdjustTooLongChapters(
+
+        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess));
+
+        $tagChanger->improve($tag);
+
+
+        $epubChaptersFile = new SplFileInfo($this->filesToProcess->getPath() . "/" . $this->filesToProcess->getBasename($this->filesToProcess->getExtension()) . "epub-chapters.txt");
+        file_put_contents($epubChaptersFile, $this->mp4v2->chaptersToMp4v2Format($tag->chapters));
+
+        $tooLongAdjustment = new AdjustTooLongChapters(
             $this->metaHandler,
             $this->chapterHandler,
             $this->filesToProcess,
             $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH),
             (int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH)
-        ));
+        );
+        try {
+            $tooLongAdjustment->setLogger($this);
+            $tooLongAdjustment->improve($tag);
+        } catch (InvalidArgumentException | Exception $e) {
+            // ignore
+        }
 
-        $tagChanger->improve($tag);
+
         $this->metaHandler->writeTag($this->filesToProcess, $tag);
 
         $this->notice(sprintf("wrote chapters to %s", $this->filesToProcess));
@@ -269,17 +293,31 @@ class ChaptersCommand extends AbstractCommand
         $this->notice("-------------------------------");
     }
 
+    private function parseEpubIgnoreChapters($option)
+    {
+        $parts = explode(",", $option);
+        return array_map(
+            function ($value) {
+                $trimmedValue = trim($value);
+                if (!is_numeric($trimmedValue)) {
+                    return PHP_INT_MAX;
+                }
+                return (int)$trimmedValue;
+            },
+            $parts
+        );
+    }
+
     /**
-     * @param Chapter[] $chapters
+     * @param ChapterCollection $chapters
      * @throws Exception
      */
-    private function printChaptersWithIgnoredStatus(array $chapters)
+    private function printChaptersWithIgnoredStatus(ChapterCollection $chapters)
     {
         foreach ($chapters as $chapter) {
             $time = $chapter->isIgnored() ? "00 ignore 00" : $chapter->getStart()->format();
             $introduction = $chapter->getIntroduction() ? "(" . $chapter->getIntroduction() . ")" : "";
             $this->notice(sprintf("%s %s %s", $time, $chapter->getName(), $introduction));
-
         }
     }
 

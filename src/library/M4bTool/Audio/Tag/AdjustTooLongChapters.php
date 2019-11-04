@@ -59,7 +59,6 @@ class AdjustTooLongChapters implements TagImproverInterface
      * @return Tag
      * @throws Exception
      * @throws InvalidArgumentException
-     * @throws InvalidArgumentException
      */
     public function improve(Tag $tag): Tag
     {
@@ -80,6 +79,14 @@ class AdjustTooLongChapters implements TagImproverInterface
             return $tag;
         }
         $this->info(sprintf("adjusting %s chapters with max length %s and desired length %s", count($tag->chapters), $this->maxChapterLength->format(), $this->desiredChapterLength->format()));
+        $totalLength = $this->metaDataHandler->inspectExactDuration($this->file);
+
+        // fix last chapter length (e.g. when using a chapters.txt format where last chapter length is not given)
+        if ($totalLength !== null) {
+            $lastChapter = end($tag->chapters);
+            $lastChapter->setEnd(new TimeUnit($totalLength->milliseconds()));
+        }
+
         $silences = $this->metaDataHandler->detectSilences($this->file, $this->silenceLength);
         $tag->chapters = $this->chapterHandler->adjustChapters($tag->chapters, $silences);
         return $tag;

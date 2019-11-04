@@ -5,6 +5,7 @@ namespace M4bTool\M4bTool\Audio\Tag;
 
 
 use Exception;
+use M4bTool\Audio\ChapterCollection;
 use M4bTool\Audio\EpubChapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagImproverInterface;
@@ -19,43 +20,45 @@ class ChaptersFromEpub implements TagImproverInterface
 
 
     /**
-     * @var array
+     * @var ChapterCollection
      */
-    protected $tagFromEpub;
+    protected $chapterCollection;
     /**
      * @var ChapterHandler
      */
     protected $chapterHandler;
 
-    public function __construct(Tag $tagFromEpub = null, ChapterHandler $chapterHandler = null)
+    public function __construct(ChapterCollection $chapterCollection = null, ChapterHandler $chapterHandler = null)
     {
-        $this->tagFromEpub = $tagFromEpub ?? new Tag();
+        $this->chapterCollection = $chapterCollection ?? new ChapterCollection();
         $this->chapterHandler = $chapterHandler;
     }
 
-    public function getChaptersFromEpub()
+    public function getChapterCollection()
     {
-        return $this->tagFromEpub ? $this->tagFromEpub->chapters : [];
+        return $this->chapterCollection;
     }
 
-    public static function fromFile(ChapterHandler $chapterHandler, SplFileInfo $reference, TimeUnit $totalDuration, array $chapterIndexesToRemove = [], $fileName = null)
+    public static function fromFile(ChapterHandler $chapterHandler, SplFileInfo $reference, TimeUnit $totalDuration = null, array $chapterIndexesToRemove = [], $fileName = null)
     {
         try {
-            $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-            $fileName = $fileName ? $fileName : $reference->getBasename($reference->getExtension()) . "epub";
+            if ($fileName === null || !file_exists($fileName)) {
+                $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
+                $fileName = $fileName ? $fileName : $reference->getBasename($reference->getExtension()) . "epub";
+                $globPattern = $path . "/" . $fileName;
+                $files = glob($globPattern);
+                if (!is_array($files) || count($files) === 0) {
+                    return new static();
+                }
 
-
-            $globPattern = $path . "/" . $fileName;
-            $files = glob($globPattern);
-            if (!is_array($files) || count($files) === 0) {
-                return new static();
+                $fileToLoad = new SplFileInfo($files[0]);
+            } else {
+                $fileToLoad = new SplFileInfo($fileName);
             }
-
-            $fileToLoad = new SplFileInfo($files[0]);
             if ($fileToLoad->isFile()) {
                 $epubParser = new EpubParser($fileToLoad);
-                $tagWithEpubChapters = $epubParser->parseTagWithChapters($totalDuration, $chapterIndexesToRemove);
-                return new static($tagWithEpubChapters, $chapterHandler);
+                $chapterCollection = $epubParser->parseChapterCollection($totalDuration, $chapterIndexesToRemove);
+                return new static($chapterCollection, $chapterHandler);
             }
         } catch (Throwable $e) {
             // ignore
@@ -70,13 +73,13 @@ class ChaptersFromEpub implements TagImproverInterface
      */
     public function improve(Tag $tag): Tag
     {
-        foreach ($this->tagFromEpub->extraProperties as $propertyName => $propertyValue) {
-            if (!isset($tag->extraProperties[$propertyName])) {
-                $tag->extraProperties[$propertyName] = $this->tagFromEpub->extraProperties[$propertyName];
-            }
-        }
+        $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_ISBN, $this->chapterCollection->getIsbn());
+        $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_ASIN, $this->chapterCollection->getAsin());
+        $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_AUDIBLE_ID, $this->chapterCollection->getAudibleID());
 
-        $chaptersWithoutIgnored = array_filter($this->tagFromEpub->chapters, function (EpubChapter $chapter) {
+        $chapters = $this->chapterCollection->toArray();
+
+        $chaptersWithoutIgnored = array_filter($chapters, function (EpubChapter $chapter) {
             return !$chapter->isIgnored();
         });
 
@@ -88,5 +91,12 @@ class ChaptersFromEpub implements TagImproverInterface
         return $tag;
     }
 
+    private function improveExtraProperty(Tag $tag, $extraPropertyName, $value)
+    {
+
+        if (!isset($tag->extraProperties[$extraPropertyName]) && $value) {
+            $tag->extraProperties[$extraPropertyName] = $value;
+        }
+    }
 
 }
