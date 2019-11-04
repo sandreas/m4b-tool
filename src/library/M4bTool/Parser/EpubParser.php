@@ -30,8 +30,6 @@ class EpubParser extends \lywzx\epub\EpubParser
         $this->parse();
     }
 
-    // nur in einem Wort unterschieden => Das erste Kapitel, Das zweite Kapitel, etc...
-
     public function parseChapterCollection(TimeUnit $totalLength = null, array $ignoreChapterIndexes = [])
     {
         $toc = $this->getTOC();
@@ -39,9 +37,10 @@ class EpubParser extends \lywzx\epub\EpubParser
         $totalSize = 0;
         $isbns = [];
 
+        /** @var EpubChapter[]|ChapterCollection $epubChapters */
         $epubChapters = new ChapterCollection();
         if ($totalLength === null) {
-            $epubChapters->setFactor(ChapterCollection::FACTOR_PERCENT);
+            $epubChapters->setUnit(ChapterCollection::UNIT_BASED_ON_PERCENT);
         }
         foreach ($toc as $i => $tocItem) {
             $name = $toc[$i]["name"] ?? "";
@@ -63,7 +62,7 @@ class EpubParser extends \lywzx\epub\EpubParser
 
         $isbns = array_unique($isbns);
         if (count($isbns) > 0) {
-            $epubChapters->setIsbn($isbns[0]);
+            $epubChapters->setEan($isbns[0]);
         }
 
         if ($totalSize === 0) {

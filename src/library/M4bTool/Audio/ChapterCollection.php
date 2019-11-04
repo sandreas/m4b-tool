@@ -8,15 +8,14 @@ use Doctrine\Common\Collections\ArrayCollection;
 
 class ChapterCollection extends ArrayCollection
 {
-    const FACTOR_MILLISECOND = 1;
-    const FACTOR_PAGE = 1;
-    const FACTOR_PERCENT = 1000000;
+    const UNIT_MS = 1;
+    const UNIT_BASED_ON_PERCENT = 2;
 
     /** @var int */
-    protected $factor = self::FACTOR_MILLISECOND;
+    protected $unit = self::UNIT_MS;
 
     /** @var string */
-    protected $isbn;
+    protected $ean;
 
     /** @var string */
     protected $audibleID;
@@ -24,30 +23,31 @@ class ChapterCollection extends ArrayCollection
     /** @var string */
     protected $asin;
 
-    public function __construct(array $elements = [], $factor = self::FACTOR_MILLISECOND)
+
+    public function __construct(array $elements = [])
     {
         parent::__construct($elements);
-        $this->factor = $factor;
+        $this->unit = static::UNIT_MS;
     }
 
-    public function setFactor($factor)
+    public function setUnit($unit)
     {
-        $this->factor = $factor;
+        $this->unit = $unit;
     }
 
-    public function getFactor()
+    public function getUnit()
     {
-        return $this->factor;
+        return $this->unit;
     }
 
-    public function setIsbn($isbn)
+    public function setEan($ean)
     {
-        $this->isbn = $isbn;
+        $this->ean = $ean;
     }
 
-    public function getIsbn()
+    public function getEan()
     {
-        return $this->isbn;
+        return $this->ean;
     }
 
     public function setAudibleID($audibleID)

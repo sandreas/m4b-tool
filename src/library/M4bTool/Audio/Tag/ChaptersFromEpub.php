@@ -73,7 +73,7 @@ class ChaptersFromEpub implements TagImproverInterface
      */
     public function improve(Tag $tag): Tag
     {
-        $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_ISBN, $this->chapterCollection->getIsbn());
+        $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_EAN, $this->chapterCollection->getEan());
         $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_ASIN, $this->chapterCollection->getAsin());
         $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_AUDIBLE_ID, $this->chapterCollection->getAudibleID());
 
