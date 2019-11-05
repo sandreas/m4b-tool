@@ -5,12 +5,18 @@ namespace M4bTool\Audio\Tag;
 
 
 use Exception;
+use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Parser\Mp4ChapsChapterParser;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
 class ChaptersTxt implements TagImproverInterface
 {
+    /**
+     * @var TimeUnit
+     */
+    protected $totalLength;
 
     /**
      * @var Mp4ChapsChapterParser
@@ -18,25 +24,27 @@ class ChaptersTxt implements TagImproverInterface
     private $chapterParser;
     private $chaptersContent;
 
-    public function __construct(Mp4ChapsChapterParser $chapterParser = null, $chaptersContent = null)
+    public function __construct(Mp4ChapsChapterParser $chapterParser = null, $chaptersContent = null, TimeUnit $totalLength = null)
     {
         $this->chapterParser = $chapterParser;
         $this->chaptersContent = $chaptersContent;
+        $this->totalLength = $totalLength;
     }
 
     /**
      * Cover constructor.
      * @param SplFileInfo $reference
      * @param null $fileName
+     * @param TimeUnit|null $totalLength
      * @return ChaptersTxt
      */
-    public static function fromFile(SplFileInfo $reference, $fileName = null)
+    public static function fromFile(SplFileInfo $reference, $fileName = null, TimeUnit $totalLength = null)
     {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
         $fileName = $fileName ? $fileName : "chapters.txt";
         $fileToLoad = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
         if ($fileToLoad->isFile()) {
-            return new static(new Mp4ChapsChapterParser(), file_get_contents($fileToLoad));
+            return new static(new Mp4ChapsChapterParser(), file_get_contents($fileToLoad), $totalLength);
         }
         return new static();
     }
@@ -52,6 +60,12 @@ class ChaptersTxt implements TagImproverInterface
     {
         if ($this->chapterParser !== null && trim($this->chaptersContent) !== "") {
             $tag->chapters = $this->chapterParser->parse($this->chaptersContent);
+
+            // fix last chapter length, because length is not stored in chapters.txt-Format
+            $lastChapter = end($tag->chapters);
+            if ($this->totalLength instanceof TimeUnit && $lastChapter instanceof Chapter) {
+                $lastChapter->setEnd(clone $this->totalLength);
+            }
         }
         return $tag;
     }

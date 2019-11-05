@@ -43,7 +43,7 @@ class EpubParser extends \lywzx\epub\EpubParser
             $epubChapters->setUnit(ChapterCollection::UNIT_BASED_ON_PERCENT);
         }
         foreach ($toc as $i => $tocItem) {
-            $name = $toc[$i]["name"] ?? "";
+            $name = $this->unicodeLtrim($toc[$i]["name"]) ?? "";
             $contents = $this->loadTocItemContents($tocItem);
             $isbns = array_merge($isbns, $this->extractValidIsbns($contents));
             $textContents = $this->extractContents($contents, $name);

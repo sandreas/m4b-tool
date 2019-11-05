@@ -76,7 +76,7 @@ class ContentMetadataJson implements TagImproverInterface
         /** @var Chapter[] $chapters */
         $chapters = [];
         if (isset($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"])) {
-            $chapters[] = new Chapter(new TimeUnit(0), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"]), "Intro");
+            $chapters[] = new Chapter(new TimeUnit(0), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"]), Chapter::DEFAULT_INTRO_NAME);
         }
         $i = 1;
         foreach ($decodedChapters as $decodedChapter) {
@@ -91,7 +91,7 @@ class ContentMetadataJson implements TagImproverInterface
 
 
         if ($lastChapter instanceof Chapter && isset($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"])) {
-            $chapters[] = new Chapter(new TimeUnit($lastChapter->getEnd()->milliseconds()), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"]), "Outro");
+            $chapters[] = new Chapter(new TimeUnit($lastChapter->getEnd()->milliseconds()), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"]), Chapter::DEFAULT_OUTRO_NAME);
         }
         $tag->chapters = $chapters;
 

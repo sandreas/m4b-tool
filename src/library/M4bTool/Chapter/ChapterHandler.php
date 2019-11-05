@@ -595,29 +595,30 @@ class ChapterHandler
             $trackEndMs = $track->getEnd()->milliseconds();
             $trackLengthMs = $track->getLength()->milliseconds();
 
-            foreach ($overLoadChapters as $mbIndex => $mbChapter) {
-                $maxStart = max($trackStartMs, $mbChapter->getStart()->milliseconds());
-                $minEnd = min($trackEndMs, $mbChapter->getEnd()->milliseconds());
-                $overlapMs = $minEnd - $maxStart;
-                $overlapRatio = $overlapMs / $trackLengthMs;
+            if ($trackLengthMs > 0) {
+                foreach ($overLoadChapters as $mbIndex => $mbChapter) {
+                    $maxStart = max($trackStartMs, $mbChapter->getStart()->milliseconds());
+                    $minEnd = min($trackEndMs, $mbChapter->getEnd()->milliseconds());
+                    $overlapMs = $minEnd - $maxStart;
+                    $overlapRatio = $overlapMs / $trackLengthMs;
 
-                $bestMatchMaxStart = max($trackStartMs, $bestMatchChapter->getStart()->milliseconds());
-                $bestMatchMaxEnd = min($trackEndMs, $bestMatchChapter->getEnd()->milliseconds());
-                $bestMatchOverlapMs = $bestMatchMaxEnd - $bestMatchMaxStart;
-                $bestMatchOverlapRatio = $bestMatchOverlapMs / $trackLengthMs;
+                    $bestMatchMaxStart = max($trackStartMs, $bestMatchChapter->getStart()->milliseconds());
+                    $bestMatchMaxEnd = min($trackEndMs, $bestMatchChapter->getEnd()->milliseconds());
+                    $bestMatchOverlapMs = $bestMatchMaxEnd - $bestMatchMaxStart;
+                    $bestMatchOverlapRatio = $bestMatchOverlapMs / $trackLengthMs;
 
 
-                $prefix = "-";
-                if ($mbChapter === $bestMatchChapter || $overlapRatio > $bestMatchOverlapRatio) {
-                    $bestMatchChapter = $mbChapter;
-                    $prefix = "+";
+                    $prefix = "-";
+                    if ($mbChapter === $bestMatchChapter || $overlapRatio > $bestMatchOverlapRatio) {
+                        $bestMatchChapter = $mbChapter;
+                        $prefix = "+";
+                    }
+
+                    $mbOverlapUnit = new TimeUnit($overlapMs);
+                    $bmOverlapUnit = new TimeUnit($bestMatchOverlapMs);
+                    $this->debug("   " . $prefix . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " | overlap: " . $mbOverlapUnit->format() . " <=> " . $bmOverlapUnit->format() . " bm-overlap (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
                 }
-
-                $mbOverlapUnit = new TimeUnit($overlapMs);
-                $bmOverlapUnit = new TimeUnit($bestMatchOverlapMs);
-                $this->debug("   " . $prefix . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " | overlap: " . $mbOverlapUnit->format() . " <=> " . $bmOverlapUnit->format() . " bm-overlap (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
             }
-
             $this->debug(" => used chapter " . $bestMatchChapter->getName() . " as best match");
 
             $track->setName($bestMatchChapter->getName());
@@ -641,14 +642,28 @@ class ChapterHandler
     {
         $removeKeys = [];
         $lastKey = null;
+        reset($trackChapters);
+        $firstChapter = current($trackChapters);
+        $lastChapter = end($trackChapters);
+        $preLastChapter = prev($trackChapters);
+        $hasIntroChapter = $firstChapter instanceof Chapter && $firstChapter->getName() === Chapter::DEFAULT_INTRO_NAME;
+        $hasOutroChapter = $lastChapter instanceof Chapter && $lastChapter->getName() === Chapter::DEFAULT_OUTRO_NAME;
         foreach ($trackChapters as $key => $chapter) {
             if ($lastKey === null) {
                 $lastKey = $key;
                 continue;
             }
             if ($chapter->getName() === $trackChapters[$lastKey]->getName()) {
-                $removeKeys[] = $key;
-                $trackChapters[$lastKey]->setEnd($chapter->getEnd());
+                if ($hasIntroChapter && $firstChapter->getLength()->milliseconds() === $lastKey) {
+                    $removeKeys[] = $lastKey;
+                } else {
+                    $removeKeys[] = $key;
+                    $trackChapters[$lastKey]->setEnd($chapter->getEnd());
+                    if ($hasOutroChapter && $chapter === $preLastChapter) {
+                        $lastChapter->setStart(clone $preLastChapter->getStart());
+                    }
+                }
+
                 continue;
             }
             $lastKey = $key;

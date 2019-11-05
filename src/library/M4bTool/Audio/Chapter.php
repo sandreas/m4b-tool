@@ -14,6 +14,9 @@ use Sandreas\Time\TimeUnit;
 
 class Chapter extends AbstractPart implements JsonSerializable
 {
+    const DEFAULT_INTRO_NAME = "Intro";
+    const DEFAULT_OUTRO_NAME = "Outro";
+
     protected $name;
     protected $introduction;
     /**

@@ -45,6 +45,7 @@ class ChaptersCommand extends AbstractCommand
     const OPTION_EPUB_RESTORE = "epub-restore";
     const OPTION_EPUB_IGNORE_CHAPTERS = "epub-ignore-chapters";
     const OPTION_EPUB_APPEND_INTRODUCTION = "epub-append-introduction";
+    const OPTION_EPUB_DUMP = "epub-dump";
 
     /**
      * @var MusicBrainzChapterParser
@@ -76,6 +77,7 @@ class ChaptersCommand extends AbstractCommand
 
         $this->addOption(static::OPTION_EPUB, null, InputOption::VALUE_OPTIONAL, "use this epub to extract chapter names", false);
         $this->addOption(static::OPTION_EPUB_RESTORE, null, InputOption::VALUE_NONE, "try to restore chapters from a previous attempt of an epub chapter mapping");
+        $this->addOption(static::OPTION_EPUB_DUMP, null, InputOption::VALUE_NONE, "only dump epub chapters to find and ignore chapters not present in the audio book");
         $this->addOption(static::OPTION_EPUB_IGNORE_CHAPTERS, null, InputOption::VALUE_OPTIONAL, sprintf("Chapter indexes that are present in the epub file but not in the audiobook (0 for the first, -1 for the last - e.g. --%s=0,1,-1 would remove the first, second and last epub chapter)", static::OPTION_EPUB_IGNORE_CHAPTERS), "");
 
         $this->addOption(static::OPTION_EPUB_APPEND_INTRODUCTION, null, InputOption::VALUE_NONE, "If chapter names are numbered, keep original chapter name followed by the first words of the chapter, if available");
@@ -244,30 +246,38 @@ class ChaptersCommand extends AbstractCommand
         $this->printChaptersWithIgnoredStatus($chaptersFromEpubImprover->getChapterCollection());
         $this->notice("-------------------------------");
 
+        if ($this->input->getOption(static::OPTION_EPUB_DUMP)) {
+            $this->notice("dump mode - stopping after chapter listing");
+            return;
+        }
+
         $originalTag = $this->metaHandler->readTag($this->filesToProcess);
         if (!$chaptersBackupFile->isFile()) {
             file_put_contents($chaptersBackupFile, $this->mp4v2->chaptersToMp4v2Format($originalTag->chapters));
         }
 
+        $inputFileDuration = $this->metaHandler->inspectExactDuration($this->filesToProcess);
         $tagChanger = new TagImproverComposite();
         $tagChanger->setLogger($this);
 
-        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, $chaptersBackupFile->getBasename()));
+        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, $chaptersBackupFile->getBasename(), $inputFileDuration));
         $tagChanger->add(Tag\ContentMetadataJson::fromFile($this->filesToProcess));
         $tagChanger->add(new Tag\MergeSubChapters($this->chapterHandler));
 
+
+        $tagChanger->add($chaptersFromEpubImprover);
+        $tagChanger->add(new Tag\IntroOutroChapters());
         $tagChanger->add(
             new Tag\GuessChaptersBySilence($this->chapterMarker,
-                $this->metaHandler->inspectExactDuration($this->filesToProcess),
+                $inputFileDuration,
                 function () {
                     return $this->metaHandler->detectSilences($this->filesToProcess, $this->optSilenceMinLength);
                 }
             )
         );
-        $tagChanger->add($chaptersFromEpubImprover);
         $tagChanger->add(new Tag\RemoveDuplicateFollowUpChapters($this->chapterHandler));
 
-        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess));
+        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, null, $inputFileDuration));
 
         $tagChanger->improve($tag);
 
