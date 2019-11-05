@@ -123,21 +123,24 @@ class ChapterHandler
     /**
      * @param Chapter[] $chapters
      * @param array $silences
-     * @param TimeUnit|null $totalLength
      * @return array|Chapter[]
      */
     public function adjustChapters(array $chapters, array $silences = [])
     {
-        usort($chapters, function (Chapter $a, Chapter $b) {
-            return $a->getStart()->milliseconds() - $b->getStart()->milliseconds();
-        });
-
+        $this->sortChapters($chapters);
 
         if (count($silences) > 0) {
             $chapters = $this->splitTooLongChaptersBySilence($chapters, $silences);
         }
 
         return $this->adjustChapterNames($chapters);
+    }
+
+    private function sortChapters(&$chapters)
+    {
+        usort($chapters, function (Chapter $a, Chapter $b) {
+            return $a->getStart()->milliseconds() - $b->getStart()->milliseconds();
+        });
     }
 
     /**
@@ -365,6 +368,46 @@ class ChapterHandler
         return $this->isConsecutive($chapterCount, $consecutiveChapterCount);
     }
 
+    /**
+     * @param Chapter[] $chapters
+     * @return Chapter[]
+     */
+    public function mergeSubChapters($chapters)
+    {
+        $mergeGroups = [];
+        foreach ($chapters as $chapter) {
+            $mergeGroup = preg_replace("/^(.*)(\.[0-9]+|\([0-9]+\))$/isU", "$1", $chapter->getName());
+            if (!isset($mergeGroups[$mergeGroup])) {
+                $mergeGroups[$mergeGroup] = [];
+            }
+            $mergeGroups[$mergeGroup][] = $chapter;
+        }
+
+        $resultChapters = [];
+        foreach ($mergeGroups as $mergeGroupName => $mergeGroup) {
+            $count = count($mergeGroup);
+            $firstChapter = current($mergeGroup);
+
+            if ($firstChapter === false) {
+                continue;
+            }
+
+            if ($count > 1) {
+                $lastChapter = end($mergeGroup);
+                $firstChapter->setEnd($lastChapter->getEnd());
+            }
+
+            $firstChapter->setName($mergeGroupName);
+            $resultChapters[] = $firstChapter;
+        }
+        return $resultChapters;
+    }
+
+    private function extractWords($str)
+    {
+        return preg_split('/\s+/', $str);
+    }
+
     private function isConsecutive($totalChapterCount, $consecutiveCount)
     {
         // maximum consecutive ratio is totalChapterCount - 3 (if only a few chapters are given)
@@ -375,11 +418,6 @@ class ChapterHandler
         // consecutive is seen as true
         $consecutiveRatio = $totalChapterCount * static::CHAPTER_REINDEX_RATIO;
         return $consecutiveCount >= min($consecutiveRatio, $maxConsecutiveRatio);
-    }
-
-    private function extractWords($str)
-    {
-        return preg_split('/\s+/', $str);
     }
 
     private function normalizeChapterName($name)
@@ -545,6 +583,7 @@ class ChapterHandler
     public function overloadTrackChapters($overLoadChapters, $trackChapters)
     {
         $guessedChapters = [];
+//        $matchStack = [];
         foreach ($trackChapters as $index => $trackChapter) {
             $chapter = clone $trackChapter;
 
@@ -555,7 +594,9 @@ class ChapterHandler
 
             $chapterStartMillis = $chapter->getStart()->milliseconds();
             $chapterEndMillis = $chapter->getEnd()->milliseconds();
-            foreach ($overLoadChapters as $mbChapter) {
+
+//            $bestMatchIndex = null;
+            foreach ($overLoadChapters as $mbIndex => $mbChapter) {
                 $mbStart = max($chapterStartMillis, $mbChapter->getStart()->milliseconds());
                 $mbEnd = min($chapterEndMillis, $mbChapter->getEnd()->milliseconds());
                 $mbOverlap = $mbEnd - $mbStart;
@@ -567,6 +608,7 @@ class ChapterHandler
 
                 $prefix = "-";
                 if ($mbChapter === $bestMatchChapter || $mbOverlap > $bestMatchOverlap) {
+//                    $bestMatchIndex = $mbIndex;
                     $bestMatchChapter = $mbChapter;
                     $prefix = "+";
                 }
@@ -575,6 +617,53 @@ class ChapterHandler
                 $bmOverlapUnit = new TimeUnit($bestMatchOverlap);
                 $this->debug("   " . $prefix . $mbChapter->getStart()->format() . " - " . $mbChapter->getEnd()->format() . " | overlap: " . $mbOverlapUnit->format() . " <=> " . $bmOverlapUnit->format() . " bm-overlap (" . $mbChapter->getStart()->milliseconds() . "-" . $mbChapter->getEnd()->milliseconds() . ", " . $mbChapter->getName() . ")");
             }
+
+//            if ($bestMatchIndex !== null && count($silences) > 0) {
+//                end($matchStack);
+//                $lastMatchIndex = key($matchStack);
+//                if($lastMatchIndex === null) {
+//                    $lastMatchIndex = -1;
+//                }
+//                $lastMatchChapter = current($matchStack);
+//                $matchStack[$bestMatchIndex] = $bestMatchChapter;
+//                $unmatchedCount = $bestMatchIndex - $lastMatchIndex - 1;
+//                if($unmatchedCount > 0) {
+//                    $unmatchedChapters = [];
+//                    $timeStart = $lastMatchChapter ? $lastMatchChapter->getEnd() : new TimeUnit(0);
+//                    for($i=$lastMatchIndex+1;$i<$bestMatchIndex;$i++) {
+//                        // time range must be: $lastMatchChapter->getEnd() / $bestMatchChapter->getStart()
+//                        $unmatchedChapter = $overLoadChapters[$i];
+//                        $timeEnd = $bestMatchChapter->getStart();
+//                        $matchingSilences = array_filter($silences, function(Silence $silence) use($timeStart, $timeEnd) {
+//                           return  $silence->getStart()->milliseconds() >= $timeStart->milliseconds() && $silence->getEnd()->milliseconds() <$timeEnd->milliseconds();
+//                        });
+//
+//                        if(count($matchingSilences) === 0) {
+//                            break;
+//                        }
+//                        $silenceDistances = [];
+//                        foreach($matchingSilences as $silence){
+//                            $distance = abs($silence->getStart()->milliseconds() - $unmatchedChapter->getStart()->milliseconds());
+//                            $silenceDistances[$distance] = $silence;
+//                        }
+//                        $lowestDistanceKey = min(array_keys($silenceDistances));
+//                        $bestMatchSilence = $silenceDistances[$lowestDistanceKey];
+//                        $unmatchedChapter->setStart(clone $bestMatchSilence->getEnd());
+//                        $unmatchedChapters[] = $unmatchedChapter;
+//                        $timeStart = new TimeUnit($bestMatchSilence->getEnd()->milliseconds()+1);
+//                    }
+//
+//                    foreach($unmatchedChapters as $i => $unmatchedChapter) {
+//                        $guessedChapters[$unmatchedChapter->getStart()->milliseconds()] = $unmatchedChapter;
+//                        if(!isset($unmatchedChapters[$i+1])) {
+//                            $unmatchedChapter->setEnd(clone $bestMatchChapter->getStart());
+//                            break;
+//                        }
+//                        $unmatchedChapter->setEnd(clone $unmatchedChapters[$i+1]->getStart());
+//                    }
+//
+//                }
+//            }
 
             $this->debug(" => used chapter " . $bestMatchChapter->getName() . " as best match");
 
@@ -585,12 +674,71 @@ class ChapterHandler
             $guessedChapters[$index] = $chapter;
         }
 
+        // mark all silences of chapters that did not match any track chapter
+//        if (count($silences) > 0 && count($overLoadChapters) > 0) {
+//            $overLoadChaptersValues = array_values($overLoadChapters);
+//            $lastChapter = $overLoadChaptersValues[count($overLoadChaptersValues) - 1];
+//            foreach ($overLoadChaptersValues as $mbIndex => $chapter) {
+//                if (in_array($chapter, $matchedChapters)) {
+//                    continue;
+//                }
+//
+//
+//
+//                $before = isset($overLoadChaptersValues[$mbIndex - 1]) ? clone $overLoadChaptersValues[$mbIndex - 1]->getEnd() : new TimeUnit(0);
+//                $after = isset($overLoadChaptersValues[$mbIndex + 1]) ? clone $overLoadChaptersValues[$mbIndex + 1]->getStart() : $lastChapter->getEnd();
+//                $rangeChapter = clone $chapter;
+//                $rangeChapter->setStart($before);
+//                $rangeChapter->setEnd($after);
+//
+//                $matchingSilences = array_filter($silences, function (Silence $silence) use ($rangeChapter) {
+//                    return $silence->getStart()->milliseconds() >= $rangeChapter->getStart()->milliseconds() && $silence->getEnd()->milliseconds() <= $rangeChapter->getEnd()->milliseconds();
+//                });
+//
+//                $guessedChapters = array_merge($guessedChapters, $this->splitChapterByEverySilence($rangeChapter, $matchingSilences, "unmatched: "));
+//
+//            }
+//            $this->sortChapters($guessedChapters);
+//        }
+
+
         foreach ($guessedChapters as $chapter) {
             $this->debug(sprintf("%s %s", $chapter->getStart()->format(), $chapter->getName()));
         }
 
         return $guessedChapters;
     }
+
+    /**
+     * @param Chapter $chapterToSplit
+     * @param Silence[] $silences
+     * @param string $extraPrefix
+     * @return array|Chapter[]
+     */
+//    private function splitChapterByEverySilence(Chapter $chapterToSplit, array $silences, $extraPrefix="")
+//    {
+//        if(count($silences) === 0) {
+//            return [];
+//        }
+//        /** @var Chapter[] $chapters */
+//        $chapters = [];
+//        foreach ($silences as $silence) {
+//            $chapter = clone $chapterToSplit;
+//            $chapter->setStart(new TimeUnit($silence->getStart()->milliseconds() + $silence->getLength()->milliseconds() / 2));
+//            $chapter->setName($extraPrefix.$chapter->getName());
+//            $chapters[] = $chapter;
+//        }
+//
+//        foreach ($chapters as $i => $chapter) {
+//            if (!isset($chapters[$i + 1])) {
+//                $chapter->setEnd(clone $chapterToSplit->getEnd());
+//                break;
+//            }
+//            $chapters[$i]->setEnd(clone $chapters[$i + 1]->getStart());
+//        }
+//        return $chapters;
+//
+//    }
 
     /**
      * @param Chapter[] $trackChapters
@@ -617,40 +765,5 @@ class ChapterHandler
             unset($trackChapters[$key]);
         }
         return $trackChapters;
-    }
-
-    /**
-     * @param Chapter[] $chapters
-     * @return Chapter[]
-     */
-    public function mergeSubChapters($chapters)
-    {
-        $mergeGroups = [];
-        foreach ($chapters as $chapter) {
-            $mergeGroup = preg_replace("/^(.*)(\.[0-9]+|\([0-9]+\))$/isU", "$1", $chapter->getName());
-            if (!isset($mergeGroups[$mergeGroup])) {
-                $mergeGroups[$mergeGroup] = [];
-            }
-            $mergeGroups[$mergeGroup][] = $chapter;
-        }
-
-        $resultChapters = [];
-        foreach ($mergeGroups as $mergeGroupName => $mergeGroup) {
-            $count = count($mergeGroup);
-            $firstChapter = current($mergeGroup);
-
-            if ($firstChapter === false) {
-                continue;
-            }
-
-            if ($count > 1) {
-                $lastChapter = end($mergeGroup);
-                $firstChapter->setEnd($lastChapter->getEnd());
-            }
-
-            $firstChapter->setName($mergeGroupName);
-            $resultChapters[] = $firstChapter;
-        }
-        return $resultChapters;
     }
 }

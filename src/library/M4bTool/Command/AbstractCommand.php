@@ -169,7 +169,10 @@ class AbstractCommand extends Command implements LoggerInterface
             new Mp4info(),
             new Mp4tags()
         );
+        $this->mp4v2->setLogger($this);
+
         $fdkaac = new Fdkaac();
+        $fdkaac->setLogger($this);
         $this->metaHandler = new BinaryWrapper($this->ffmpeg, $this->mp4v2, $fdkaac);
 
         // todo: merge these two classes?

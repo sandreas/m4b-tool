@@ -4,6 +4,7 @@
 namespace M4bTool\Executables;
 
 
+use M4bTool\Audio\Traits\LogTrait;
 use Symfony\Component\Console\Helper\DebugFormatterHelper;
 use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Helper\ProcessHelper;
@@ -13,6 +14,7 @@ use Symfony\Component\Process\Process;
 
 abstract class AbstractExecutable
 {
+    use LogTrait;
     const PIPE = "|";
 
     /** @var string */
@@ -47,22 +49,26 @@ abstract class AbstractExecutable
     protected function runProcess(array $arguments, $messageInCaseOfError = null)
     {
         array_unshift($arguments, $this->pathToBinary);
+        $this->debugCommand($arguments);
         return $this->processHelper->run($this->output, $arguments, $messageInCaseOfError);
     }
 
     protected function createNonBlockingProcess(array $arguments, $timeout = null)
     {
         array_unshift($arguments, $this->pathToBinary);
+        $this->debugCommand($arguments);
         return new Process($arguments, null, null, null, $timeout);
     }
 
     /**
-     * @param array $arguments
+     * @param array $command
      * @return Process
      */
-    protected function createNonBlockingPipedProcess(array $arguments)
+    protected function createNonBlockingPipedProcess(array $command)
     {
-        $escapedArguments = array_map([$this, "escapeNonePipeArgument"], $arguments);
+        $this->debugCommand($command);
+        $escapedArguments = array_map([$this, "escapeNonePipeArgument"], $command);
+        // default timeout is 60, which is to low for m4b-tool
         return Process::fromShellCommandline(implode(" ", $escapedArguments), null, null, null, null);
     }
 
@@ -111,6 +117,12 @@ abstract class AbstractExecutable
         $argument = preg_replace('/(\\\\+)$/', '$1$1', $argument);
 
         return '"' . str_replace(['"', '^', '%', '!', "\n"], ['""', '"^^"', '"^%"', '"^!"', '!LF!'], $argument) . '"';
+    }
+
+    protected function debugCommand($command)
+    {
+        $escapedArguments = array_map([$this, "escapeNonePipeArgument"], $command);
+        $this->debug(implode(" ", $escapedArguments));
     }
 
 }

@@ -19,13 +19,9 @@ class ChaptersFromEpub implements TagImproverInterface
 {
 
 
-    /**
-     * @var ChapterCollection
-     */
+    /** @var ChapterCollection */
     protected $chapterCollection;
-    /**
-     * @var ChapterHandler
-     */
+    /** @var ChapterHandler */
     protected $chapterHandler;
 
     public function __construct(ChapterCollection $chapterCollection = null, ChapterHandler $chapterHandler = null)

@@ -8,12 +8,15 @@ use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagWriterInterface;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\Flags;
+use Psr\Log\LoggerInterface;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
 class Mp4v2Wrapper implements TagWriterInterface, DurationDetectorInterface
 {
+    use LogTrait;
     /** @var Mp4art */
     protected $art;
     /** @var Mp4chaps */
@@ -29,6 +32,14 @@ class Mp4v2Wrapper implements TagWriterInterface, DurationDetectorInterface
         $this->chaps = $chaps;
         $this->info = $info;
         $this->tags = $tags;
+    }
+
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->art->setLogger($logger);
+        $this->chaps->setLogger($logger);
+        $this->info->setLogger($logger);
+        $this->tags->setLogger($logger);
     }
 
     public function setPlatformCharset($charset)

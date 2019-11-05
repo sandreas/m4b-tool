@@ -55,7 +55,7 @@ class ChaptersCommand extends AbstractCommand
      * @var SplFileInfo
      */
     protected $filesToProcess;
-    protected $silenceDetectionOutput;
+
     /**
      * @var Silence[]
      */
@@ -219,13 +219,7 @@ class ChaptersCommand extends AbstractCommand
             $epubFile
         );
 
-        $this->notice("loaded chapters from epub");
-        $this->notice("-------------------------------");
-        $this->printChaptersWithIgnoredStatus($chaptersFromEpubImprover->getChapterCollection());
-        $this->notice("-------------------------------");
-
-        $chaptersBackupFile = new SplFileInfo($this->filesToProcess->getPath() . "/" . $this->filesToProcess->getBasename($this->filesToProcess->getExtension()) . "chapters.txt.bak");
-
+        $chaptersBackupFile = new SplFileInfo($this->filesToProcess->getPath() . "/" . $this->filesToProcess->getBasename($this->filesToProcess->getExtension()) . "chapters.bak.txt");
         if ($this->input->getOption(static::OPTION_EPUB_RESTORE)) {
             if (!$chaptersBackupFile->isFile()) {
                 $this->error(sprintf("restore failed, backup file %s does not exist", $chaptersBackupFile));
@@ -239,11 +233,21 @@ class ChaptersCommand extends AbstractCommand
             return;
         }
 
+
+        if (count($chaptersFromEpubImprover->getChapterCollection()) === 0) {
+            $this->error(sprintf("Did not find any chapters for epub - make sure an epub file is available for %s", $this->filesToProcess));
+            return;
+        }
+
+        $this->notice("loaded chapters from epub");
+        $this->notice("-------------------------------");
+        $this->printChaptersWithIgnoredStatus($chaptersFromEpubImprover->getChapterCollection());
+        $this->notice("-------------------------------");
+
         $originalTag = $this->metaHandler->readTag($this->filesToProcess);
         if (!$chaptersBackupFile->isFile()) {
             file_put_contents($chaptersBackupFile, $this->mp4v2->chaptersToMp4v2Format($originalTag->chapters));
         }
-
 
         $tagChanger = new TagImproverComposite();
         $tagChanger->setLogger($this);
@@ -251,6 +255,7 @@ class ChaptersCommand extends AbstractCommand
         $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, $chaptersBackupFile->getBasename()));
         $tagChanger->add(Tag\ContentMetadataJson::fromFile($this->filesToProcess));
         $tagChanger->add(new Tag\MergeSubChapters($this->chapterHandler));
+
         $tagChanger->add(
             new Tag\GuessChaptersBySilence($this->chapterMarker,
                 $this->metaHandler->inspectExactDuration($this->filesToProcess),
