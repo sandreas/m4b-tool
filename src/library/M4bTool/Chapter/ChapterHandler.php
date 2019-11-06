@@ -554,7 +554,7 @@ class ChapterHandler
             foreach ($chapters as $chapter) {
 
                 if ($this->flags->contains(static::APPEND_INTRODUCTION)) {
-                    $chapter->setName(rtrim($chapter->getName(), ":") . ": " . $chapter->getIntroduction());
+                    $chapter->setName(rtrim($chapter->getName(), "-") . " - " . $chapter->getIntroduction());
                 } else {
                     $chapter->setName($chapter->getIntroduction());
                 }
