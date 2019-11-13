@@ -35,7 +35,7 @@ class ChaptersFromEpub implements TagImproverInterface
         return $this->chapterCollection;
     }
 
-    public static function fromFile(ChapterHandler $chapterHandler, SplFileInfo $reference, TimeUnit $totalDuration = null, array $chapterIndexesToRemove = [], $fileName = null)
+    public static function fromFile(ChapterHandler $chapterHandler, SplFileInfo $reference = null, TimeUnit $totalDuration = null, array $chapterIndexesToRemove = [], $fileName = null)
     {
         try {
             if ($fileName === null || !file_exists($fileName)) {
@@ -69,7 +69,7 @@ class ChaptersFromEpub implements TagImproverInterface
      */
     public function improve(Tag $tag): Tag
     {
-        $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_EAN, $this->chapterCollection->getEan());
+        $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_ISBN, $this->chapterCollection->getEan());
         $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_ASIN, $this->chapterCollection->getAsin());
         $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_AUDIBLE_ID, $this->chapterCollection->getAudibleID());
 
@@ -83,7 +83,12 @@ class ChaptersFromEpub implements TagImproverInterface
             return $tag;
         }
 
-        $tag->chapters = $this->chapterHandler->overloadTrackChaptersKeepUnique($chaptersWithoutIgnored, $tag->chapters);
+        if (count($tag->chapters) > 0) {
+            $tag->chapters = $this->chapterHandler->overloadTrackChaptersKeepUnique($chaptersWithoutIgnored, $tag->chapters);
+        } else {
+            $tag->chapters = $chaptersWithoutIgnored;
+        }
+
         return $tag;
     }
 

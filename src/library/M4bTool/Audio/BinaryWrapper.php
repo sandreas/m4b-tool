@@ -14,7 +14,6 @@ use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterInterface;
 use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Executables\Mp4v2Wrapper;
-use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Tags\StringBuffer;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
@@ -308,13 +307,13 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "chapters.txt");
         $this->ensureFileDoesNotExist($destinationFile);
         $tag = $this->readTag($audioFile);
-        file_put_contents($destinationFile, $this->mp4v2->chaptersToMp4v2Format($tag->chapters));
+        file_put_contents($destinationFile, $this->mp4v2->buildChaptersTxt($tag->chapters));
         return $destinationFile;
     }
 
     public function toMp4v2ChaptersFormat($chapters)
     {
-        return $this->mp4v2->chaptersToMp4v2Format($chapters);
+        return $this->mp4v2->buildChaptersTxt($chapters);
     }
 
     /**
@@ -328,8 +327,7 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         $destinationFile = $this->normalizeDefaultFile($audioFile, $chaptersFile, "chapters.txt");
         $this->ensureFileExists($destinationFile);
 
-        $chapterParser = new Mp4ChapsChapterParser();
-        $chapters = $chapterParser->parse(file_get_contents($destinationFile));
+        $chapters = $this->mp4v2->parseChaptersTxt(file_get_contents($destinationFile));
         $this->importChapters($audioFile, $chapters, $flags);
     }
 
@@ -398,5 +396,24 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
     public function supportsConversion(FileConverterOptions $options): bool
     {
         return $this->fdkaac->supportsConversion($options) || $this->ffmpeg->supportsConversion($options);
+    }
+
+    /**
+     * @param string $chapterString
+     * @return Chapter[]
+     * @throws Exception
+     */
+    public function parseChaptersTxt(string $chapterString)
+    {
+        return $this->mp4v2->parseChaptersTxt($chapterString);
+    }
+
+    /**
+     * @param Chapter[] $chapters
+     * @return string
+     */
+    public function buildChaptersTxt(array $chapters)
+    {
+        return $this->mp4v2->buildChaptersTxt($chapters);
     }
 }

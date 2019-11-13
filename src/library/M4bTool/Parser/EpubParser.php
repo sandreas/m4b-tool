@@ -7,6 +7,7 @@ namespace M4bTool\Parser;
 use DOMDocument;
 use DOMNode;
 use DOMXPath;
+use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\ChapterCollection;
 use M4bTool\Audio\EpubChapter;
@@ -34,6 +35,31 @@ class EpubParser extends \lywzx\epub\EpubParser
     {
         $toc = $this->getTOC();
         $count = count($toc);
+        // if toc only contains 1 chapter, this has to be wrong
+        // try to extract from spine
+        if ($count < 2) {
+            $toc = [];
+            $fileIds = $this->getSpine();
+            foreach ($fileIds as $id) {
+                $manifest = $this->getManifest($id);
+                $src = $manifest["href"] ?? "";
+
+                try {
+                    $contents = $this->unicodeTrim($this->getFile($id));
+                    $paragraphs = $this->extractParagraphs($contents);
+                    $name = $this->unicodeTrim($paragraphs[0] ?? $id);
+                    $toc[] = [
+                        "name" => $name,
+                        "paragraphs" => $paragraphs,
+                        "src" => $src
+                    ];
+                } catch (Exception $e) {
+                    continue;
+                }
+
+            }
+        }
+
         $totalSize = 0;
         $isbns = [];
 
@@ -41,12 +67,21 @@ class EpubParser extends \lywzx\epub\EpubParser
         $epubChapters = new ChapterCollection();
         if ($totalLength === null) {
             $epubChapters->setUnit(ChapterCollection::UNIT_BASED_ON_PERCENT);
+            $totalLength = new TimeUnit(ChapterCollection::PERCENT_FAKE_SECONDS, TimeUnit::SECOND); // 27h
         }
         foreach ($toc as $i => $tocItem) {
             $name = $this->unicodeLtrim($toc[$i]["name"]) ?? "";
             $contents = $this->loadTocItemContents($tocItem);
             $isbns = array_merge($isbns, $this->extractValidIsbns($contents));
-            $textContents = $this->extractContents($contents, $name);
+            $paragraphs = $tocItem["paragraphs"] ?? $this->extractParagraphs($contents);
+
+            $paragraphs = $this->removeChapterTitleFromParagraphs($paragraphs, $name);
+
+            // remove chapter title from paragraphs
+            if ($this->unicodeTrim($paragraphs[0] ?? "") === $name && $name !== "") {
+                array_shift($paragraphs);
+            }
+            $textContents = implode("\n", $paragraphs);
             $ignored = in_array($i, $ignoreChapterIndexes, true) || in_array($i - $count, $ignoreChapterIndexes, true);
 
             $chapter = new EpubChapter(new TimeUnit(0), new TimeUnit(0), $name);
@@ -91,6 +126,18 @@ class EpubParser extends \lywzx\epub\EpubParser
         }
 
         return $epubChapters;
+    }
+
+    private function removeChapterTitleFromParagraphs($paragraphs, $chapterTitle)
+    {
+        $firstParagraph = $paragraphs[0] ?? null;
+        if ($chapterTitle === "" || $firstParagraph === null) {
+            return $paragraphs;
+        }
+        if ($firstParagraph === $chapterTitle || $this->normalizeTitle($firstParagraph) === $this->normalizeTitle($chapterTitle) || preg_match("/^[\s0-9.)-]+$/isU", $firstParagraph)) {
+            array_shift($paragraphs);
+        }
+        return $paragraphs;
     }
 
     /**
@@ -152,10 +199,10 @@ class EpubParser extends \lywzx\epub\EpubParser
         return $checksum === (int)$isbn[12];
     }
 
-    private function extractContents($content, $chapterTitle)
+    private function extractParagraphs($content)
     {
         if ($this->unicodeTrim($content) === "") {
-            return "";
+            return [];
         }
         $oldValue = libxml_use_internal_errors();
         libxml_use_internal_errors(true);
@@ -164,36 +211,40 @@ class EpubParser extends \lywzx\epub\EpubParser
             $doc = new DOMDocument();
             $doc->loadHTML($content);
             $xpath = new DOMXPath($doc);
+
+            $title = "";
+            $titleElement = $xpath->query("//title");
+            if ($titleElement && $titleElement->length > 0) {
+                $title = $this->unicodeTrim($titleElement->item(0)->textContent);
+            }
             /** @var DOMNode[] $paragraphs */
             $paragraphs = $xpath->query("/html/body//p");
+
             if (!$paragraphs) {
-                return "";
+                return [$title];
             }
             $pContents = [];
             foreach ($paragraphs as $p) {
-
-                $pContent = $this->unicodeLtrim($p->textContent);
-                if ($this->normalizeTitle($pContent) === $this->normalizeTitle($chapterTitle) || preg_match("/^[\s0-9\.\)-]+$/isU", $pContent)) {
-                    continue;
-                }
-                $pContents[] = $pContent;
+                $pContents[] = $this->unicodeLtrim($p->textContent);
             }
 
             $pContents = array_filter($pContents, function ($value) {
                 return $this->unicodeTrim($value) !== "";
             });
             if (count($pContents) > 0) {
-                return implode("\n", $pContents);
+                return array_values($pContents);
             }
-            return "";
+            return [$title];
         } finally {
             libxml_use_internal_errors($oldValue);
         }
     }
 
+
     private function normalizeTitle($str)
     {
-        $str = $string = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/u', '', $str);
+        $str = $string = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F0-9]/u', '', $str);
+
         return mb_strtolower($str);
     }
 

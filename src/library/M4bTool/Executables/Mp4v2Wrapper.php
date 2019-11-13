@@ -101,9 +101,19 @@ class Mp4v2Wrapper implements TagWriterInterface, DurationDetectorInterface
      * @param Chapter[] $chapters
      * @return string
      */
-    public function chaptersToMp4v2Format(array $chapters)
+    public function buildChaptersTxt(array $chapters)
     {
-        return $this->chaps->chaptersToMp4v2Format($chapters);
+        return $this->chaps->buildChaptersTxt($chapters);
+    }
+
+    /**
+     * @param string $chapterString
+     * @return Chapter[]
+     * @throws Exception
+     */
+    public function parseChaptersTxt(string $chapterString)
+    {
+        return $this->chaps->parseChaptersTxt($chapterString);
     }
 
 

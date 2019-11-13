@@ -51,11 +51,26 @@ use M4bTool\Parser\EmbeddedCover;
  */
 class Tag implements ArrayAccess
 {
-    const EXTRA_PROPERTY_EAN = "ean";
+    const EXTRA_PROPERTY_ISBN = "isbn";
     const EXTRA_PROPERTY_ASIN = "asin";
     const EXTRA_PROPERTY_AUDIBLE_ID = "audible_id";
 
-    const MP4_STIK_AUDIOBOOK = 2;
+    const MEDIA_TYPE_MOVIE_OLD = 0;
+    const MEDIA_TYPE_MUSIC = 1;
+    const MEDIA_TYPE_AUDIO_BOOK = 2;
+    const MEDIA_TYPE_WHACKED_BOOKMARK = 5;
+    const MEDIA_TYPE_MUSIC_VIDEO = 6;
+    const MEDIA_TYPE_MOVIE = 9;
+    const MEDIA_TYPE_TV_SHOW = 10;
+    const MEDIA_TYPE_BOOKLET = 11;
+    const MEDIA_TYPE_RINGTONE = 14;
+    const MEDIA_TYPE_PODCAST = 21;
+    const MEDIA_TYPE_ITUNES_U = 23;
+
+    // type book does not exist in mp4 specs, but is needed for reading chapters from books
+    // since MEDIA_TYPE is specified as uint8 max value is 255, so 256 is safe
+    const MEDIA_TYPE_BOOK = 256;
+    const MEDIA_TYPE_EBOOK = 257;
 
     const TRANSIENT_PROPERTIES = [
         "chapters",
@@ -86,7 +101,7 @@ class Tag implements ArrayAccess
     public $comment;
     public $copyright;
     public $encodedBy;
-    public $type = self::MP4_STIK_AUDIOBOOK;
+    public $type = self::MEDIA_TYPE_AUDIO_BOOK;
 
     // MP3 Specific
     public $performer; // TPE3

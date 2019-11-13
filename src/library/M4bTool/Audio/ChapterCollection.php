@@ -11,6 +11,8 @@ class ChapterCollection extends ArrayCollection
     const UNIT_MS = 1;
     const UNIT_BASED_ON_PERCENT = 2;
 
+    const PERCENT_FAKE_SECONDS = 1000000;
+
     /** @var int */
     protected $unit = self::UNIT_MS;
 

@@ -12,7 +12,6 @@ use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Common\ConditionalFlags;
-use M4bTool\Parser\Mp4ChapsChapterParser;
 use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -172,8 +171,7 @@ class SplitCommand extends AbstractConversionCommand
             $tag = $cueSheet->parse($chapterFileContents);
             $this->chapters = $tag->chapters;
         } else {
-            $chapterParser = new Mp4ChapsChapterParser();
-            $this->chapters = $chapterParser->parse(file_get_contents($this->chaptersFile));
+            $this->chapters = $this->metaHandler->parseChaptersTxt(file_get_contents($this->chaptersFile));
         }
 
         if (count($this->chapters) > 0) {
@@ -305,7 +303,7 @@ class SplitCommand extends AbstractConversionCommand
         $env = new Twig_Environment(new Twig_Loader_Array([]));
         $template = $env->createTemplate($this->optFilenameTemplate);
         $fileNameTemplate = $template->render((array)$tag);
-        $replacedFileName = preg_replace("/\r|\n/", "", $fileNameTemplate);
+        $replacedFileName = preg_replace("/[\r\n]/", "", $fileNameTemplate);
         $replacedFileName = preg_replace('/[<>:\"|?*]/', "", $replacedFileName);
         $replacedFileName = preg_replace('/[\x00-\x1F\x7F]/u', '', $replacedFileName);
         return $replacedFileName . "." . $this->optAudioExtension;

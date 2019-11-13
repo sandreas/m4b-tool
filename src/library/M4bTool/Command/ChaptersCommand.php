@@ -14,7 +14,6 @@ use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\M4bTool\Audio\Tag\ChaptersFromEpub;
-use M4bTool\Parser\Mp4ChapsChapterParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
@@ -227,8 +226,7 @@ class ChaptersCommand extends AbstractCommand
                 $this->error(sprintf("restore failed, backup file %s does not exist", $chaptersBackupFile));
                 return;
             }
-            $mp4ChapterParser = new Mp4ChapsChapterParser();
-            $tag->chapters = $mp4ChapterParser->parse(file_get_contents($chaptersBackupFile));
+            $tag->chapters = $this->metaHandler->parseChaptersTxt(file_get_contents($chaptersBackupFile));
             $this->metaHandler->writeTag($this->filesToProcess, $tag);
             $this->notice(sprintf("restored tags from %s", $chaptersBackupFile));
             unlink($chaptersBackupFile);
@@ -253,7 +251,7 @@ class ChaptersCommand extends AbstractCommand
 
         $originalTag = $this->metaHandler->readTag($this->filesToProcess);
         if (!$chaptersBackupFile->isFile()) {
-            file_put_contents($chaptersBackupFile, $this->mp4v2->chaptersToMp4v2Format($originalTag->chapters));
+            file_put_contents($chaptersBackupFile, $this->mp4v2->buildChaptersTxt($originalTag->chapters));
         }
 
         $inputFileDuration = $this->metaHandler->inspectExactDuration($this->filesToProcess);
@@ -283,7 +281,7 @@ class ChaptersCommand extends AbstractCommand
 
 
         $epubChaptersFile = new SplFileInfo($this->filesToProcess->getPath() . "/" . $this->filesToProcess->getBasename($this->filesToProcess->getExtension()) . "epub-chapters.txt");
-        file_put_contents($epubChaptersFile, $this->mp4v2->chaptersToMp4v2Format($tag->chapters));
+        file_put_contents($epubChaptersFile, $this->mp4v2->buildChaptersTxt($tag->chapters));
 
         $tooLongAdjustment = new AdjustTooLongChapters(
             $this->metaHandler,
@@ -304,7 +302,7 @@ class ChaptersCommand extends AbstractCommand
 
         $this->notice(sprintf("wrote chapters to %s", $this->filesToProcess));
         $this->notice("-------------------------------");
-        $this->notice($this->mp4v2->chaptersToMp4v2Format($tag->chapters));
+        $this->notice($this->mp4v2->buildChaptersTxt($tag->chapters));
         $this->notice("-------------------------------");
     }
 
