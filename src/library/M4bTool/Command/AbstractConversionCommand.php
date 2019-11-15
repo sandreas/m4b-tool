@@ -129,18 +129,17 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     {
         parent::configure();
         $this->addOption(static::OPTION_AUDIO_FORMAT, null, InputOption::VALUE_OPTIONAL, "output format, that ffmpeg will use to create files", static::AUDIO_EXTENSION_M4B);
-        $this->addOption(static::OPTION_AUDIO_CHANNELS, null, InputOption::VALUE_OPTIONAL, "audio channels, e.g. 1, 2", ""); // -ac 1
-        $this->addOption(static::OPTION_AUDIO_BIT_RATE, null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...", "");
-        $this->addOption(static::OPTION_AUDIO_SAMPLE_RATE, null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...", "");
-        $this->addOption(static::OPTION_AUDIO_CODEC, null, InputOption::VALUE_OPTIONAL, "audio codec, e.g. libmp3lame, aac, ...", "");
-        $this->addOption(static::OPTION_AUDIO_QUALITY, null, InputOption::VALUE_OPTIONAL, sprintf("Use variable bitrate for encoding - value is in percent (e.g. --%s=80)", static::OPTION_AUDIO_QUALITY), null);
-        $this->addOption(static::OPTION_AUDIO_PROFILE, null, InputOption::VALUE_OPTIONAL, "audio profile, when using extra low bitrate - valid values: aac_he, aac_he_v2", "");
+        $this->addOption(static::OPTION_AUDIO_CHANNELS, null, InputOption::VALUE_OPTIONAL, "audio channels, e.g. 1, 2"); // -ac 1
+        $this->addOption(static::OPTION_AUDIO_BIT_RATE, null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...");
+        $this->addOption(static::OPTION_AUDIO_SAMPLE_RATE, null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...");
+        $this->addOption(static::OPTION_AUDIO_CODEC, null, InputOption::VALUE_OPTIONAL, "audio codec, e.g. libmp3lame, aac, ...");
+        $this->addOption(static::OPTION_AUDIO_QUALITY, null, InputOption::VALUE_OPTIONAL, sprintf("Use variable bitrate for encoding - value is in percent (e.g. --%s=80)", static::OPTION_AUDIO_QUALITY));
+        $this->addOption(static::OPTION_AUDIO_PROFILE, null, InputOption::VALUE_OPTIONAL, "audio profile, when using extra low bitrate - valid values: aac_he, aac_he_v2");
 
         $this->addOption(static::OPTION_ADJUST_FOR_IPOD, null, InputOption::VALUE_NONE, "auto adjust bitrate and sampling rate for ipod, if track is too long (may result in low audio quality)");
-        $this->addOption(static::OPTION_FIX_MIME_TYPE, null, InputOption::VALUE_NONE, "try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent an empty video window", null);
+        $this->addOption(static::OPTION_FIX_MIME_TYPE, null, InputOption::VALUE_NONE, "try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent an empty video window");
         $this->addOption(static::OPTION_TRIM_SILENCE, null, InputOption::VALUE_NONE, "Try to trim silences at the start and end of files");
         $this->addOption(static::OPTION_ADD_SILENCE, null, InputOption::VALUE_OPTIONAL, "Silence length in ms to add between merged files");
-
     }
 
     /**
@@ -223,28 +222,6 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     }
 
     /**
-     * @return float|int
-     * @throws Exception
-     */
-    protected function bitrateStringToInt()
-    {
-        $multipliers = [
-            "k" => 1000,
-            "M" => 1000 * 1000,
-            "G" => 1000 * 1000 * 1000,
-            "T" => 1000 * 1000 * 1000 * 1000,
-        ];
-        preg_match("/^([0-9]+)[\s]*(" . implode("|", array_keys($multipliers)) . ")[\s]*$/U", $this->optAudioBitRate, $matches);
-
-        if (count($matches) !== 3) {
-            throw new Exception("Invalid audio-bitrate: " . $this->optAudioBitRate);
-        }
-        $value = $matches[1];
-        $multiplier = $multipliers[$matches[2]];
-        return $value * $multiplier;
-    }
-
-    /**
      * @param SplFileInfo $file
      * @param SplFileInfo $coverTargetFile
      * @param bool $force
@@ -258,29 +235,57 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         }
 
         if (!$file->isFile()) {
-            $this->notice("skip cover extraction, source file " . $file . " does not exist");
+            $this->notice(sprintf("skip cover extraction, source file %s does not exist", $file));
             return null;
         }
 
         if ($coverTargetFile->isFile() && !$force) {
-            $this->notice("skip cover extraction, file " . $coverTargetFile . " already exists - use --force to overwrite");
-            return null;
-        }
-        if ($this->input->getOption(static::OPTION_SKIP_COVER)) {
+            $this->notice(sprintf("skip cover extraction, file %s already exists - use --%s to overwrite", $coverTargetFile, static::OPTION_FORCE));
             return null;
         }
 
-        if ($this->input->getOption(static::OPTION_COVER)) {
+        if ($this->input->getOption(static::OPTION_SKIP_COVER)) {
+            $this->notice(sprintf("skip cover extraction by user demand (--%s)", static::OPTION_SKIP_COVER));
             return null;
+        }
+
+        $optCover = $this->input->getOption(static::OPTION_COVER);
+        if ($optCover) {
+            $this->notice(sprintf("skip cover extraction, a custom cover has been specified: %s", $optCover));
+            return null;
+        }
+
+        $movedCoverTargetFile = null;
+        // backup existing cover file if forced
+        if ($coverTargetFile->isFile() && $force) {
+            $p = $coverTargetFile->getPath();
+            $b = $coverTargetFile->getBasename($coverTargetFile->getExtension());
+            $suffix = uniqid("");
+            $movedCoverTargetFile = new SplFileInfo($p . "/" . $b . $suffix . $coverTargetFile->getExtension());
+            if (!rename($coverTargetFile, $movedCoverTargetFile)) {
+                $this->notice(sprintf("skipping cover extraction - could not backup existing cover to %s", $movedCoverTargetFile));
+                return null;
+            }
         }
 
         $this->metaHandler->exportCover($file, $coverTargetFile);
 
         if (!$coverTargetFile->isFile()) {
-            $this->warning("extracting cover to " . $coverTargetFile . " failed");
+            $this->warning(sprintf("extracting cover to %s failed - maybe there was no cover embedded in %s", $coverTargetFile, $file));
+            if (!$movedCoverTargetFile) {
+                return null;
+            }
+            if (!rename($movedCoverTargetFile, $coverTargetFile)) {
+                $this->notice("restoring cover backup failed");
+            } else {
+                $this->notice("restored cover backup due to failed export");
+            }
             return null;
         }
-        $this->notice("extracted cover to " . $coverTargetFile . "");
+        $this->notice(sprintf("extracted cover to %s", $coverTargetFile));
+        if ($movedCoverTargetFile && $movedCoverTargetFile->isFile()) {
+            @unlink($movedCoverTargetFile);
+        }
         return $coverTargetFile;
     }
 
@@ -406,23 +411,6 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     protected function samplingRateToInt()
     {
         return (int)str_ireplace("hz", "", $this->optAudioSampleRate);
-    }
-
-    protected function lookupFileContents(SplFileInfo $referenceFile, $nameOfFile, $maxSize = 1024 * 1024)
-    {
-        $nameOfFileDir = $referenceFile->isDir() ? $referenceFile : new SplFileInfo($referenceFile->getPath());
-        $this->notice(sprintf("searching for %s in %s", $nameOfFile, $nameOfFileDir));
-        $autoDescriptionFile = new SplFileInfo($nameOfFileDir . DIRECTORY_SEPARATOR . $nameOfFile);
-
-        $this->debug(sprintf("checking file %s, realpath: %s", $autoDescriptionFile, $autoDescriptionFile->getRealPath()));
-
-        if ($autoDescriptionFile->isFile() && $autoDescriptionFile->getSize() < $maxSize) {
-            $this->notice(sprintf("success: found %s for import", $nameOfFile));
-            return file_get_contents($autoDescriptionFile);
-        } else {
-            $this->notice(sprintf("file %s not found or too big - skipping...", $nameOfFile));
-        }
-        return null;
     }
 
     protected function lookupAndAddCover()

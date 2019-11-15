@@ -96,12 +96,13 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
         $command[] = $outputFile;
         $process = $this->ffmpeg($command);
-        if ($process->getExitCode() > 0) {
-            throw new Exception(sprintf("Could not write tag for file %s: %s (%s)", $file, $process->getErrorOutput(), $process->getExitCode()));
-        }
 
         if ($metaDataFile && $metaDataFile->isFile()) {
             unlink($metaDataFile);
+        }
+
+        if ($process->getExitCode() > 0) {
+            throw new Exception(sprintf("Could not write tag for file %s: %s (%s)", $file, $process->getErrorOutput(), $process->getExitCode()));
         }
 
         if (!$outputFile->isFile()) {
@@ -127,38 +128,30 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
      */
     protected function appendTagFilesToCommand(&$command, Tag $tag = null)
     {
-        $ffmetadataFile = new SplFileInfo(tempnam(sys_get_temp_dir(), ""));
-        try {
-
-
-            if ($tag === null) {
-                return null;
-            }
-            $commandAddition = [];
-            $metaDataFileIndex = 1;
-            if ($tag->hasCoverFile()) {
-                $command = array_merge($command, ["-i", $tag->cover]);
-                $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
-                $metaDataFileIndex++;
-            }
-
-            $ffmetadata = $this->buildFfmetadata($tag);
-            if (file_put_contents($ffmetadataFile, $ffmetadata) === false) {
-                throw new Exception(sprintf("Could not create metadatafile %s", $ffmetadataFile));
-            }
-
-
-            $command = array_merge($command, ["-i", $ffmetadataFile, "-map_metadata", (string)$metaDataFileIndex]);
-            if (count($commandAddition) > 0) {
-                $command = array_merge($command, $commandAddition);
-            }
-
-            return $ffmetadataFile;
-        } finally {
-            if ($ffmetadataFile->isFile()) {
-                @unlink($ffmetadataFile);
-            }
+        $ffmetadataFile = new SplFileInfo(tempnam(sys_get_temp_dir(), "") . ".txt");
+        if ($tag === null) {
+            return null;
         }
+        $commandAddition = [];
+        $metaDataFileIndex = 1;
+        if ($tag->hasCoverFile()) {
+            $command = array_merge($command, ["-i", $tag->cover]);
+            $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
+            $metaDataFileIndex++;
+        }
+
+        $ffmetadata = $this->buildFfmetadata($tag);
+        if (file_put_contents($ffmetadataFile, $ffmetadata) === false) {
+            throw new Exception(sprintf("Could not create metadatafile %s", $ffmetadataFile));
+        }
+
+
+        $command = array_merge($command, ["-i", $ffmetadataFile, "-map_metadata", (string)$metaDataFileIndex]);
+        if (count($commandAddition) > 0) {
+            $command = array_merge($command, $commandAddition);
+        }
+
+        return $ffmetadataFile;
     }
 
     public function buildFfmetadata(Tag $tag)
@@ -552,6 +545,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             $command[] = "-acodec";
             $command[] = "copy";
 
+
+            $this->appendParameterToCommand($command, "-f", $this->mapFormat($options->source->getExtension()));
             $this->appendParameterToCommand($command, "-y", $options->force);
 
             $command[] = $tmpOutputFile;
@@ -609,6 +604,16 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             }
         }
     */
+
+    private function mapFormat($format)
+    {
+        $result = static::EXTENSION_FORMAT_MAPPING[$format] ?? "";
+
+        if ($result === "") {
+            return null;
+        }
+        return $result;
+    }
 
     /**
      * @param FileConverterOptions $options
@@ -668,9 +673,9 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $this->appendParameterToCommand($command, "-ac", $options->channels);
         $this->appendParameterToCommand($command, "-acodec", $options->codec);
 
-        // alac can be used for m4a/m4b, but not ffmpeg says it is not mp4 compilant
+        // alac can be used for m4a/m4b, but ffmpeg says it is not mp4 compilant
         if ($options->format && $options->codec !== BinaryWrapper::CODEC_ALAC) {
-            $this->appendParameterToCommand($command, "-f", $options->format);
+            $this->appendParameterToCommand($command, "-f", $this->mapFormat($options->format));
         }
 
         $command[] = $options->destination;
@@ -678,6 +683,11 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $process = $this->createNonBlockingProcess($this->ffmpegAdjustArguments($command));
         $process->setTimeout(0);
         $process->start();
+        $process->addTerminateEventCallback(function () use ($metaDataFile) {
+            if ($metaDataFile->isFile()) {
+                unlink($metaDataFile);
+            }
+        });
 
         return $process;
     }
