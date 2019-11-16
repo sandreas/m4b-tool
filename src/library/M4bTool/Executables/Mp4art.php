@@ -54,12 +54,12 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
     public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $index = 0)
     {
         $this->runProcess([
-            "--art-index", "0",
+            "--art-index", (string)$index,
             "--extract", $audioFile
         ]);
 
         $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
-        $extractedCoverFile = new SplFileInfo($audioFile->getPath() . DIRECTORY_SEPARATOR . $fileName . ".art[" . $index . "].jpg");
+        $extractedCoverFile = new SplFileInfo(ltrim($audioFile->getPath() . DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR) . $fileName . ".art[" . $index . "].jpg");
 
         if (!$extractedCoverFile->isFile()) {
             throw new Exception(sprintf("exporting cover to %s failed", $extractedCoverFile));
