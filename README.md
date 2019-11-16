@@ -156,6 +156,9 @@ If you performed the above steps with the docker image or installed and compiled
 
 ### Docker (experimental)
 
+If you want to turn the current repo into a docker image, make sure [you have build from source](#building-from-source).
+If not, [the docker build script](Dockerfile) will fall back on downloading the latest stable release.
+
 To use docker with `m4b-tool`, you first have to build a custom image located in the `docker` directory. Since this image is compiling every third party library from scratch to get the best possible audio quality, it can take a long time for the first build.
 
 ```
