@@ -3,6 +3,7 @@
 namespace M4bTool\Parser;
 
 use Exception;
+use M4bTool\Audio\Chapter;
 use PHPUnit\Framework\TestCase;
 
 class FfmetaDataParserTest extends TestCase
@@ -21,6 +22,8 @@ class FfmetaDataParserTest extends TestCase
     protected $mp4StreamInfo;
     protected $mp4StreamInfoWithoutFrame;
     protected $escapedMeta;
+    /** @var string */
+    protected $differentTimeBase;
 
     public function setUp()
     {
@@ -343,6 +346,38 @@ Output #0, null, to 'pipe:':
 FFSTREAMINFO;
 
 
+        $this->differentTimeBase = <<<EOT
+;FFMETADATA1
+major_brand=M4A
+minor_version=0
+compatible_brands=3gp5isom
+Encoding Params=vers
+genre=Audiobook
+media_type=2
+track=1
+title=GloriesIreland00-12_librivox
+artist=Joseph Dunn
+album=The Glories of Ireland
+comment=https://archive.org/details/glories_of_ireland_1801_librivox
+encoder=Lavf58.20.100
+[CHAPTER]
+TIMEBASE=1/44100
+START=0
+END=12789133
+title=00 - Preface
+[CHAPTER]
+TIMEBASE=1/44100
+START=12789133
+END=78233962
+title=01 - The Romance of Irish History
+[CHAPTER]
+TIMEBASE=1/44100
+START=78233962
+END=143634460
+title=02 - The Islands of Saints and Scholars
+EOT;
+
+
         // MetaData:
         // ffmpeg -i data/input.m4b -f ffmetadata test.txt
 
@@ -448,5 +483,25 @@ FFSTREAMINFO;
     {
         $this->subject->parse($this->escapedMeta);
         $this->assertEquals("test\\\\\\;test", $this->subject->getProperty("album"));
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function testSomething()
+    {
+        $this->subject->parse($this->differentTimeBase);
+        /** @var Chapter[] $chapters */
+        $chapters = $this->subject->getChapters();
+        $this->assertCount(3, $chapters);
+        $this->assertEquals(0, round($chapters[0]->getStart()->milliseconds()));
+        $this->assertEquals(290003, round($chapters[0]->getEnd()->milliseconds()));
+
+        $this->assertEquals(290003, round($chapters[1]->getStart()->milliseconds()));
+        $this->assertEquals(1774013, round($chapters[1]->getEnd()->milliseconds()));
+
+        $this->assertEquals(1774013, round($chapters[2]->getStart()->milliseconds()));
+        $this->assertEquals(3257017, round($chapters[2]->getEnd()->milliseconds()));
+
     }
 }

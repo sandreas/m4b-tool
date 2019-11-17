@@ -205,17 +205,16 @@ class FfmetaDataParser
         }
         $timeBaseScanner->scanToEnd();
         $timeBase = (string)$timeBaseScanner->getTrimmedResult();
-        $timeUnit = (int)$timeBase / 1000;
 
-        $start = (int)(string)$chapterProperties["start"];
-        $end = (int)(string)$chapterProperties["end"];
+        $start = (float)(string)$chapterProperties["start"];
+        $end = (float)(string)$chapterProperties["end"];
         $title = $chapterProperties["title"] ?? "";
-        $start = new TimeUnit($start, $timeUnit);
-        $end = new TimeUnit($end, $timeUnit);
-        $length = new TimeUnit($end->milliseconds() - $start->milliseconds());
+        $startUnit = new TimeUnit($start / $timeBase, TimeUnit::SECOND);
+        $endUnit = new TimeUnit($end / $timeBase, TimeUnit::SECOND);
+        $length = new TimeUnit($endUnit->milliseconds() - $startUnit->milliseconds());
 
 
-        $this->chapters[] = new Chapter($start, $length, (string)$title);
+        $this->chapters[] = new Chapter($startUnit, $length, (string)$title);
         return true;
     }
 
