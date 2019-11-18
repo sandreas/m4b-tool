@@ -19,8 +19,8 @@ class OpenPackagingFormat implements TagImproverInterface
 
     const META_NAME_CALIBRE_SERIES = "calibre:series";
     const META_NAME_CALIBRE_SERIES_INDEX = "calibre:series_index";
-    const META_NAME_CALIBRE_RATING = "calibre:rating";
-    const META_NAME_CALIBRE_TIMESTAMP = "calibre:timestamp";
+//    const META_NAME_CALIBRE_RATING = "calibre:rating";
+//    const META_NAME_CALIBRE_TIMESTAMP = "calibre:timestamp";
     const META_NAME_CALIBRE_TITLE_SORT = "calibre:title_sort";
 
     protected $xmlString;
@@ -76,7 +76,14 @@ class OpenPackagingFormat implements TagImproverInterface
         $creators = $xml->xpath("//dc:creator");
         foreach ($creators as $creator) {
             if ($this->queryAttribute($creator, "role", static::NAMESPACE_OPEN_PACKAGING_FORMAT) === static::CREATOR_ROLE_AUTHOR) {
-                $tag->artist = $this->makeString($creator);
+                $author = $this->queryAttribute($creator, "file-as");
+                if (strpos($author, ",")) {
+                    $authorParts = explode(",", $author);
+                    $authorParts[] = array_shift($authorParts);
+                    $tag->artist = implode(" ", array_map("trim", $authorParts));
+                } else {
+                    $tag->artist = $this->makeString($creator);
+                }
             }
         }
 
