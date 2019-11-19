@@ -38,5 +38,7 @@ class FileConverterOptions
 
     /** @var Tag */
     public $tag;
+    /** @var bool */
+    public $noConversion;
 
 }

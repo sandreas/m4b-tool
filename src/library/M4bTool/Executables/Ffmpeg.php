@@ -522,10 +522,15 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             return null;
         }
 
-        $tmpOutputFile = new SplFileInfo((string)$outputFile . "-tmp." . $inputFile->getExtension());
-
-
-        if (!$tmpOutputFile->isFile() || $options->force) {
+        $tmpOutputFile = new SplFileInfo((string)$outputFile . "-finished." . $inputFile->getExtension());
+        $tmpOutputFileConverting = new SplFileInfo((string)$outputFile . "-converting." . $inputFile->getExtension());
+        if ((!$outputFile->isFile() && !$tmpOutputFile->isFile()) || $options->force) {
+            if ($tmpOutputFileConverting->isFile()) {
+                unlink($tmpOutputFileConverting);
+            }
+            if ($outputFile->isFile()) {
+                unlink($outputFile);
+            }
             $command = [
                 "-i", $inputFile,
                 "-vn",
@@ -549,12 +554,22 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             $this->appendParameterToCommand($command, "-f", $this->mapFormat($options->source->getExtension()));
             $this->appendParameterToCommand($command, "-y", $options->force);
 
-            $command[] = $tmpOutputFile;
+            $command[] = $tmpOutputFileConverting;
+
             $process = $this->ffmpeg($command);
             if ($process->getExitCode() > 0) {
                 throw new Exception(sprintf("Could not extract part of file %: %s (%s)", $inputFile, $process->getErrorOutput(), $process->getExitCode()));
             }
+            if ($options->noConversion) {
+                if (!rename($tmpOutputFileConverting, $outputFile)) {
+                    throw new Exception(sprintf("Could not rename finished extracted part %s to %s (no conversion)", $tmpOutputFileConverting->getBasename(), $outputFile->getBasename()));
+                }
+                return $process;
+            }
 
+            if (!rename($tmpOutputFileConverting, $tmpOutputFile)) {
+                throw new Exception(sprintf("Could not rename finished extracted part %s to %s", $tmpOutputFileConverting->getBasename(), $tmpOutputFile->getBasename()));
+            }
         }
 
         $convertOptions = clone $options;
@@ -562,9 +577,11 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $process = $this->convertFile($convertOptions);
         $process->wait();
         unlink($tmpOutputFile);
+
         return $process;
 
     }
+
     /*
         protected function appendTagParametersToCommand(&$command, Tag $tag=null)
         {

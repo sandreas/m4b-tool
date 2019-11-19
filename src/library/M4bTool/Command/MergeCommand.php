@@ -14,7 +14,6 @@ use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Audio\Tag\OpenPackagingFormat;
 use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
-use M4bTool\Audio\Silence;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Executables\Tasks\ConversionTask;
 use M4bTool\Executables\Tasks\Pool;
@@ -39,9 +38,6 @@ class MergeCommand extends AbstractConversionCommand
 
     const ARGUMENT_MORE_INPUT_FILES = "more-input-files";
     const OPTION_INCLUDE_EXTENSIONS = "include-extensions";
-    const OPTION_MARK_TRACKS = "mark-tracks";
-    const OPTION_AUTO_SPLIT_SECONDS = "auto-split-seconds";
-    const OPTION_NO_CONVERSION = "no-conversion";
     const OPTION_BATCH_PATTERN = "batch-pattern";
     const OPTION_DRY_RUN = "dry-run";
     const OPTION_JOBS = "jobs";
@@ -73,19 +69,8 @@ class MergeCommand extends AbstractConversionCommand
         // "c" => self::OPTION_TAG_COVER, // cover cannot be string
     ];
 
-    const NORMALIZE_CHAPTER_OPTIONS = [
-        'first-chapter-offset' => 0,
-        'last-chapter-offset' => 0,
-        'merge-similar' => false,
-        'no-chapter-numbering' => false,
-        'chapter-pattern' => "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i",
-        'chapter-remove-chars' => "„“”",
-    ];
     const SILENCE_INDEX_MARKER = -1;
     const OPTION_EQUATE = "equate";
-
-
-    protected $outputDirectory;
 
     protected $meta = [];
     /**
@@ -94,15 +79,9 @@ class MergeCommand extends AbstractConversionCommand
     protected $filesToConvert = [];
     protected $filesToMerge = [];
     protected $filesToDelete = [];
-    protected $sameFormatFiles = [];
 
     /** @var SplFileInfo */
     protected $outputFile;
-    protected $sameFormatFileDirectory;
-
-
-    /** @var Silence[] */
-    protected $trackMarkerSilences = [];
 
     /** @var string[] */
     protected $alreadyProcessedBatchDirs = [];
@@ -124,7 +103,6 @@ class MergeCommand extends AbstractConversionCommand
         $this->addOption(static::OPTION_OUTPUT_FILE, static::OPTION_OUTPUT_FILE_SHORTCUT, InputOption::VALUE_REQUIRED, "output file");
         $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", implode(',', static::DEFAULT_SUPPORTED_AUDIO_EXTENSIONS));
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
-        $this->addOption(static::OPTION_NO_CONVERSION, null, InputOption::VALUE_NONE, "skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)");
 
         $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title) - parameter --output-file must be a directory", []);
         $this->addOption(static::OPTION_DRY_RUN, null, InputOption::VALUE_NONE, "perform a dry run without converting all the files in batch mode (requires --" . static::OPTION_BATCH_PATTERN . ")");
@@ -690,7 +668,6 @@ class MergeCommand extends AbstractConversionCommand
 
     /**
      * @param SplFileInfo $outputTmpFile
-     * @param Tag|null $sourceFilesTag
      * @throws Exception
      */
     private function tagMergedFile(SplFileInfo $outputTmpFile)
@@ -707,7 +684,7 @@ class MergeCommand extends AbstractConversionCommand
         if ($mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID)) {
             $mbChapterParser = new MusicBrainzChapterParser($mbId);
             $mbChapterParser->setCacheAdapter($this->cacheAdapter);
-            $tagChanger->add(new ChaptersFromMusicBrainz($this->chapterMarker, $mbChapterParser));
+            $tagChanger->add(new ChaptersFromMusicBrainz($this->chapterMarker, $this->chapterHandler, $mbChapterParser));
         }
         if ($this->silenceBetweenFile instanceof SplFileInfo) {
             $this->chapterHandler->setSilenceBetweenFile($this->silenceBetweenFile);

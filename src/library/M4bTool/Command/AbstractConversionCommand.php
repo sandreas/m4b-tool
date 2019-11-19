@@ -31,10 +31,10 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
 
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
     const OPTION_FIX_MIME_TYPE = "fix-mime-type";
+    const OPTION_NO_CONVERSION = "no-conversion";
 
     const OPTION_ADD_SILENCE = "add-silence";
     const OPTION_TRIM_SILENCE = "trim-silence";
-
 
     const DEFAULT_SUPPORTED_AUDIO_EXTENSIONS = [
         BinaryWrapper::EXTENSION_AAC,
@@ -122,6 +122,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $options->trimSilenceStart = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
         $options->trimSilenceEnd = (bool)$this->input->getOption(static::OPTION_TRIM_SILENCE);
         $options->ignoreSourceTags = $this->input->getOption(static::OPTION_IGNORE_SOURCE_TAGS);
+        $options->noConversion = $this->input->getOption(static::OPTION_NO_CONVERSION);
         return $options;
     }
 
@@ -138,6 +139,8 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
 
         $this->addOption(static::OPTION_ADJUST_FOR_IPOD, null, InputOption::VALUE_NONE, "auto adjust bitrate and sampling rate for ipod, if track is too long (may result in low audio quality)");
         $this->addOption(static::OPTION_FIX_MIME_TYPE, null, InputOption::VALUE_NONE, "try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent an empty video window");
+        $this->addOption(static::OPTION_NO_CONVERSION, null, InputOption::VALUE_NONE, "skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)");
+
         $this->addOption(static::OPTION_TRIM_SILENCE, null, InputOption::VALUE_NONE, "Try to trim silences at the start and end of files");
         $this->addOption(static::OPTION_ADD_SILENCE, null, InputOption::VALUE_OPTIONAL, "Silence length in ms to add between merged files");
     }

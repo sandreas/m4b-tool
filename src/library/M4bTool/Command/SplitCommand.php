@@ -41,13 +41,12 @@ class SplitCommand extends AbstractConversionCommand
     protected $chaptersFile;
 
 
-    protected $optOutputDirectory;
     protected $optFilenameTemplate;
 
     /**
      * @var Chapter[]
      */
-    protected $chapters;
+    protected $chapters = [];
     protected $outputDirectory;
 
     protected $meta = [];
@@ -92,13 +91,22 @@ class SplitCommand extends AbstractConversionCommand
 
         $this->estimatedTotalDuration = $this->metaHandler->estimateDuration($this->argInputFile);
 
-
-        $this->loadChaptersFile();
-        $this->parseChapters();
-
         if ($this->input->getOption(static::OPTION_FIXED_LENGTH)) {
             $this->cutChaptersToFixedLength();
+        } else {
+            $this->loadChaptersFile();
+            $this->parseChapters();
+
+            if (count($this->chapters) === 0) {
+                $tag = $this->metaHandler->readTag($this->argInputFile);
+                $this->chapters = $tag->chapters;
+            }
         }
+
+        if (count($this->chapters) === 0) {
+            throw new Exception(sprintf("Did not find any chapters for file %s (no embedded chapters, chapters.txt or cue sheet)", $this->argInputFile));
+        }
+
 
         if ($this->input->getOption(static::OPTION_REINDEX_CHAPTERS)) {
             $index = 1;
@@ -108,6 +116,11 @@ class SplitCommand extends AbstractConversionCommand
             }
         }
 
+        // no conversion means use source file options
+        if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
+            $this->optAudioFormat = $this->metaHandler->detectFormat($this->argInputFile) ?? static::AUDIO_FORMAT_MP4;
+            $this->optAudioExtension = $this->argInputFile->getExtension();
+        }
 
         $this->splitChapters();
     }
@@ -146,16 +159,15 @@ class SplitCommand extends AbstractConversionCommand
             }
 
             if ($this->chaptersFile === null || !$this->chaptersFile->isFile()) {
-                $this->chaptersFile = new SplFileInfo(Strings::trimSuffix($this->argInputFile, $this->argInputFile->getExtension()) . "cue");
-                $this->notice("found cue sheet " . $this->chaptersFile->getBasename());
+                $cueSheet = new SplFileInfo(Strings::trimSuffix($this->argInputFile, $this->argInputFile->getExtension()) . "cue");
+                if ($cueSheet->isFile()) {
+                    $this->chaptersFile = $cueSheet;
+                    $this->notice("found cue sheet " . $this->chaptersFile->getBasename());
+                }
+
             }
         } else {
             $this->chaptersFile = new SplFileInfo($chaptersFile);
-        }
-
-
-        if (!$this->chaptersFile->isFile()) {
-            throw new Exception("split command assumes that file " . $this->chaptersFile . " exists and is readable");
         }
     }
 
@@ -164,6 +176,9 @@ class SplitCommand extends AbstractConversionCommand
      */
     private function parseChapters()
     {
+        if (!$this->chaptersFile->isFile()) {
+            return;
+        }
         $chapterFileContents = file_get_contents($this->chaptersFile);
 
         $cueSheet = new CueSheet();
@@ -320,6 +335,7 @@ class SplitCommand extends AbstractConversionCommand
     {
         $convertOptions = $this->buildFileConverterOptions($this->argInputFile, $outputFile, $outputFile->getPath());
         $convertOptions->tag = $tag;
+
         $process = $this->ffmpeg->extractPartOfFile($chapter->getStart(), $chapter->getEnd(), $convertOptions);
 
         if ($process) {
