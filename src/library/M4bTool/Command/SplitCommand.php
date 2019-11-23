@@ -336,7 +336,7 @@ class SplitCommand extends AbstractConversionCommand
         $convertOptions = $this->buildFileConverterOptions($this->argInputFile, $outputFile, $outputFile->getPath());
         $convertOptions->tag = $tag;
 
-        $process = $this->ffmpeg->extractPartOfFile($chapter->getStart(), $chapter->getEnd(), $convertOptions);
+        $process = $this->ffmpeg->extractPartOfFile($chapter->getStart(), $chapter->getLength(), $convertOptions);
 
         if ($process) {
             $process->wait();
