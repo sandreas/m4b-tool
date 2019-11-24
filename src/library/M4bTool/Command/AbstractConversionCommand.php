@@ -208,7 +208,9 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
      */
     protected function tagFile(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
-        $this->debug(sprintf("tagFile - filename: %s\nfull tag:\n%s", $file, print_r($tag, true)));
+        $this->debug(sprintf("tagFile - filename: %s", $file));
+        $this->debug(sprintf("full tag: %s", json_encode($tag)));
+
         if ($this->input->getOption(static::OPTION_FIX_MIME_TYPE)) {
             // -> see mimetype options and do this in one command when using ffmpeg below
             $this->debug(sprintf("fixing mimetype of file %s to audio/mp4", $file));

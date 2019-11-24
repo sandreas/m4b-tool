@@ -243,7 +243,7 @@ class AbstractCommand extends Command implements LoggerInterface
         }
 
         $logTime = str_pad(round((microtime(true) - $this->startTime) * 1000) . "ms", 10, " ", STR_PAD_LEFT);
-        $logLevel = str_pad(static::LOG_LEVEL_TO_VERBOSITY[$level] ?? "UNKNOWN", 8);
+        $logLevel = str_pad(strtoupper($level) ?? "UNKNOWN", 8);
         file_put_contents($this->optLogFile, $logLevel . " " . $logTime . " " . $message . PHP_EOL, FILE_APPEND);
     }
 
