@@ -185,6 +185,24 @@ class AbstractCommand extends Command implements LoggerInterface
     }
 
     /**
+     * @param $binaryName
+     * @param $requiredVersion
+     * @param $actualVersion
+     */
+    private function warnOnOldVersion($binaryName, $requiredVersion, $actualVersion)
+    {
+
+        if ($actualVersion === null) {
+            $this->warning(sprintf("%s version could not be determined - this may cause unexpected behaviour due to missing dependencies...", $binaryName));
+            return;
+        }
+
+        if (version_compare($requiredVersion, $actualVersion) > 0) {
+            $this->warning(sprintf("%s version %s or higher is required - installed version %s is likely to cause errors or unexpected behaviour...", $binaryName, $requiredVersion, $actualVersion));
+        }
+    }
+
+    /**
      * @param SplFileInfo $file
      * @return TimeUnit|null
      * @throws Exception
@@ -288,6 +306,9 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->output = $output;
 
         $this->loadArguments();
+
+        $this->warnOnOldVersion("ffmpeg", "4.0.0", $this->ffmpeg->getVersion());
+
 
         if ($this->input->getOption(static::OPTION_NO_CACHE)) {
             $this->cacheAdapter->clear();

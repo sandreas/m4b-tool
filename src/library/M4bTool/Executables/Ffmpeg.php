@@ -70,6 +70,18 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         parent::__construct($pathToBinary, $processHelper, $output);
     }
 
+    public function getVersion()
+    {
+        static $version = 0;
+        if ($version === 0) {
+            $process = $this->ffmpeg(["-version"]);
+            $output = $this->getAllProcessOutput($process);
+            preg_match("/^.*([0-9]\.[0-9]\.[0-9]).*$/sU", $output, $matches);
+            $version = $matches[1] ?? null;
+        };
+        return $version;
+    }
+
     public function setThreads($threadsValue)
     {
         $this->threads = $threadsValue;
