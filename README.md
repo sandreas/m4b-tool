@@ -9,18 +9,18 @@
 
 ## TL;DR - examples for the most common tasks
 
-### Merge directories
+### Merge multiple files
 `merge` all audio files in directory `data/my-audio-book` into file `data/merged.m4b` (tags are retained and `data/my-audio-book/cover.jpg`  and `data/my-audio-book/description.txt` are embedded, if available)
 ```
 m4b-tool merge "data/my-audio-book/" --output-file="data/merged.m4b"
 ```
-### Split file by chapters
+### Split one file by chapters
 `split` one big m4b file by chapter into multiple mp3 files at `data/my-audio-book_splitted/` (tags are retained, `data/my-audio-book_splitted/cover.jpg` is created, if m4b contains a cover)
 ```
 m4b-tool split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"
 ``` 
 
-### Chapters adjustment via silences
+### Chapters adjustment of a file via silence detection
 `chapters` can try to adjust existing chapters of an m4b by silence detection
 ```
 m4b-tool chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"
