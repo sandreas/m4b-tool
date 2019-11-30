@@ -15,7 +15,7 @@
 m4b-tool merge "data/my-audio-book/" --output-file="data/merged.m4b"
 ```
 ### Split one file by chapters
-`split` one big m4b file by chapter into multiple mp3 files at `data/my-audio-book_splitted/` (tags are retained, `data/my-audio-book_splitted/cover.jpg` is created, if m4b contains a cover)
+`split` one big m4b file by chapters into multiple mp3 files at `data/my-audio-book_splitted/` (tags are retained, `data/my-audio-book_splitted/cover.jpg` is created, if m4b contains a cover)
 ```
 m4b-tool split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"
 ``` 
