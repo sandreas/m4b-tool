@@ -181,25 +181,47 @@ After this the custom build should be integrated into the docker image.
 
 ### MacOS
 
+On MacOS you may use the awesome package manager `brew` to install `m4b-tool`.
+
+#### Recommended: High audio quality, sort tagging
+
+Getting best audio quality requires some additional effort. You have to *recompile* `ffmpeg` with the non-free `libfdk_aac` codec. This requires uninstalling the default `ffmpeg` package if installed, since `brew` dropped the possibility for *extra options*. There is no official `ffmpeg-with-options` repository, but a pretty decent `tap`, that you could use to save time.
+
 ```
-# install ffmpeg with best audio quality options
-brew tap varenc/ffmpeg
-brew tap-pin varenc/ffmpeg
-brew uninstall ffmpeg
-brew install ffmpeg --with-chromaprint --with-fdk-aac
+# FIRST INSTALL ONLY: if not already done, remove existing ffmpeg with default audio quality options
+# check for ffmpeg with libfdk and uninstall if libfdk is not already available
+[ -x "$(which ffmpeg)" ] && (ffmpeg -hide_banner -codecs 2>&1 | grep libfdk || brew uninstall ffmpeg)
 
-
-# tap m4b-tool repository
+# tap required repositories
 brew tap sandreas/tap
-brew tap-pin sandreas/tap
+brew tap homebrew-ffmpeg/ffmpeg
+
+# check available ffmpeg options and which you would like to use
+brew options homebrew-ffmpeg/ffmpeg/ffmpeg
+
+# install ffmpeg with at least libfdk_aac for best audio quality
+brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-fdk-aac
 
 # install m4b-tool
-brew install m4b-tool
+brew install sandreas/tap/m4b-tool
 
 # check installed m4b-tool version
 m4b-tool --version
 ```
 
+#### Stick to defaults (acceptable audio quality, no sort tagging)
+If the above did not work for you or you would just to checkout `m4b-tool` before using it in production, you might want to try the *quick and easy* way. It will work, but you get lower audio quality  and there is **no support for sort tagging**. 
+
+```
+# tap m4b-tool repository
+brew tap sandreas/tap
+
+# install dependencies
+brew install ffmpeg fdk-aac-encoder mp4v2
+
+# install m4b-tool with acceptable audio quality and no sort tagging
+brew install --ignore-dependencies sandreas/tap/m4b-tool
+```
 
 ### Ubuntu
 
