@@ -10,6 +10,7 @@ use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Common\Flags;
+use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Filesystem\FileLoader;
 use M4bTool\Tags\StringBuffer;
@@ -171,6 +172,9 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
             if (isset(static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat])) {
                 if ($this->optAudioFormat === static::AUDIO_FORMAT_MP4) {
                     $this->optAudioCodec = $this->ffmpeg->loadHighestAvailableQualityAacCodec();
+                    if ($this->optAudioCodec !== Ffmpeg::AAC_BEST_QUALITY_NON_FREE_CODEC) {
+                        $this->warning(sprintf("Your ffmpeg version does not support %s for best audio quality", Ffmpeg::AAC_BEST_QUALITY_NON_FREE_CODEC));
+                    }
                 } else {
                     $this->optAudioCodec = static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat];
                 }
