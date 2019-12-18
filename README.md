@@ -245,7 +245,7 @@ m4b-tool --version
 
 - `php` >= 7.1 with `mbstring` extension enabled (https://php.net)
 - `ffmpeg` (https://www.ffmpeg.org)
-- `mp4v2` (`mp4chaps`, `mp4art`, etc. https://github.com/sandreas/m4b-tool/releases/download/0.1/mp4v2-windows.zip)
+- `mp4v2` (`mp4chaps`, `mp4art`, etc. https://github.com/sandreas/m4b-tool/releases/download/v0.2/mp4v2-windows.zip)
 - `fdkaac` (optional, only if you need high efficiency for low bitrates <= 32k, http://wlc.io/2015/06/20/fdk-aac/ - caution: not official!)
 
 To check the dependencies, running following commands via command line should show similar output:
