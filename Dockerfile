@@ -59,6 +59,7 @@ echo "---- INSTALL RUNTIME PACKAGES ----" \
     tar \
     && echo http://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories \
     && apk add --update fdk-aac-dev \
+    && sed -i 's/memory_limit = .*/memory_limit = '512M'/' /etc/php*/php.ini && \
     && echo "date.timezone = UTC" >> /etc/php7/php.ini && \
 echo "---- COMPILE FFMPEG ----" \
     && cd /tmp/ \
