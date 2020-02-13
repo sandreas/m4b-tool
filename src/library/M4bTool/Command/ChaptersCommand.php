@@ -164,12 +164,12 @@ class ChaptersCommand extends AbstractCommand
             $this->normalizeChapters($duration);
         }
 
-        if (!$this->input->getOption(static::OPTION_NO_CHAPTER_IMPORT)) {
-            $this->metaHandler->importChapters($this->outputFile, $this->chapters);
+        if (!$this->input->getOption(static::OPTION_NO_CHAPTER_IMPORT) && $this->filesToProcess) {
+            $this->metaHandler->importChapters($this->filesToProcess, $this->chapters);
         }
 
-        $chaptersTxtFile = $this->audioFileToChaptersFile($this->outputFile);
-        $this->metaHandler->exportChapters($this->outputFile, $chaptersTxtFile);
+        $chaptersTxtFile = $this->audioFileToChaptersFile($this->filesToProcess);
+        $this->metaHandler->exportChapters($this->filesToProcess, $chaptersTxtFile);
 
     }
 
