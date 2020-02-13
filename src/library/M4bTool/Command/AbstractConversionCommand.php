@@ -163,10 +163,22 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $this->optAudioCodec = $this->input->getOption(static::OPTION_AUDIO_CODEC);
         $this->optAudioFormat = $this->input->getOption(static::OPTION_AUDIO_FORMAT);
         $this->optAudioExtension = $this->optAudioFormat;
+
+        if ($this->input->hasOption(static::OPTION_OUTPUT_FILE)) {
+            $this->outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
+            $ext = $this->outputFile->getExtension();
+            if (isset(static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext]) && $this->input->getOption(static::OPTION_AUDIO_FORMAT) === static::AUDIO_EXTENSION_M4B) {
+                $this->optAudioExtension = $ext;
+                $this->optAudioFormat = static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext];
+                if (!$this->optAudioCodec) {
+                    $this->optAudioCodec = static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat];
+                }
+            }
+        }
+
         if ($this->optAudioFormat === static::AUDIO_EXTENSION_M4B) {
             $this->optAudioFormat = static::AUDIO_FORMAT_MP4;
         }
-
 
         if (!$this->optAudioCodec) {
             if (isset(static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat])) {

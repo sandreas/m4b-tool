@@ -1,11 +1,36 @@
 {
     "_readme": [
         "This file locks the dependencies of your project to a known state",
-        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "e3b339f6cc136b612f05416222542e7f",
+    "hash": "f26cf0f0bccb6d465e0e73c0eebc6296",
+    "content-hash": "e9268d8378446557877210b983028c50",
     "packages": [
+        {
+            "name": "bluemoehre/flac-php",
+            "version": "v1.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/bluemoehre/flac-php.git",
+                "reference": "0194a5090124983d5dd8e72440d04955da0abc42"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/bluemoehre/flac-php/zipball/0194a5090124983d5dd8e72440d04955da0abc42",
+                "reference": "0194a5090124983d5dd8e72440d04955da0abc42",
+                "shasum": ""
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "flac.class.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "description": "PHP class for native reading FLAC's metadata",
+            "time": "2017-02-12 23:16:24"
+        },
         {
             "name": "doctrine/collections",
             "version": "v1.6.2",
@@ -74,7 +99,7 @@
                 "iterators",
                 "php"
             ],
-            "time": "2019-06-09T13:48:14+00:00"
+            "time": "2019-06-09 13:48:14"
         },
         {
             "name": "erusev/parsedown",
@@ -120,7 +145,7 @@
                 "markdown",
                 "parser"
             ],
-            "time": "2018-03-08T01:11:30+00:00"
+            "time": "2018-03-08 01:11:30"
         },
         {
             "name": "lywzx/php-epub",
@@ -166,7 +191,7 @@
                 "epub",
                 "parser"
             ],
-            "time": "2019-08-30T09:53:59+00:00"
+            "time": "2019-08-30 09:53:59"
         },
         {
             "name": "monolog/monolog",
@@ -244,7 +269,7 @@
                 "logging",
                 "psr-3"
             ],
-            "time": "2019-09-06T13:49:17+00:00"
+            "time": "2019-09-06 13:49:17"
         },
         {
             "name": "psr/cache",
@@ -290,7 +315,7 @@
                 "psr",
                 "psr-6"
             ],
-            "time": "2016-08-06T20:24:11+00:00"
+            "time": "2016-08-06 20:24:11"
         },
         {
             "name": "psr/container",
@@ -339,7 +364,7 @@
                 "container-interop",
                 "psr"
             ],
-            "time": "2017-02-14T16:28:37+00:00"
+            "time": "2017-02-14 16:28:37"
         },
         {
             "name": "psr/log",
@@ -386,7 +411,7 @@
                 "psr",
                 "psr-3"
             ],
-            "time": "2019-11-01T11:05:21+00:00"
+            "time": "2019-11-01 11:05:21"
         },
         {
             "name": "sandreas/php-strings",
@@ -433,7 +458,7 @@
                 "source": "https://github.com/sandreas/php-strings/tree/master",
                 "issues": "https://github.com/sandreas/php-strings/issues"
             },
-            "time": "2019-09-16T04:51:32+00:00"
+            "time": "2019-09-16 04:51:32"
         },
         {
             "name": "sandreas/php-time",
@@ -463,6 +488,7 @@
                     "Sandreas\\": "src/Sandreas"
                 }
             },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -478,11 +504,7 @@
                 "datetime",
                 "time"
             ],
-            "support": {
-                "source": "https://github.com/sandreas/php-time/tree/master",
-                "issues": "https://github.com/sandreas/php-time/issues"
-            },
-            "time": "2019-03-17T22:34:45+00:00"
+            "time": "2019-03-17 22:34:45"
         },
         {
             "name": "symfony/cache",
@@ -560,7 +582,7 @@
                 "caching",
                 "psr6"
             ],
-            "time": "2019-11-12T13:07:20+00:00"
+            "time": "2019-11-12 13:07:20"
         },
         {
             "name": "symfony/cache-contracts",
@@ -618,7 +640,7 @@
                 "interoperability",
                 "standards"
             ],
-            "time": "2019-10-04T21:43:27+00:00"
+            "time": "2019-10-04 21:43:27"
         },
         {
             "name": "symfony/console",
@@ -693,7 +715,7 @@
             ],
             "description": "Symfony Console Component",
             "homepage": "https://symfony.com",
-            "time": "2019-10-30T12:58:49+00:00"
+            "time": "2019-10-30 12:58:49"
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -751,7 +773,7 @@
                 "polyfill",
                 "portable"
             ],
-            "time": "2019-08-06T08:03:45+00:00"
+            "time": "2019-08-06 08:03:45"
         },
         {
             "name": "symfony/polyfill-mbstring",
@@ -810,7 +832,7 @@
                 "portable",
                 "shim"
             ],
-            "time": "2019-08-06T08:03:45+00:00"
+            "time": "2019-08-06 08:03:45"
         },
         {
             "name": "symfony/polyfill-php73",
@@ -868,7 +890,7 @@
                 "portable",
                 "shim"
             ],
-            "time": "2019-08-06T08:03:45+00:00"
+            "time": "2019-08-06 08:03:45"
         },
         {
             "name": "symfony/process",
@@ -917,7 +939,7 @@
             ],
             "description": "Symfony Process Component",
             "homepage": "https://symfony.com",
-            "time": "2019-10-28T17:07:32+00:00"
+            "time": "2019-10-28 17:07:32"
         },
         {
             "name": "symfony/service-contracts",
@@ -975,7 +997,7 @@
                 "interoperability",
                 "standards"
             ],
-            "time": "2019-10-14T12:27:06+00:00"
+            "time": "2019-10-14 12:27:06"
         },
         {
             "name": "symfony/var-exporter",
@@ -1035,7 +1057,7 @@
                 "instantiate",
                 "serialize"
             ],
-            "time": "2019-12-01T08:39:58+00:00"
+            "time": "2019-12-01 08:39:58"
         },
         {
             "name": "twig/twig",
@@ -1102,7 +1124,178 @@
             "keywords": [
                 "templating"
             ],
-            "time": "2019-10-17T07:34:53+00:00"
+            "time": "2019-10-17 07:34:53"
+        },
+        {
+            "name": "wapmorgan/binary-stream",
+            "version": "0.4.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wapmorgan/BinaryStream.git",
+                "reference": "ca4989c15801635d79f65426b1b0fc6fe803b620"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wapmorgan/BinaryStream/zipball/ca4989c15801635d79f65426b1b0fc6fe803b620",
+                "reference": "ca4989c15801635d79f65426b1b0fc6fe803b620",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "~4.8.35"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "wapmorgan\\BinaryStream\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "A handy tool for working with binary data",
+            "keywords": [
+                "binary",
+                "binary-data",
+                "reader",
+                "writer"
+            ],
+            "time": "2017-06-18 01:02:52"
+        },
+        {
+            "name": "wapmorgan/file-type-detector",
+            "version": "1.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wapmorgan/FileTypeDetector.git",
+                "reference": "1db30747b674fe9444294c5393794d18f712f114"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wapmorgan/FileTypeDetector/zipball/1db30747b674fe9444294c5393794d18f712f114",
+                "reference": "1db30747b674fe9444294c5393794d18f712f114",
+                "shasum": ""
+            },
+            "require-dev": {
+                "phpunit/phpunit": "~4.8.35"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "wapmorgan\\FileTypeDetector\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Detects file type by filename or content and generates correct mimetype.",
+            "keywords": [
+                "files",
+                "filetype",
+                "formats",
+                "mimetype"
+            ],
+            "time": "2017-05-13 11:45:42"
+        },
+        {
+            "name": "wapmorgan/media-file",
+            "version": "0.1.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wapmorgan/MediaFile.git",
+                "reference": "263f773696e02d173fb9636c9a8111ac84032292"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wapmorgan/MediaFile/zipball/263f773696e02d173fb9636c9a8111ac84032292",
+                "reference": "263f773696e02d173fb9636c9a8111ac84032292",
+                "shasum": ""
+            },
+            "require": {
+                "bluemoehre/flac-php": "1.0.2",
+                "wapmorgan/binary-stream": "~0.4.0",
+                "wapmorgan/file-type-detector": "^1.0.2",
+                "wapmorgan/mp3info": "~0.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "~4.8"
+            },
+            "suggest": {
+                "boyhagemann/wave": "Wav support"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "wapmorgan\\MediaFile\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "A unified reader of metadata from audio & video files",
+            "keywords": [
+                "aac",
+                "amr",
+                "avi",
+                "flac",
+                "mp3",
+                "mp4",
+                "ogg",
+                "wav",
+                "wma",
+                "wmv"
+            ],
+            "time": "2018-03-10 00:56:03"
+        },
+        {
+            "name": "wapmorgan/mp3info",
+            "version": "0.0.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wapmorgan/Mp3Info.git",
+                "reference": "0dc3d62d155d6b7c25bc0568fd8a93924449020c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wapmorgan/Mp3Info/zipball/0dc3d62d155d6b7c25bc0568fd8a93924449020c",
+                "reference": "0dc3d62d155d6b7c25bc0568fd8a93924449020c",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": ">=5.4.0"
+            },
+            "require-dev": {
+                "wapmorgan/terminal-info": "dev-master"
+            },
+            "bin": [
+                "bin/mp3scan"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "wapmorgan\\Mp3Info\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-3.0"
+            ],
+            "description": "The fastest php library to extract mp3 tags & meta information.",
+            "keywords": [
+                "audio",
+                "id3",
+                "id3v1",
+                "id3v2",
+                "mp3",
+                "mpeg"
+            ],
+            "time": "2019-12-03 00:57:48"
         }
     ],
     "packages-dev": [
@@ -1160,7 +1353,7 @@
                 "constructor",
                 "instantiate"
             ],
-            "time": "2019-03-17T17:37:11+00:00"
+            "time": "2019-03-17 17:37:11"
         },
         {
             "name": "hamcrest/hamcrest-php",
@@ -1205,7 +1398,7 @@
             "keywords": [
                 "test"
             ],
-            "time": "2015-05-11T14:41:42+00:00"
+            "time": "2015-05-11 14:41:42"
         },
         {
             "name": "mikey179/vfsstream",
@@ -1251,7 +1444,7 @@
             ],
             "description": "Virtual file system to mock the real file system in unit tests.",
             "homepage": "http://vfs.bovigo.org/",
-            "time": "2019-10-30T15:31:00+00:00"
+            "time": "2019-10-30 15:31:00"
         },
         {
             "name": "mockery/mockery",
@@ -1316,7 +1509,7 @@
                 "test double",
                 "testing"
             ],
-            "time": "2019-02-12T16:07:13+00:00"
+            "time": "2019-02-12 16:07:13"
         },
         {
             "name": "myclabs/deep-copy",
@@ -1364,7 +1557,7 @@
                 "object",
                 "object graph"
             ],
-            "time": "2019-08-09T12:45:53+00:00"
+            "time": "2019-08-09 12:45:53"
         },
         {
             "name": "phar-io/manifest",
@@ -1419,7 +1612,7 @@
                 }
             ],
             "description": "Component for reading phar.io manifest information from a PHP Archive (PHAR)",
-            "time": "2017-03-05T18:14:27+00:00"
+            "time": "2017-03-05 18:14:27"
         },
         {
             "name": "phar-io/version",
@@ -1466,7 +1659,7 @@
                 }
             ],
             "description": "Library for handling version information and constraints",
-            "time": "2017-03-05T17:38:23+00:00"
+            "time": "2017-03-05 17:38:23"
         },
         {
             "name": "phpdocumentor/reflection-common",
@@ -1518,7 +1711,7 @@
                 "reflection",
                 "static analysis"
             ],
-            "time": "2018-08-07T13:53:10+00:00"
+            "time": "2018-08-07 13:53:10"
         },
         {
             "name": "phpdocumentor/reflection-docblock",
@@ -1569,7 +1762,7 @@
                 }
             ],
             "description": "With this component, a library can provide support for annotations via DocBlocks or otherwise retrieve information that is embedded in a DocBlock.",
-            "time": "2019-09-12T14:27:41+00:00"
+            "time": "2019-09-12 14:27:41"
         },
         {
             "name": "phpdocumentor/type-resolver",
@@ -1616,7 +1809,7 @@
                 }
             ],
             "description": "A PSR-5 based resolver of Class names, Types and Structural Element Names",
-            "time": "2019-08-22T18:11:29+00:00"
+            "time": "2019-08-22 18:11:29"
         },
         {
             "name": "phpspec/prophecy",
@@ -1679,7 +1872,7 @@
                 "spy",
                 "stub"
             ],
-            "time": "2019-10-03T11:07:50+00:00"
+            "time": "2019-10-03 11:07:50"
         },
         {
             "name": "phpunit/php-code-coverage",
@@ -1742,7 +1935,7 @@
                 "testing",
                 "xunit"
             ],
-            "time": "2018-04-06T15:36:58+00:00"
+            "time": "2018-04-06 15:36:58"
         },
         {
             "name": "phpunit/php-file-iterator",
@@ -1789,7 +1982,7 @@
                 "filesystem",
                 "iterator"
             ],
-            "time": "2017-11-27T13:52:08+00:00"
+            "time": "2017-11-27 13:52:08"
         },
         {
             "name": "phpunit/php-text-template",
@@ -1830,7 +2023,7 @@
             "keywords": [
                 "template"
             ],
-            "time": "2015-06-21T13:50:34+00:00"
+            "time": "2015-06-21 13:50:34"
         },
         {
             "name": "phpunit/php-timer",
@@ -1879,7 +2072,7 @@
             "keywords": [
                 "timer"
             ],
-            "time": "2017-02-26T11:10:40+00:00"
+            "time": "2017-02-26 11:10:40"
         },
         {
             "name": "phpunit/php-token-stream",
@@ -1928,7 +2121,7 @@
             "keywords": [
                 "tokenizer"
             ],
-            "time": "2017-11-27T05:48:46+00:00"
+            "time": "2017-11-27 05:48:46"
         },
         {
             "name": "phpunit/phpunit",
@@ -2012,7 +2205,7 @@
                 "testing",
                 "xunit"
             ],
-            "time": "2019-02-01T05:22:47+00:00"
+            "time": "2019-02-01 05:22:47"
         },
         {
             "name": "phpunit/phpunit-mock-objects",
@@ -2072,7 +2265,7 @@
                 "xunit"
             ],
             "abandoned": true,
-            "time": "2018-08-09T05:50:03+00:00"
+            "time": "2018-08-09 05:50:03"
         },
         {
             "name": "sebastian/code-unit-reverse-lookup",
@@ -2117,7 +2310,7 @@
             ],
             "description": "Looks up which function or method a line of code belongs to",
             "homepage": "https://github.com/sebastianbergmann/code-unit-reverse-lookup/",
-            "time": "2017-03-04T06:30:41+00:00"
+            "time": "2017-03-04 06:30:41"
         },
         {
             "name": "sebastian/comparator",
@@ -2181,7 +2374,7 @@
                 "compare",
                 "equality"
             ],
-            "time": "2018-02-01T13:46:46+00:00"
+            "time": "2018-02-01 13:46:46"
         },
         {
             "name": "sebastian/diff",
@@ -2233,7 +2426,7 @@
             "keywords": [
                 "diff"
             ],
-            "time": "2017-08-03T08:09:46+00:00"
+            "time": "2017-08-03 08:09:46"
         },
         {
             "name": "sebastian/environment",
@@ -2283,7 +2476,7 @@
                 "environment",
                 "hhvm"
             ],
-            "time": "2017-07-01T08:51:00+00:00"
+            "time": "2017-07-01 08:51:00"
         },
         {
             "name": "sebastian/exporter",
@@ -2350,7 +2543,7 @@
                 "export",
                 "exporter"
             ],
-            "time": "2019-09-14T09:02:43+00:00"
+            "time": "2019-09-14 09:02:43"
         },
         {
             "name": "sebastian/global-state",
@@ -2401,7 +2594,7 @@
             "keywords": [
                 "global state"
             ],
-            "time": "2017-04-27T15:39:26+00:00"
+            "time": "2017-04-27 15:39:26"
         },
         {
             "name": "sebastian/object-enumerator",
@@ -2448,7 +2641,7 @@
             ],
             "description": "Traverses array structures and object graphs to enumerate all referenced objects",
             "homepage": "https://github.com/sebastianbergmann/object-enumerator/",
-            "time": "2017-08-03T12:35:26+00:00"
+            "time": "2017-08-03 12:35:26"
         },
         {
             "name": "sebastian/object-reflector",
@@ -2493,7 +2686,7 @@
             ],
             "description": "Allows reflection of object attributes, including inherited and non-public ones",
             "homepage": "https://github.com/sebastianbergmann/object-reflector/",
-            "time": "2017-03-29T09:07:27+00:00"
+            "time": "2017-03-29 09:07:27"
         },
         {
             "name": "sebastian/recursion-context",
@@ -2546,7 +2739,7 @@
             ],
             "description": "Provides functionality to recursively process PHP variables",
             "homepage": "http://www.github.com/sebastianbergmann/recursion-context",
-            "time": "2017-03-03T06:23:57+00:00"
+            "time": "2017-03-03 06:23:57"
         },
         {
             "name": "sebastian/resource-operations",
@@ -2588,7 +2781,7 @@
             ],
             "description": "Provides a list of PHP built-in functions that operate on resources",
             "homepage": "https://www.github.com/sebastianbergmann/resource-operations",
-            "time": "2015-07-28T20:34:47+00:00"
+            "time": "2015-07-28 20:34:47"
         },
         {
             "name": "sebastian/version",
@@ -2631,7 +2824,7 @@
             ],
             "description": "Library that helps with managing the version number of Git-hosted PHP projects",
             "homepage": "https://github.com/sebastianbergmann/version",
-            "time": "2016-10-03T07:35:21+00:00"
+            "time": "2016-10-03 07:35:21"
         },
         {
             "name": "theseer/tokenizer",
@@ -2666,12 +2859,12 @@
             "authors": [
                 {
                     "name": "Arne Blankerts",
-                    "email": "arne@blankerts.de",
-                    "role": "Developer"
+                    "role": "Developer",
+                    "email": "arne@blankerts.de"
                 }
             ],
             "description": "A small library for converting tokenized PHP source code into XML and potentially other formats",
-            "time": "2019-06-13T22:48:21+00:00"
+            "time": "2019-06-13 22:48:21"
         },
         {
             "name": "webmozart/assert",
@@ -2721,7 +2914,7 @@
                 "check",
                 "validate"
             ],
-            "time": "2019-08-24T08:43:50+00:00"
+            "time": "2019-08-24 08:43:50"
         }
     ],
     "aliases": [],

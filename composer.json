@@ -17,7 +17,8 @@
     "ext-zip": "*",
     "ext-curl": "*",
     "lywzx/php-epub": "^0.1.2",
-    "doctrine/collections": "^1.6"
+      "doctrine/collections": "^1.6",
+      "wapmorgan/media-file": "^0.1.4"
   },
   "autoload": {
     "psr-4": {

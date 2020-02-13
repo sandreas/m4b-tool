@@ -352,7 +352,6 @@ class MergeCommand extends AbstractConversionCommand
     private function processFiles(InputInterface $input, OutputInterface $output)
     {
         $this->initExecution($input, $output);
-        $this->loadOutputFile();
 
         if (!$this->optForce && $this->isBatchMode($this->input) && $this->outputFile->isFile()) {
             $this->notice(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
@@ -362,19 +361,6 @@ class MergeCommand extends AbstractConversionCommand
         $this->loadInputFiles();
         $this->ensureOutputFileIsNotEmpty($this->outputFile);
         $this->processInputFiles();
-    }
-
-    private function loadOutputFile()
-    {
-        $this->outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
-        $ext = $this->outputFile->getExtension();
-        if (isset(static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext]) && $this->input->getOption(static::OPTION_AUDIO_FORMAT) === static::AUDIO_EXTENSION_M4B) {
-            $this->optAudioExtension = $ext;
-            $this->optAudioFormat = static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext];
-            if (!$this->optAudioCodec) {
-                $this->optAudioCodec = static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat];
-            }
-        }
     }
 
     /**

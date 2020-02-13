@@ -19,6 +19,7 @@ use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Process\Process;
+use wapmorgan\MediaFile\MediaFile;
 
 class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
 {
@@ -51,7 +52,18 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         if ($this->detectFormat($file) === static::FORMAT_MP4 && $estimatedDuration = $this->mp4v2->estimateDuration($file)) {
             return $estimatedDuration;
         }
-        return $this->ffmpeg->estimateDuration($file);
+
+        return $this->getMediaFileDuration($file) ?? $this->ffmpeg->estimateDuration($file);
+    }
+
+    private function getMediaFileDuration(SplFileInfo $file)
+    {
+        try {
+            $mediaFile = MediaFile::open($file);
+            return new TimeUnit($mediaFile->getAudio()->getLength(), TimeUnit::SECOND);
+        } catch (Exception $e) {
+            return null;
+        }
     }
 
 
@@ -82,7 +94,7 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
             return $this->mp4v2->inspectExactDuration($file);
         }
 
-        return $this->ffmpeg->inspectExactDuration($file);
+        return $this->getMediaFileDuration($file) ?? $this->ffmpeg->inspectExactDuration($file);
     }
 
     /**
