@@ -16,6 +16,7 @@
         "examples"
       ],
       "in": [
+          "vendor/bluemoehre",
         "vendor/composer",
         "vendor/doctrine",
         "vendor/hamcrest",
@@ -27,7 +28,8 @@
         "vendor/sandreas",
         "vendor/symfony",
         "vendor/twig",
-        "vendor/theseer"
+          "vendor/theseer",
+          "vendor/wapmorgan"
       ]
     }
   ],

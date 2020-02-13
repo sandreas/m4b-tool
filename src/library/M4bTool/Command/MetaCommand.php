@@ -68,7 +68,6 @@ class MetaCommand extends AbstractMetadataCommand
         $this->addOption(static::OPTION_EXPORT_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "export chapters from mp4v2 format (e.g. chapters.txt)", false);
 
 
-
     }
 
     /**
@@ -301,7 +300,11 @@ class MetaCommand extends AbstractMetadataCommand
     private function prepareExportFile(SplFileInfo $argInputFile, $defaultFileName, $optionValue = null)
     {
         $optionValue = $optionValue ? $optionValue : $defaultFileName;
-        $destinationFile = new SplFileInfo(($argInputFile->isDir() ? $argInputFile : $argInputFile->getPath()) . DIRECTORY_SEPARATOR . $optionValue);
+        $path = ($argInputFile->isDir() ? $argInputFile : $argInputFile->getPath());
+        if ($path !== "") {
+            $path .= DIRECTORY_SEPARATOR;
+        }
+        $destinationFile = new SplFileInfo($path . $optionValue);
         if ($destinationFile->isFile()) {
             if (!$this->optForce) {
                 throw new Exception(sprintf("File %s already exists and --%s is not active - skipping export", $destinationFile, static::OPTION_FORCE));

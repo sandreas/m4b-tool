@@ -193,10 +193,11 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         foreach ($tag->chapters as $chapter) {
             $returnValue .= "[CHAPTER]\n" .
                 "TIMEBASE=1/1000\n" .
-                "START=" . $chapter->getStart()->milliseconds() . "\n" .
-                "END=" . $chapter->getEnd()->milliseconds() . "\n" .
+                "START=" . round($chapter->getStart()->milliseconds()) . "\n" .
+                "END=" . round($chapter->getEnd()->milliseconds()) . "\n" .
                 "title=" . $chapter->getName() . "\n";
         }
+        echo $returnValue;
         return $returnValue;
 
     }
