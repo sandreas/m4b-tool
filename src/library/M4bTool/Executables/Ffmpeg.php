@@ -82,6 +82,35 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         return $version;
     }
 
+    /**
+     * @param $arguments
+     * @return Process
+     */
+    protected function ffmpeg($arguments)
+    {
+        $adjustedArguments = $this->ffmpegAdjustArguments($arguments);
+        return $this->runProcessWithTimeout($adjustedArguments);
+    }
+
+    protected function ffmpegAdjustArguments($arguments)
+    {
+        array_unshift($arguments, "-hide_banner");
+        $extraArguments = $this->extraArguments;
+        if ($this->threads !== null) {
+            $extraArguments[] = "-threads";
+            $extraArguments[] = $this->threads;
+        }
+
+        if (count($extraArguments) > 0) {
+            $output = array_pop($arguments);
+            foreach ($extraArguments as $argument) {
+                $arguments[] = $argument;
+            }
+            $arguments[] = $output;
+        }
+        return $arguments;
+    }
+
     public function setThreads($threadsValue)
     {
         $this->threads = $threadsValue;
@@ -107,7 +136,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $metaDataFile = $this->appendTagFilesToCommand($command, $tag);
 
         $command[] = $outputFile;
-        $process = $this->ffmpeg($command);
+        $process = $this->ffmpegQuiet($command);
 
         if ($metaDataFile && $metaDataFile->isFile()) {
             unlink($metaDataFile);
@@ -125,7 +154,6 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             throw new Exception(sprintf("tagging file %s failed, could not rename temp output file %s to ", $file, $outputFile));
         }
     }
-
 
     protected function createTempFileInSameDirectory(SplFileInfo $file)
     {
@@ -225,29 +253,19 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
      * @param $arguments
      * @return Process
      */
-    protected function ffmpeg($arguments)
+    protected function ffmpegQuiet($arguments)
     {
-        $adjustedArguments = $this->ffmpegAdjustArguments($arguments);
-        return $this->runProcess($adjustedArguments);
+        $adjustedArguments = $this->ffmpegAdjustArgumentsQuiet($arguments);
+        return $this->runProcessWithTimeout($adjustedArguments);
     }
 
-    protected function ffmpegAdjustArguments($arguments)
+    protected function ffmpegAdjustArgumentsQuiet($arguments)
     {
-        array_unshift($arguments, "-hide_banner");
-        $extraArguments = $this->extraArguments;
-        if ($this->threads !== null) {
-            $extraArguments[] = "-threads";
-            $extraArguments[] = $this->threads;
-        }
-
-        if (count($extraArguments) > 0) {
-            $output = array_pop($arguments);
-            foreach ($extraArguments as $argument) {
-                $arguments[] = $argument;
-            }
-            $arguments[] = $output;
-        }
-        return $arguments;
+        $adjustedArguments = $this->ffmpegAdjustArguments($arguments);
+        array_unshift($adjustedArguments, "panic");
+        array_unshift($adjustedArguments, "-loglevel");
+        array_unshift($adjustedArguments, "-nostats");
+        return $adjustedArguments;
     }
 
     /**
@@ -257,7 +275,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     public function forceAudioMimeType(SplFileInfo $file)
     {
         $fixedFile = $this->createTempFileInSameDirectory($file);
-        $this->ffmpeg([
+        $this->ffmpegQuiet([
             "-i", $file, "-vn", "-acodec", "copy", "-map_metadata", "0",
             $fixedFile
         ]);
@@ -305,7 +323,6 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     {
         // for only stats use "-v", "quiet", "-stats"
         return $this->ffmpeg([
-            "-hide_banner",
             "-i", $file,
             "-f", "null",
             "-"
@@ -320,7 +337,6 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     public function estimateDuration(SplFileInfo $file): ?TimeUnit
     {
         $process = $this->ffmpeg([
-            "-hide_banner",
             "-i", $file,
             "-f", "ffmetadata",
             "-"]);
@@ -356,7 +372,6 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     private function createMetaDataProcess(SplFileInfo $file)
     {
         return $this->ffmpeg([
-            "-hide_banner",
             "-i", $file,
             "-f", "ffmetadata",
             "-"
@@ -376,7 +391,6 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $cacheKey = "m4b-tool.audiochecksum." . $checksum;
         $silenceDetectionOutput = $this->cacheAdapterGet($cacheKey, function () use ($file, $silenceLength) {
             $process = $this->createNonBlockingProcess($this->ffmpegAdjustArguments([
-                "-hide_banner",
                 "-i", $file,
                 "-af", "silencedetect=noise=" . static::SILENCE_DEFAULT_DB . ":d=" . ($silenceLength->milliseconds() / 1000),
                 "-f", "null",
@@ -403,7 +417,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         if (!$audioFile->isFile()) {
             throw new Exception(sprintf("checksum calculation failed - file %s does not exist", $audioFile));
         }
-        $process = $this->ffmpeg(["-loglevel", "panic", "-i", $audioFile, "-vn", "-c:a", "copy", "-f", "crc", "-"]);
+        $process = $this->ffmpegQuiet(["-i", $audioFile, "-vn", "-c:a", "copy", "-f", "crc", "-"]);
         $output = trim($this->getAllProcessOutput($process));
         preg_match("/^CRC=(0x[0-9A-F]+)$/isU", $output, $matches);
         if (!isset($matches[1])) {
@@ -427,7 +441,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
     {
 
-        $this->ffmpeg(["-i", $audioFile, "-an", "-vcodec", "copy", $destinationFile]);
+        $this->ffmpegQuiet(["-i", $audioFile, "-an", "-vcodec", "copy", $destinationFile]);
     }
 
     /**
@@ -474,7 +488,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $command[] = $outputFile;
 
         $this->notice(sprintf("merging %s files into %s, this can take a while", $count, $outputFile));
-        $this->ffmpeg($command);
+        $this->ffmpegQuiet($command);
 
         if (!$outputFile->isFile()) {
             throw new Exception("could not merge to " . $outputFile);
@@ -514,7 +528,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         if ($silenceLengthSeconds < 0.001) {
             throw new Exception("Silence length has to be greater than 0.001 seconds");
         }
-        $this->ffmpeg(["-f", "lavfi", "-i", "anullsrc", "-t", $silenceLengthSeconds, $outputFile]);
+        $this->ffmpegQuiet(["-f", "lavfi", "-i", "anullsrc", "-t", $silenceLengthSeconds, $outputFile]);
         if (!$outputFile->isFile()) {
             throw new Exception(sprintf("Could not create silence file %s", $outputFile));
         }
@@ -569,7 +583,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
             $command[] = $tmpOutputFileConverting;
 
-            $process = $this->ffmpeg($command);
+            $process = $this->ffmpegQuiet($command);
             if ($process->getExitCode() > 0) {
                 throw new Exception(sprintf("Could not extract part of file %: %s (%s)", $inputFile, $process->getErrorOutput(), $process->getExitCode()));
             }
@@ -710,7 +724,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
         $command[] = $options->destination;
 
-        $process = $this->createNonBlockingProcess($this->ffmpegAdjustArguments($command));
+        $process = $this->createNonBlockingProcess($this->ffmpegAdjustArgumentsQuiet($command));
         $process->setTimeout(0);
         $process->start();
         $process->addTerminateEventCallback(function () use ($metaDataFile) {

@@ -5,8 +5,6 @@ namespace M4bTool\Executables\Tasks;
 
 
 use M4bTool\Audio\BinaryWrapper;
-use M4bTool\Executables\Fdkaac;
-use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterOptions;
 use SplFileInfo;
 use Symfony\Component\Process\Process;
@@ -19,14 +17,9 @@ class ConversionTask extends AbstractTask
     const CONVERTING_SUFFIX = "-converting";
     const FINISHED_SUFFIX = "-finished";
     /**
-     * @var Ffmpeg
+     * @var BinaryWrapper
      */
     protected $metaDataHandler;
-
-    /**
-     * @var Fdkaac
-     */
-    protected $fdkaac;
 
     /**
      * @var FileConverterOptions

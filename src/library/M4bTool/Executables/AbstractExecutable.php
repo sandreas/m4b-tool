@@ -48,9 +48,16 @@ abstract class AbstractExecutable
 
     protected function runProcess(array $arguments, $messageInCaseOfError = null)
     {
-        array_unshift($arguments, $this->pathToBinary);
-        $this->debugCommand($arguments);
+        if (!isset($arguments[0]) || !($arguments[0] instanceof Process)) {
+            array_unshift($arguments, $this->pathToBinary);
+            $this->debugCommand($arguments);
+        }
         return $this->processHelper->run($this->output, $arguments, $messageInCaseOfError);
+    }
+
+    protected function runProcessWithTimeout(array $arguments, $messageInCaseOfError = null, $timeout = null)
+    {
+        return $this->runProcess([$this->createNonBlockingProcess($arguments, $timeout)], $messageInCaseOfError);
     }
 
     /**
