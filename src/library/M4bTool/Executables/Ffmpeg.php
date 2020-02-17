@@ -308,7 +308,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     public function inspectExactDuration(SplFileInfo $file): ?TimeUnit
     {
 
-        $output = $this->getAllProcessOutput($this->createStreamInfoProcess($file));
+        $output = $this->getAllProcessOutput($this->createStreamInfoProcess($file, ["-loglevel", "panic", "-stats"]));
 
         preg_match_all("/time=([0-9:.]+)/is", $output, $matches);
 
@@ -319,14 +319,14 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         return TimeUnit::fromFormat($lastMatch, TimeUnit::FORMAT_DEFAULT);
     }
 
-    private function createStreamInfoProcess(SplFileInfo $file)
+    private function createStreamInfoProcess(SplFileInfo $file, $verboseParams = [])
     {
         // for only stats use "-v", "quiet", "-stats"
-        return $this->ffmpeg([
+        return $this->ffmpeg(array_merge($verboseParams, [
             "-i", $file,
             "-f", "null",
             "-"
-        ]);
+        ]));
     }
 
     /**
