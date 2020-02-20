@@ -158,14 +158,14 @@ class ChaptersCommand extends AbstractCommand
         if (!($duration instanceof TimeUnit)) {
             throw new Exception(sprintf("Could not detect duration for file %s", $this->filesToProcess));
         }
-
+        $flags = $this->buildTagFlags();
         $this->buildChapters($parsedChapters, $duration);
         if (!$this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
             $this->normalizeChapters($duration);
         }
 
         if (!$this->input->getOption(static::OPTION_NO_CHAPTER_IMPORT) && $this->filesToProcess) {
-            $this->metaHandler->importChapters($this->filesToProcess, $this->chapters);
+            $this->metaHandler->importChapters($this->filesToProcess, $this->chapters, $flags);
         }
 
         $chaptersTxtFile = $this->audioFileToChaptersFile($this->filesToProcess);

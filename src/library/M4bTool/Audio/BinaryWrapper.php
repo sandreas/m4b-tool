@@ -251,13 +251,16 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
     /**
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
+     * @param Flags $flags
      * @return SplFileInfo|null
      * @throws Exception
      */
-    public function exportChapters(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
+    public function exportChapters(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, Flags $flags = null)
     {
         $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "chapters.txt");
-        $this->ensureFileDoesNotExist($destinationFile);
+        if ($flags && !$flags->contains(static::FLAG_FORCE)) {
+            $this->ensureFileDoesNotExist($destinationFile);
+        }
         $tag = $this->readTag($audioFile);
         file_put_contents($destinationFile, $this->mp4v2->buildChaptersTxt($tag->chapters));
         return $destinationFile;
