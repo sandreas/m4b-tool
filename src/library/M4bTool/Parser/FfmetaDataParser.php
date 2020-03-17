@@ -400,6 +400,7 @@ class FfmetaDataParser
         $tag->track = $this->getProperty("track");
         $tag->encoder = $this->getProperty("encoder");
         $tag->lyrics = $this->getProperty("lyrics");
+        $tag->comment = $this->getProperty("comment");
 
         $tag->year = ReleaseDate::createFromValidString($this->getProperty("date"));
 
