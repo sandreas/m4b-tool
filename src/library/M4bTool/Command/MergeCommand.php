@@ -214,7 +214,6 @@ class MergeCommand extends AbstractConversionCommand
             if ($formatParser->parseFormat($normalizedBatchPattern, $patternDir)) {
                 $verifiedDirectories[$baseDir] = $formatParser;
                 $this->alreadyProcessedBatchDirs[] = $baseDir;
-
             }
         }
 
@@ -588,11 +587,15 @@ class MergeCommand extends AbstractConversionCommand
      */
     private function createOutputTempDir()
     {
-        $basename = $this->outputFile->getBasename("." . $this->outputFile->getExtension());
-        $basename = $basename === "" ? "m4b-tool" : $basename;
+        if ($this->optTmpDir) {
+            $dir = rtrim($this->optTmpDir, "\\/") . "/";
+        } else {
+            $basename = $this->outputFile->getBasename("." . $this->outputFile->getExtension());
+            $basename = $basename === "" ? "m4b-tool" : $basename;
 
-        $dir = $this->outputFile->getPath() ? $this->outputFile->getPath() . DIRECTORY_SEPARATOR : "";
-        $dir .= $basename . "-tmpfiles" . DIRECTORY_SEPARATOR;
+            $dir = $this->outputFile->getPath() ? $this->outputFile->getPath() . DIRECTORY_SEPARATOR : "";
+            $dir .= $basename . "-tmpfiles" . DIRECTORY_SEPARATOR;
+        }
 
         if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
             $message = sprintf("Could not create temp directory %s", $dir);

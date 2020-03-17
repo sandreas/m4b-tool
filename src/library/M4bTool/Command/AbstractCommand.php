@@ -44,8 +44,6 @@ class AbstractCommand extends Command implements LoggerInterface
     const AUDIO_FORMAT_MP4 = "mp4";
     const AUDIO_FORMAT_MP3 = "mp3";
 
-
-    const AUDIO_CODEC_ALAC = "alac";
     const AUDIO_CODEC_AAC = "aac";
     const AUDIO_CODEC_MP3 = "libmp3lame";
 
@@ -66,6 +64,7 @@ class AbstractCommand extends Command implements LoggerInterface
     const OPTION_DEBUG = "debug";
     const OPTION_LOG_FILE = "logfile";
     const OPTION_FORCE = "force";
+    const OPTION_TMP_DIR = "tmp-dir";
     const OPTION_NO_CLEANUP = "no-cleanup";
     const OPTION_NO_CACHE = "no-cache";
     const OPTION_FFMPEG_THREADS = "ffmpeg-threads";
@@ -75,7 +74,6 @@ class AbstractCommand extends Command implements LoggerInterface
     const OPTION_SILENCE_MIN_LENGTH = "silence-min-length";
     const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
     const OPTION_MAX_CHAPTER_LENGTH = "max-chapter-length";
-    const OPTION_DESIRED_CHAPTER_LENGTH = "desired-chapter-length";
 
 
     const OPTION_PLATFORM_CHARSET = "platform-charset";
@@ -116,6 +114,11 @@ class AbstractCommand extends Command implements LoggerInterface
     protected $optForce = false;
 
     /**
+     * @var SplFileInfo
+     */
+    protected $optTmpDir;
+
+    /**
      * @var bool
      */
     protected $optNoCache = false;
@@ -125,12 +128,6 @@ class AbstractCommand extends Command implements LoggerInterface
      * @var bool
      */
     protected $optDebug = false;
-
-
-    /**
-     * @var bool
-     */
-    protected $optVerbosity = false;
 
     /**
      * @var SplFileInfo
@@ -151,6 +148,7 @@ class AbstractCommand extends Command implements LoggerInterface
     protected $chapterHandler;
     /** @var OptionNameTagPropertyMapper */
     protected $keyMapper;
+
 
 
     public function __construct(string $name = null)
@@ -275,6 +273,7 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->addOption(static::OPTION_LOG_FILE, null, InputOption::VALUE_OPTIONAL, "file to log all output", "");
         $this->addOption(static::OPTION_DEBUG, null, InputOption::VALUE_NONE, "enable debug mode - sets verbosity to debug, logfile to m4b-tool.log and temporary encoded files are not deleted");
         $this->addOption(static::OPTION_FORCE, "f", InputOption::VALUE_NONE, "force overwrite of existing files");
+        $this->addOption(static::OPTION_TMP_DIR, null, InputOption::VALUE_OPTIONAL, "use this directory for creating temporary files");
         $this->addOption(static::OPTION_NO_CLEANUP, null, InputOption::VALUE_NONE, "do not cleanup generated metadata files (e.g. <filename>.chapters.txt)");
         $this->addOption(static::OPTION_NO_CACHE, null, InputOption::VALUE_NONE, "clear cache completely before doing anything");
         $this->addOption(static::OPTION_FFMPEG_THREADS, null, InputOption::VALUE_OPTIONAL, "specify -threads parameter for ffmpeg - you should also consider --jobs when merge is used", "");
@@ -345,6 +344,7 @@ class AbstractCommand extends Command implements LoggerInterface
 
         $this->optForce = $this->input->getOption(static::OPTION_FORCE);
         $this->optNoCache = $this->input->getOption(static::OPTION_NO_CACHE);
+        $this->optTmpDir = $this->input->getOption(static::OPTION_TMP_DIR);
     }
 
     protected function isWindows()
