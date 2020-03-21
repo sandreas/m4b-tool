@@ -1,128 +1,84 @@
-FROM alpine:3.9.2
+##############################
+#
+#   m4b-tool build image
+#
+##############################
+FROM alpine:3.9.2 as builder
+# bump: libfdk-aac /FDK_AAC_VERSION=([\d.]+)/ https://github.com/mstorsjo/fdk-aac.git|*
+ARG FDK_AAC_VERSION=2.0.1
+ARG FDK_AAC_URL="https://github.com/mstorsjo/fdk-aac/archive/v$FDK_AAC_VERSION.tar.gz"
+ARG FDK_AAC_SHA256=a4142815d8d52d0e798212a5adea54ecf42bcd4eec8092b37a8cb615ace91dc6
 
-ENV WORKDIR /mnt
-ARG FFMPEG_VERSION=4.1
-ARG PREFIX=/ffmpeg_build
-
-RUN \
-echo "---- INSTALL BUILD DEPENDENCIES ----" \
+RUN echo "---- INSTALL BUILD DEPENDENCIES ----" \
+    && echo http://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories \
     && apk add --no-cache --update --upgrade --virtual=build-dependencies \
     autoconf \
+    libtool \
     automake \
     boost-dev \
     build-base \
     gcc \
-    lame-dev \
-    libogg-dev \
-    yasm \
-    nasm \
-    yasm-dev \
-    zlib-dev \
-    freetype-dev \
-    libogg-dev \
-    libtheora-dev \
-    libvorbis-dev \
-    openssl-dev \
-    opus-dev \
     git \
-    wget && \
-echo "---- INSTALL RUNTIME PACKAGES ----" \
-    && apk add --no-cache --update --upgrade bzip2 \
-    ca-certificates \
-    coreutils \
-    curl \
-    file \
-    libtool \
-    freetype \
-    lame \
-    libogg \
-    libvpx \
-    libvorbis \
-    libtheora \
-    libvorbis \
-    openssl \
-    opus \
-    pcre \
-    php7-cli \
-    php7-dom \
-    php7-intl \
-    php7-json \
-    php7-xml \
-    php7-curl \
-    php7-mbstring \
-    php7-simplexml \
-    php7-phar \
-    php7-openssl \
-    php7-zip \
-    pkgconf \
-    pkgconfig \
     tar \
-    && echo http://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories \
-    && apk add --update fdk-aac-dev \
-    && sed -i 's/memory_limit = .*/memory_limit = 512M/' /etc/php*/php.ini \
-    && echo "date.timezone = UTC" >> /etc/php7/php.ini && \
-echo "---- COMPILE FFMPEG ----" \
-    && cd /tmp/ \
-    && wget http://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.gz \
-    && tar zxf ffmpeg-${FFMPEG_VERSION}.tar.gz \
-    && rm ffmpeg-${FFMPEG_VERSION}.tar.gz \
-    && cd /tmp/ffmpeg-${FFMPEG_VERSION} \
-    && ./configure \
-    --enable-version3 \
-    --enable-gpl \
-    --enable-nonfree \
-    --enable-small \
-    --enable-libmp3lame \
-    --enable-libtheora \
-    --enable-libvorbis \
-    --enable-libopus \
-    --enable-libfdk_aac \
-    --enable-avresample \
-    --enable-libfreetype \
-    --enable-openssl \
-    --disable-debug \
-    --disable-doc \
-    --disable-ffplay \
-    --prefix="/tmp${PREFIX}"  \
-    --extra-cflags="-I/tmp${PREFIX}/include" \
-    --extra-ldflags="-L/tmp${PREFIX}/lib" \
-    --extra-libs="-lpthread -lm" \
-    --bindir="/usr/local/bin/"  \
-    && make -j4 && make install && make distclean && hash -r && rm -rf /tmp/* && \
-echo "---- COMPILE SANDREAS MP4V2 ----" \
-    && cd /tmp/ \
-    && wget https://github.com/sandreas/mp4v2/archive/master.zip \
-    && unzip master.zip \
-    && rm master.zip \
-    && cd mp4v2-master \
-    && ./configure && make -j4 && make install && make distclean && rm -rf /tmp/* && \
-echo "---- COMPILE FDKAAC ----" \
+    wget \
+&& echo "---- COMPILE SANDREAS MP4V2 (for sort-title, sort-album and sort-author) ----" \
+  && cd /tmp/ \
+  && wget https://github.com/sandreas/mp4v2/archive/master.zip \
+  && unzip master.zip \
+  && cd mp4v2-master \
+  && ./configure && \
+  make -j4 && \
+  make install && make distclean \
+&& echo "---- PREPARE FDKAAC-DEPENDENCIES ----" \
+  && cd /tmp/ \
+  && wget -O fdk-aac.tar.gz "$FDK_AAC_URL" \
+  && tar xfz fdk-aac.tar.gz \
+  && cd fdk-aac-* && ./autogen.sh && ./configure --enable-static --disable-shared && make -j$(nproc) install \
+&& echo "---- COMPILE FDKAAC ENCODER (executable binary for usage of --audio-profile) ----" \
     && cd /tmp/ \
     && wget https://github.com/nu774/fdkaac/archive/1.0.0.tar.gz \
     && tar xzf 1.0.0.tar.gz \
-    && rm 1.0.0.tar.gz \
     && cd fdkaac-1.0.0 \
-    && autoreconf -i && ./configure && make -j4 && make install && rm -rf /tmp/* && \
-echo "---- REMOVE BUILD DEPENDENCIES ----" \
-    && apk del --purge build-dependencies
+    && autoreconf -i && ./configure && make -j4 && make install && rm -rf /tmp/* \
+&& echo "---- REMOVE BUILD DEPENDENCIES (to keep image small) ----" \
+    && apk del --purge build-dependencies && rm -rf /tmp/*
 
-ARG M4B_TOOL_DOWNLOAD_LINK="https://github.com/sandreas/m4b-tool/releases/latest/download/m4b-tool.tar.gz"
+##############################
+#
+#   m4b-tool development image
+#
+##############################
+FROM alpine:3.9.2
 
-# workaround to copy a local m4b-tool.phar IF it exists
-ADD ./Dockerfile ./dist/m4b-tool.phar* /tmp/
-RUN echo "---- INSTALL M4B-TOOL ----" \
-    && if [ ! -f /tmp/m4b-tool.phar ]; then \
-            cd /tmp/ && \
-            wget "${M4B_TOOL_DOWNLOAD_LINK}" && \
-            if [ ! -f /tmp/m4b-tool.phar ]; then \
-                tar xzf m4b-tool*.tar.gz && rm m4b-tool*.tar.gz ;\
-            fi && \
-            cd - ; \
-       fi \
-    && mv /tmp/m4b-tool.phar /usr/local/bin/m4b-tool \
-    && chmod +x /usr/local/bin/m4b-tool
+ENV WORKDIR /m4b-tool
+ARG M4B_TOOL_DOWNLOAD_LINK="https://github.com/sandreas/m4b-tool/releases/latest/download/m4b-tool.phar"
+
+RUN echo "---- INSTALL RUNTIME PACKAGES ----" && \
+  apk add --no-cache --update --upgrade \
+  # mp4v2: required libraries
+  libstdc++ \
+  # m4b-tool: php cli, required extensions and php settings
+  php7-cli \
+  php7-dom \
+  php7-json \
+  php7-xml \
+  php7-mbstring \
+  php7-phar \
+  php7-tokenizer \
+  php7-xmlwriter \
+  && echo "date.timezone = UTC" >> /etc/php7/php.ini
+
+
+
+# copy ffmpeg static with libfdk from mwader docker image
+COPY --from=mwader/static-ffmpeg:4.1.3-1 /ffmpeg /usr/local/bin/
+
+# copy compiled mp4v2 binaries, libs and fdkaac encoder to runtime image
+COPY --from=builder /usr/local/bin/mp4* /usr/local/bin/fdkaac /usr/local/bin/
+COPY --from=builder /usr/local/lib/libmp4v2* /usr/local/lib/
+
+
 
 WORKDIR ${WORKDIR}
-CMD ["list"]
-ENTRYPOINT ["m4b-tool"]
-
+# CMD ["list"]
+ENTRYPOINT ["/bin/ash"]
