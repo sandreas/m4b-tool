@@ -14,6 +14,9 @@ class Description implements TagImproverInterface
 
     public function __construct($descriptionContent = null)
     {
+        if (!preg_match("//u", $descriptionContent)) {
+            $descriptionContent = mb_scrub($descriptionContent);
+        }
         $this->descriptionContent = $descriptionContent;
     }
 

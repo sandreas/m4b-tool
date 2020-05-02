@@ -225,7 +225,6 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
                 "END=" . round($chapter->getEnd()->milliseconds()) . "\n" .
                 "title=" . $chapter->getName() . "\n";
         }
-        echo $returnValue;
         return $returnValue;
 
     }

@@ -241,7 +241,7 @@ class MergeCommand extends AbstractConversionCommand
                 $fileNamePart .= "/" . $m4bFileName;
             }
 
-            $batchOutputFile = $outputFile . "/" . $fileNamePart . ".m4b";
+            $batchOutputFile = $outputFile . "/" . $fileNamePart . "." . $this->optAudioExtension;
 
             $clonedInput->setArgument(static::ARGUMENT_INPUT, $baseDir);
             $clonedInput->setOption(static::OPTION_OUTPUT_FILE, $batchOutputFile);
@@ -424,21 +424,6 @@ class MergeCommand extends AbstractConversionCommand
         $this->deleteTemporaryFiles();
 
         $this->notice(sprintf("successfully merged %d files to %s", count($this->filesToMerge), $this->outputFile));
-    }
-
-    /**
-     * @throws Exception
-     */
-    protected function loadTagFromFirstSourceFile()
-    {
-        reset($this->filesToConvert);
-
-        $file = current($this->filesToConvert);
-        if (!$file) {
-            return null;
-        }
-
-        return $this->metaHandler->readTag($file);
     }
 
     /**
@@ -638,7 +623,6 @@ class MergeCommand extends AbstractConversionCommand
         return $finishedOutputFile;
     }
 
-
     /**
      * @return SplFileInfo
      * @throws Exception
@@ -646,6 +630,10 @@ class MergeCommand extends AbstractConversionCommand
     private function mergeFiles()
     {
         $outputTempFile = new SplFileInfo($this->createOutputTempDir() . "tmp_" . $this->outputFile->getBasename());
+        if ($this->optAudioExtension !== $outputTempFile->getExtension()) {
+            $outputTempFile = new SplFileInfo($this->createOutputTempDir() . "tmp_" . $this->outputFile->getBasename($this->outputFile->getExtension()) . $this->optAudioExtension);
+        }
+
 
         if ($outputTempFile->isFile() && !unlink($outputTempFile)) {
             throw new Exception(sprintf("Could not delete temporary output file %s", $outputTempFile));
@@ -720,9 +708,23 @@ class MergeCommand extends AbstractConversionCommand
         }
 
 
-
         $this->tagFile($outputTmpFile, $tag, $flags);
         $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputTmpFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
+    }
+
+    /**
+     * @throws Exception
+     */
+    protected function loadTagFromFirstSourceFile()
+    {
+        reset($this->filesToConvert);
+
+        $file = current($this->filesToConvert);
+        if (!$file) {
+            return null;
+        }
+
+        return $this->metaHandler->readTag($file);
     }
 
     /**

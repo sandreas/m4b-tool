@@ -29,6 +29,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     const OPTION_AUDIO_CODEC = "audio-codec";
     const OPTION_AUDIO_PROFILE = "audio-profile";
     const OPTION_AUDIO_QUALITY = "audio-quality";
+    const OPTION_AUDIO_EXTENSION = "audio-extension";
 
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
     const OPTION_FIX_MIME_TYPE = "fix-mime-type";
@@ -131,6 +132,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     {
         parent::configure();
         $this->addOption(static::OPTION_AUDIO_FORMAT, null, InputOption::VALUE_OPTIONAL, "output format, that ffmpeg will use to create files", static::AUDIO_EXTENSION_M4B);
+        $this->addOption(static::OPTION_AUDIO_EXTENSION, null, InputOption::VALUE_OPTIONAL, "output extension, that ffmpeg will use to create files");
         $this->addOption(static::OPTION_AUDIO_CHANNELS, null, InputOption::VALUE_OPTIONAL, "audio channels, e.g. 1, 2"); // -ac 1
         $this->addOption(static::OPTION_AUDIO_BIT_RATE, null, InputOption::VALUE_OPTIONAL, "audio bitrate, e.g. 64k, 128k, ...");
         $this->addOption(static::OPTION_AUDIO_SAMPLE_RATE, null, InputOption::VALUE_OPTIONAL, "audio samplerate, e.g. 22050, 44100, ...");
@@ -166,8 +168,15 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
 
         if ($this->input->hasOption(static::OPTION_OUTPUT_FILE)) {
             $this->outputFile = new SplFileInfo($this->input->getOption(static::OPTION_OUTPUT_FILE));
+
             $ext = $this->outputFile->getExtension();
-            if (isset(static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext]) && $this->input->getOption(static::OPTION_AUDIO_FORMAT) === static::AUDIO_EXTENSION_M4B) {
+            $format = $this->input->getOption(static::OPTION_AUDIO_FORMAT);
+
+            if ($ext === "") {
+                $ext = $this->optAudioExtension;
+            }
+
+            if (isset(static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext]) && $format === static::AUDIO_EXTENSION_M4B) {
                 $this->optAudioExtension = $ext;
                 $this->optAudioFormat = static::AUDIO_EXTENSION_FORMAT_MAPPING[$ext];
                 if (!$this->optAudioCodec) {
@@ -175,6 +184,14 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
                 }
             }
         }
+
+        if ($this->input->hasOption(static::OPTION_AUDIO_EXTENSION)) {
+            $audioExtensionValue = $this->input->getOption(static::OPTION_AUDIO_EXTENSION);
+            if ($audioExtensionValue) {
+                $this->optAudioExtension = $audioExtensionValue;
+            }
+        }
+
 
         if ($this->optAudioFormat === static::AUDIO_EXTENSION_M4B) {
             $this->optAudioFormat = static::AUDIO_FORMAT_MP4;
