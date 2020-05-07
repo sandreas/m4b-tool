@@ -168,7 +168,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
      */
     protected function appendTagFilesToCommand(&$command, Tag $tag = null)
     {
-        $ffmetadataFile = new SplFileInfo(tempnam(sys_get_temp_dir(), "") . ".txt");
+        $ffmetadataFile = $this->createTempFile("txt");
         if ($tag === null) {
             return null;
         }
@@ -192,6 +192,11 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         }
 
         return $ffmetadataFile;
+    }
+
+    protected function createTempFile($ext)
+    {
+        return new SplFileInfo(tempnam(sys_get_temp_dir(), "") . "." . $ext);
     }
 
     public function buildFfmetadata(Tag $tag)
@@ -435,12 +440,20 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     /**
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
+     * @return SplFileInfo|null
      * @throws Exception
      */
     public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
     {
+        if ($destinationFile === null) {
+            $destinationFile = $this->createTempFile("jpg");
+        }
 
         $this->ffmpegQuiet(["-i", $audioFile, "-an", "-vcodec", "copy", $destinationFile]);
+        if (!$destinationFile->isFile()) {
+            return null;
+        }
+        return $destinationFile;
     }
 
     /**

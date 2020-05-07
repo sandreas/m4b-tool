@@ -111,6 +111,7 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
     /**
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
+     * @return SplFileInfo|null
      * @throws Exception
      */
     public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
@@ -119,17 +120,15 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         $this->ensureFileDoesNotExist($destinationFile);
 
         if ($this->detectFormat($audioFile) === static::FORMAT_MP4) {
-            $this->mp4v2->exportCover($audioFile, $destinationFile);
-            return;
+            return $this->mp4v2->exportCover($audioFile, $destinationFile);
         }
 
-        $this->ffmpeg->exportCover($audioFile, $destinationFile);
+        return $this->ffmpeg->exportCover($audioFile, $destinationFile);
     }
 
     private function normalizeDefaultFile(SplFileInfo $referenceFile, ?SplFileInfo $destinationFile, $defaultFileName)
     {
-        return $destinationFile ? $destinationFile : new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $defaultFileName);
-
+        return $destinationFile && !$referenceFile->isFile() ? $destinationFile : new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $defaultFileName);
     }
 
     /**

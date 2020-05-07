@@ -306,7 +306,10 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
             }
         }
 
-        $this->metaHandler->exportCover($file, $coverTargetFile);
+        $exportedFile = $this->metaHandler->exportCover($file, $coverTargetFile);
+        if ($exportedFile !== null) {
+            $coverTargetFile = $exportedFile;
+        }
 
         if (!$coverTargetFile->isFile()) {
             $this->warning(sprintf("extracting cover to %s failed - maybe there was no cover embedded in %s", $coverTargetFile, $file));

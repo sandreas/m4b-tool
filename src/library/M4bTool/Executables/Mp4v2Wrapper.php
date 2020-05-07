@@ -90,11 +90,12 @@ class Mp4v2Wrapper implements TagWriterInterface, DurationDetectorInterface
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
      * @param int $index
+     * @return SplFileInfo|null
      * @throws Exception
      */
     public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $index = 0)
     {
-        $this->art->exportCover($audioFile, $destinationFile, $index);
+        return $this->art->exportCover($audioFile, $destinationFile, $index);
     }
 
     /**

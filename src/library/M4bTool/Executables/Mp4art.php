@@ -49,26 +49,45 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
      * @param int $index
+     * @return SplFileInfo|null
      * @throws Exception
      */
     public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $index = 0)
     {
+        $index = (int)$index;
         $this->runProcess([
             "--art-index", (string)$index,
             "--extract", $audioFile
         ]);
 
         $fileName = $audioFile->getBasename("." . $audioFile->getExtension());
-        $extractedCoverFile = new SplFileInfo(ltrim($audioFile->getPath() . DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR) . $fileName . ".art[" . $index . "].jpg");
 
-        if (!$extractedCoverFile->isFile()) {
+        $extractedCoverPrefix = ltrim($audioFile->getPath() . DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR) . $fileName . ".art[" . $index . "]";
+        $extractedCoverCandidates = [
+            new SplFileInfo($extractedCoverPrefix . ".jpg"),
+            new SplFileInfo($extractedCoverPrefix . ".png"),
+        ];
+
+        $extractedCoverFile = null;
+        foreach ($extractedCoverCandidates as $extractedCoverCandidate) {
+            if ($extractedCoverCandidate->isFile()) {
+                $extractedCoverFile = $extractedCoverCandidate;
+                break;
+            }
+        }
+        if ($extractedCoverFile === null) {
             throw new Exception(sprintf("exporting cover to %s failed", $extractedCoverFile));
+        }
+
+        if ($destinationFile === null) {
+            return $extractedCoverFile;
         }
 
         if (!rename($extractedCoverFile, $destinationFile)) {
             @unlink($extractedCoverFile);
             throw new Exception(sprintf("renaming cover %s => %s failed", $extractedCoverFile, $destinationFile));
         }
+        return $extractedCoverFile;
     }
 
     private function removeAllCoversAndIgnoreErrors(SplFileInfo $file)
