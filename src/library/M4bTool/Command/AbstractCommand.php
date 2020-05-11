@@ -232,7 +232,10 @@ class AbstractCommand extends Command implements LoggerInterface
         if ($this->startTime === null) {
             $this->startTime = microtime(true);
         }
-
+        if (!$this->output) {
+            echo $message . PHP_EOL;
+            return;
+        }
         if ($this->output->getVerbosity() < $verbosity) {
             return;
         }
@@ -331,11 +334,11 @@ class AbstractCommand extends Command implements LoggerInterface
 
     protected function loadArguments()
     {
-        $optLogFile = $this->input->getOption(static::OPTION_LOG_FILE);
+        $logFileOption = $this->input->getOption(static::OPTION_LOG_FILE);
 
         $this->argInputFile = new SplFileInfo($this->input->getArgument(static::ARGUMENT_INPUT));
         $this->optDebug = $this->input->getOption(static::OPTION_DEBUG);
-        $this->optLogFile = $optLogFile !== "" ? new SplFileInfo($optLogFile) : null;
+        $this->optLogFile = $logFileOption !== "" ? new SplFileInfo($logFileOption) : null;
 
         if ($this->optDebug) {
             $this->output->setVerbosity(OutputInterface::VERBOSITY_DEBUG);

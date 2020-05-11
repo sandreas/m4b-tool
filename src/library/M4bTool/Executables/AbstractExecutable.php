@@ -5,6 +5,7 @@ namespace M4bTool\Executables;
 
 
 use M4bTool\Audio\Traits\LogTrait;
+use SplFileInfo;
 use Symfony\Component\Console\Helper\DebugFormatterHelper;
 use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Helper\ProcessHelper;
@@ -135,6 +136,14 @@ abstract class AbstractExecutable
     {
         $escapedArguments = array_map([$this, "escapeNonePipeArgument"], $command);
         $this->debug(implode(" ", $escapedArguments));
+    }
+
+    protected static function normalizeDirectorySeparator($outputFile)
+    {
+        if (DIRECTORY_SEPARATOR === "/") {
+            return $outputFile;
+        }
+        return new SplFileInfo((string)str_replace("/", DIRECTORY_SEPARATOR, $outputFile));
     }
 
 }

@@ -485,7 +485,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             "-f", "concat",
             "-safe", "0",
             "-vn",
-            "-i", $listFile,
+            "-i", static::normalizeDirectorySeparator($listFile),
             "-max_muxing_queue_size", "9999",
             "-c", "copy",
         ];
@@ -497,7 +497,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             $command[] = $converterOptions->format;
         }
 
-        $command[] = $outputFile;
+        $command[] = static::normalizeDirectorySeparator($outputFile);
 
         $this->notice(sprintf("merging %s files into %s, this can take a while", $count, $outputFile));
         $this->ffmpegQuiet($command);
@@ -522,7 +522,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
     private function buildConcatListingLine($file)
     {
-        $filePath = $file instanceof SplFileInfo ? $file->getRealPath() : $file;
+        $filePath = $file instanceof SplFileInfo && $file->isFile() ? $file->getRealPath() : $file;
         $quotedFilename = "'" . implode("'\''", explode("'", $filePath)) . "'";
         return "file " . $quotedFilename;
 
@@ -620,46 +620,6 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         return $process;
 
     }
-
-    /*
-        protected function appendTagParametersToCommand(&$command, Tag $tag=null)
-        {
-            if($tag === null) {
-                return;
-            }
-            $this->appendMetadataParameterToCommand($command, "title", $tag->title);
-            $this->appendMetadataParameterToCommand($command, "artist", $tag->artist);
-            $this->appendMetadataParameterToCommand($command, "album", $tag->album);
-            $this->appendMetadataParameterToCommand($command, "genre", $tag->genre);
-            $this->appendMetadataParameterToCommand($command, "description", $tag->description);
-            $this->appendMetadataParameterToCommand($command, "composer", $tag->writer);
-            $this->appendMetadataParameterToCommand($command, "album_artist", $tag->albumArtist);
-            $this->appendMetadataParameterToCommand($command, "date", $tag->year);
-            $this->appendMetadataParameterToCommand($command, "comment", $tag->comment);
-            $this->appendMetadataParameterToCommand($command, "copyright", $tag->copyright);
-            $this->appendMetadataParameterToCommand($command, "encoded_by", $tag->encodedBy);
-
-
-
-            if ($tag->track) {
-                $value = (int)$tag->track;
-                if($tag->tracks) {
-                    $value.= "/".(int)$tag->tracks;
-                }
-                $command[] = '-metadata';
-                $command[] = 'track=' . $value;
-            }
-
-
-        }
-
-        private function appendMetadataParameterToCommand(&$command, $key, $value) {
-            if($value) {
-                $command[] = '-metadata';
-                $command[] = $key.'=' . $value;
-            }
-        }
-    */
 
     private function mapFormat($format)
     {
@@ -772,5 +732,6 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         }
 
     }
+
 
 }
