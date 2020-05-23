@@ -49,6 +49,7 @@ class Equate implements TagImproverInterface
      */
     public function improve(Tag $tag): Tag
     {
+        $improvedProperties = [];
         foreach ($this->equateInstructions as $instruction) {
             $sourceProperty = $instruction["source"];
             $destinationProperty = $instruction["destination"];
@@ -72,9 +73,11 @@ class Equate implements TagImproverInterface
                 $this->warning(sprintf("destination property %s is not a scalar value and cannot be equateed", $sourceProperty));
                 continue;
             }
-
+            $improvedProperties[] = $destinationProperty;
             $tag->$destinationProperty = $tag->$sourceProperty;
         }
+        $this->info(sprintf("equate changed %s tag properties: %s", count($improvedProperties), implode(", ", $improvedProperties)));
+
         return $tag;
     }
 }

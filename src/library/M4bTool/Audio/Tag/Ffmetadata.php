@@ -6,11 +6,13 @@ namespace M4bTool\Audio\Tag;
 
 use Exception;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Parser\FfmetaDataParser;
 use SplFileInfo;
 
 class Ffmetadata implements TagImproverInterface
 {
+    use LogTrait;
 
     /**
      * @var FfmetaDataParser
@@ -46,9 +48,14 @@ class Ffmetadata implements TagImproverInterface
     public function improve(Tag $tag): Tag
     {
         if ($this->ffparser === null) {
+            $this->info("ffmetadata.txt not found - tags not improved");
             return $tag;
         }
-        $tag->mergeOverwrite($this->ffparser->toTag());
+
+        $improvedProperties = $tag->mergeOverwrite($this->ffparser->toTag());
+
+        $this->info(sprintf("ffmetadata.txt improved the following %s properties: %s", count($improvedProperties), implode(", ", $improvedProperties)));
+
         return $tag;
     }
 }

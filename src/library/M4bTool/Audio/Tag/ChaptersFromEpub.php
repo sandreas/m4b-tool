@@ -9,6 +9,7 @@ use M4bTool\Audio\ChapterCollection;
 use M4bTool\Audio\EpubChapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagImproverInterface;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Parser\EpubParser;
 use Sandreas\Time\TimeUnit;
@@ -17,7 +18,7 @@ use Throwable;
 
 class ChaptersFromEpub implements TagImproverInterface
 {
-
+    use LogTrait;
 
     /** @var ChapterCollection */
     protected $chapterCollection;
@@ -69,6 +70,11 @@ class ChaptersFromEpub implements TagImproverInterface
      */
     public function improve(Tag $tag): Tag
     {
+        if ($this->chapterHandler === null) {
+            $this->info("no epub files found - tags not improved");
+            return $tag;
+        }
+
         $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_ISBN, $this->chapterCollection->getEan());
         $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_ASIN, $this->chapterCollection->getAsin());
         $this->improveExtraProperty($tag, Tag::EXTRA_PROPERTY_AUDIBLE_ID, $this->chapterCollection->getAudibleID());

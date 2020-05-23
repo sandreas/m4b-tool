@@ -47,6 +47,7 @@ class AudibleTxt implements TagImproverInterface
     public function improve(Tag $tag): Tag
     {
         if (trim($this->fileContent) === "") {
+            $this->info("no audible.txt found - tags not improved");
             return $tag;
         }
         $decoded = @json_decode($this->fileContent, true);

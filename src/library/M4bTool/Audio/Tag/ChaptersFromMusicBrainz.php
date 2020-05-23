@@ -7,6 +7,7 @@ namespace M4bTool\M4bTool\Audio\Tag;
 use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagImproverInterface;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Parser\MusicBrainzChapterParser;
@@ -14,7 +15,7 @@ use Psr\Cache\InvalidArgumentException;
 
 class ChaptersFromMusicBrainz implements TagImproverInterface
 {
-
+    use LogTrait;
     /**  @var ChapterMarker */
     private $marker;
     /** @var MusicBrainzChapterParser */
@@ -51,7 +52,10 @@ class ChaptersFromMusicBrainz implements TagImproverInterface
             $mbChapters = $this->chapterParser->parseRecordings($mbXml);
             $chapters = $this->chapterHandler->overloadTrackChapters($mbChapters, $tag->chapters);
             $tag->chapters = $this->marker->normalizeChapters($chapters, static::NORMALIZE_CHAPTER_OPTIONS);
+        } else {
+            $this->info("chapters are already present, chapters from musicbrainz are not required");
         }
+
         return $tag;
     }
 }

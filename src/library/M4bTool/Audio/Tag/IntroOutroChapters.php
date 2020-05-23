@@ -6,13 +6,17 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use Sandreas\Time\TimeUnit;
 
 class IntroOutroChapters implements TagImproverInterface
 {
+    use LogTrait;
+
     public function improve(Tag $tag): Tag
     {
         if (count($tag->chapters) === 0) {
+            $this->info("no chapters found - tags not improved");
             return $tag;
         }
         reset($tag->chapters);

@@ -6,12 +6,15 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\Flags;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
 class ContentMetadataJson implements TagImproverInterface
 {
+    use LogTrait;
+
     const BOM = "\xEF\xBB\xBF";
 
     protected $chaptersContent;
@@ -66,6 +69,7 @@ class ContentMetadataJson implements TagImproverInterface
     public function improve(Tag $tag): Tag
     {
         if (trim($this->chaptersContent) === "") {
+            $this->info("content_metadata_*.json not found - tags not improved");
             return $tag;
         }
         $decoded = @json_decode($this->chaptersContent, true, 512, JSON_BIGINT_AS_STRING);

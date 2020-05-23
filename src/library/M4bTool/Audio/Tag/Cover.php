@@ -5,11 +5,14 @@ namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Filesystem\FileLoader;
 use SplFileInfo;
 
 class Cover implements TagImproverInterface
 {
+    use LogTrait;
+
     /**
      * @var FileLoader
      */
@@ -47,6 +50,7 @@ class Cover implements TagImproverInterface
             $this->coverLoader->addNonRecursive($this->coverDir);
             $tag->cover = $this->coverLoader->current() ? $this->coverLoader->current() : null;
         }
+
         return $tag;
     }
 }

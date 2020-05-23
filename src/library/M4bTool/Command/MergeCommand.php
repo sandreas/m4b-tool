@@ -652,7 +652,7 @@ class MergeCommand extends AbstractConversionCommand
 
         $tag = new Tag();
         $tagChanger = new TagImproverComposite();
-
+        $tagChanger->setLogger($this);
         // chapter loaders
         // todo: what about - don't change any chapters if found: freezeProperties? -> load($tag, $frozenProperties=[])
         $tagChanger->add(Ffmetadata::fromFile($this->argInputFile, "ffmetadata.txt"));

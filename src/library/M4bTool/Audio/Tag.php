@@ -123,21 +123,30 @@ class Tag implements ArrayAccess
 
     public function mergeMissing(Tag $tag)
     {
+        $changedProperties = [];
         foreach ($this as $propertyName => $propertyValue) {
             if ($this->$propertyName === null || $this->$propertyName === "" || $this->$propertyName === []) {
                 $this->$propertyName = $tag->$propertyName;
+                $changedProperties[] = $propertyName;
             }
         }
+        return $changedProperties;
     }
 
     public function mergeOverwrite(Tag $tag)
     {
+        $changedProperties = [];
+
         foreach ($this as $propertyName => $propertyValue) {
             if ($tag->$propertyName === null || $tag->$propertyName === "" || $tag->$propertyName === []) {
                 continue;
             }
             $this->$propertyName = $tag->$propertyName;
+            $changedProperties[] = $propertyName;
+
         }
+        return $changedProperties;
+
     }
 
     public function hasCoverFile()

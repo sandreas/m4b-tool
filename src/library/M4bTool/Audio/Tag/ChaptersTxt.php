@@ -7,12 +7,15 @@ namespace M4bTool\Audio\Tag;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Executables\Mp4chaps;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
 class ChaptersTxt implements TagImproverInterface
 {
+    use LogTrait;
+
     /**
      * @var TimeUnit
      */
@@ -65,7 +68,10 @@ class ChaptersTxt implements TagImproverInterface
             if ($this->totalLength instanceof TimeUnit && $lastChapter instanceof Chapter) {
                 $lastChapter->setEnd(clone $this->totalLength);
             }
+        } else {
+            $this->info("chapters.txt not found - tags not improved");
         }
+
         return $tag;
     }
 }

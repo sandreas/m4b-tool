@@ -6,12 +6,14 @@ namespace M4bTool\Audio\Tag;
 
 use Exception;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\ChapterMarker;
 use Sandreas\Time\TimeUnit;
 
 class GuessChaptersBySilence implements TagImproverInterface
 {
+    use LogTrait;
 
     /** @var ChapterHandler */
     protected $chapterMarker;
@@ -36,6 +38,8 @@ class GuessChaptersBySilence implements TagImproverInterface
         if (count($tag->chapters) > 0) {
             $silences = ($this->silenceDetectionCallback)();
             $tag->chapters = $this->chapterMarker->guessChaptersBySilences($tag->chapters, $silences, $this->totalDuration);
+        } else {
+            $this->info("tag does not contain chapters, that could be adjusted by silences - no improvements required");
         }
         return $tag;
     }

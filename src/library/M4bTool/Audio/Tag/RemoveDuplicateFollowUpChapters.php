@@ -6,10 +6,13 @@ namespace M4bTool\Audio\Tag;
 
 use Exception;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 
 class RemoveDuplicateFollowUpChapters implements TagImproverInterface
 {
+    use LogTrait;
+
     private $chapterHandler;
 
     public function __construct(ChapterHandler $chapterHandler)
@@ -27,6 +30,8 @@ class RemoveDuplicateFollowUpChapters implements TagImproverInterface
     {
         if (count($tag->chapters) > 0) {
             $tag->chapters = $this->chapterHandler->removeDuplicateFollowUps($tag->chapters);
+        } else {
+            $this->info("no chapters found - tags not improved");
         }
         return $tag;
     }

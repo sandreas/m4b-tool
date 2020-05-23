@@ -5,10 +5,12 @@ namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use SplFileInfo;
 
 class Description implements TagImproverInterface
 {
+    use LogTrait;
 
     private $descriptionContent;
 
@@ -47,6 +49,8 @@ class Description implements TagImproverInterface
         if (trim($this->descriptionContent) !== "") {
             $tag->description = $this->descriptionContent;
             $tag->longDescription = $this->descriptionContent;
+        } else {
+            $this->info("description.txt not found - tags not improved");
         }
         return $tag;
     }

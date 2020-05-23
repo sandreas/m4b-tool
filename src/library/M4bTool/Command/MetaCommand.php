@@ -207,6 +207,7 @@ class MetaCommand extends AbstractMetadataCommand
     {
         $tag = $this->metaHandler->readTag($this->argInputFile);
         $tagLoaderComposite = new TagImproverComposite();
+        $tagLoaderComposite->setLogger($this);
 
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_COVER) && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
             $this->notice("trying to load cover");

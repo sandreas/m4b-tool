@@ -4,6 +4,7 @@
 namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\ReleaseDate;
 use SimpleXMLElement;
 use SplFileInfo;
@@ -11,6 +12,7 @@ use Throwable;
 
 class OpenPackagingFormat implements TagImproverInterface
 {
+    use LogTrait;
 
     const NAMESPACE_DUBLIN_CORE = "dc";
     const NAMESPACE_OPEN_PACKAGING_FORMAT = "opf";
@@ -55,6 +57,7 @@ class OpenPackagingFormat implements TagImproverInterface
     {
 
         if (trim($this->xmlString) === "") {
+            $this->info("metadata.opf not found - tags not improved");
             return $tag;
         }
         try {
