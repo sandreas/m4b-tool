@@ -125,12 +125,15 @@ class Tag implements ArrayAccess
     {
         $changedProperties = [];
         foreach ($this as $propertyName => $propertyValue) {
+            if ($this->$propertyName === $tag->$propertyName) {
+                continue;
+            }
             if ($this->$propertyName === null || $this->$propertyName === "" || $this->$propertyName === []) {
-                $this->$propertyName = $tag->$propertyName;
                 $changedProperties[$propertyName] = [
                     "before" => $this->$propertyName,
                     "after" => $tag->$propertyName
                 ];
+                $this->$propertyName = $tag->$propertyName;
             }
         }
         return $changedProperties;
@@ -141,16 +144,15 @@ class Tag implements ArrayAccess
         $changedProperties = [];
 
         foreach ($this as $propertyName => $propertyValue) {
-            if ($tag->$propertyName === null || $tag->$propertyName === "" || $tag->$propertyName === []) {
+            if ($tag->$propertyName === null || $tag->$propertyName === "" || $tag->$propertyName === [] || $this->$propertyName === $tag->$propertyName) {
                 continue;
             }
+
             $changedProperties[$propertyName] = [
                 "before" => $this->$propertyName,
                 "after" => $tag->$propertyName
             ];
             $this->$propertyName = $tag->$propertyName;
-
-
         }
         return $changedProperties;
 

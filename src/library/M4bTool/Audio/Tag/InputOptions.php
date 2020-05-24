@@ -61,7 +61,12 @@ class InputOptions extends AbstractTagImprover
         $mergeTag->series = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES);
         $mergeTag->seriesPart = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES_PART);
 
-        $improvedProperties = $tag->mergeOverwrite($mergeTag);
+        // todo provide option to merge missing
+        if ($this->input->getOption(AbstractConversionCommand::OPTION_PREFER_METADATA_TAGS)) {
+            $improvedProperties = $tag->mergeMissing($mergeTag);
+        } else {
+            $improvedProperties = $tag->mergeOverwrite($mergeTag);
+        }
 
         $this->info(sprintf("input options improved the following %s properties:", count($improvedProperties)));
         $this->dumpTagDifference($improvedProperties);

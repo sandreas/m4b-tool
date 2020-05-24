@@ -35,6 +35,7 @@ class AbstractMetadataCommand extends AbstractCommand
 
     const OPTION_REMOVE = "remove";
     const OPTION_IGNORE_SOURCE_TAGS = "ignore-source-tags";
+    const OPTION_PREFER_METADATA_TAGS = "prefer-metadata-tags";
 
 
     const ALL_TAG_OPTIONS = [
@@ -91,5 +92,6 @@ class AbstractMetadataCommand extends AbstractCommand
 
         $this->addOption(static::OPTION_REMOVE, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "remove these tags (either comma separated --remove='title,album' or multiple usage '--remove=title --remove=album'", []);
         $this->addOption(static::OPTION_IGNORE_SOURCE_TAGS, null, InputOption::VALUE_NONE, "ignore all tags from source files");
+        $this->addOption(static::OPTION_PREFER_METADATA_TAGS, null, InputOption::VALUE_NONE, "prefer tags from metadata files over input parameters (e.g. ffmetadata.txt) ");
     }
 }
