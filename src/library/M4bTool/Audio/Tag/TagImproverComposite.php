@@ -4,7 +4,6 @@
 namespace M4bTool\Audio\Tag;
 
 
-use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Traits\LogTrait;
 use Psr\Log\LoggerInterface;

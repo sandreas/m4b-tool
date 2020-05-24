@@ -7,14 +7,12 @@ namespace M4bTool\Audio\Tag;
 use Exception;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 
-class AdjustTooLongChapters implements TagImproverInterface
+class AdjustTooLongChapters extends AbstractTagImprover
 {
-    use LogTrait;
     /**
      * @var TimeUnit
      */

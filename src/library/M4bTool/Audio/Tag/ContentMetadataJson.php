@@ -11,10 +11,8 @@ use M4bTool\Common\Flags;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
-class ContentMetadataJson implements TagImproverInterface
+class ContentMetadataJson extends AbstractTagImprover
 {
-    use LogTrait;
-
     const BOM = "\xEF\xBB\xBF";
 
     protected $chaptersContent;

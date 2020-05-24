@@ -13,7 +13,7 @@ use M4bTool\Audio\Tag\AdjustTooLongChapters;
 use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Common\ConditionalFlags;
-use M4bTool\M4bTool\Audio\Tag\ChaptersFromEpub;
+use M4bTool\Audio\Tag\ChaptersFromEpub;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;

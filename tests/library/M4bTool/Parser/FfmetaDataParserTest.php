@@ -109,7 +109,7 @@ major_brand=isom
 minor_version=512
 compatible_brands=isomiso2mp41
 title=Jingle und Ansage
-artist=J.K. Rowling
+artist=Timothy Zahn
 album_artist=Rufus Beck
 album=test\\\\\\\\\\\\\;test
 comment=test
@@ -137,7 +137,7 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '../data/_output/merged.m4b':
     minor_version   : 512
     compatible_brands: isomiso2mp41
     title           : Jingle und Ansage
-    artist          : J.K. Rowling
+    artist          : Timothy Zahn
     album_artist    : Rufus Beck
     album           : test\\\;test
     comment         : test
@@ -146,10 +146,10 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '../data/_output/merged.m4b':
     track           : 1/8
     description     : testing\\\; testing2
                     : toll
-                    : 
+                    :
     synopsis        : testing\\\; testing2
                     : toll
-                    : 
+                    :
     encoder         : m4b-tool
     media_type      : 2
   Duration: 00:00:22.15, start: 0.000000, bitrate: 136 kb/s
@@ -171,7 +171,7 @@ Output #0, ffmetadata, to 'pipe:':
     minor_version   : 512
     compatible_brands: isomiso2mp41
     title           : Jingle und Ansage
-    artist          : J.K. Rowling
+    artist          : Timothy Zahn
     album_artist    : Rufus Beck
     album           : test\\\;test
     comment         : test
@@ -180,10 +180,10 @@ Output #0, ffmetadata, to 'pipe:':
     track           : 1/8
     description     : testing\\\; testing2
                     : toll
-                    : 
+                    :
     synopsis        : testing\\\; testing2
                     : toll
-                    : 
+                    :
     media_type      : 2
     encoder         : Lavf58.20.100
     Chapter #0:0: start 0.000000, end 22.149000
@@ -191,7 +191,7 @@ Output #0, ffmetadata, to 'pipe:':
       title           : Jingle und Ansage
 Stream mapping:
 Press [q] to stop, [?] for help
-size=       0kB time=-577014:32:22.77 bitrate=N/A speed=N/A    
+size=       0kB time=-577014:32:22.77 bitrate=N/A speed=N/A
 video:0kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
 Output file is empty, nothing was encoded
 FFMETA;
@@ -199,10 +199,10 @@ FFMETA;
 
         $this->mp3MetaData = <<<FFMETA
 ;FFMETADATA1
-album=Harry Potter und der Gefangene von Askaban
-artist=J.K. Rowling
+album=Thrawn und der Gefangene von Askaban
+artist=Timothy Zahn
 album_artist=Rufus Beck
-composer=J.K. Rowling
+composer=Timothy Zahn
 disc=1
 genre=Hörbuch
 TLEN=22080
@@ -225,7 +225,7 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'data/_input_m4b/001-Jingle und Ansage.m
     minor_version   : 512
     compatible_brands: isomiso2mp41
     title           : Jingle und Ansage
-    artist          : J.K. Rowling
+    artist          : Timothy Zahn
     album_artist    : Rufus Beck
     comment         : test
     genre           : Hörbuch
@@ -257,7 +257,7 @@ Output #0, null, to 'pipe:':
     minor_version   : 512
     compatible_brands: isomiso2mp41
     title           : Jingle und Ansage
-    artist          : J.K. Rowling
+    artist          : Timothy Zahn
     album_artist    : Rufus Beck
     comment         : test
     genre           : Hörbuch
@@ -278,7 +278,7 @@ Output #0, null, to 'pipe:':
     Metadata:
       handler_name    : SoundHandler
       encoder         : Lavc58.35.100 pcm_s16le
-frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.08 bitrate=N/A speed= 360x    
+frame=    1 fps=0.0 q=-0.0 Lsize=N/A time=00:00:22.08 bitrate=N/A speed= 360x
 video:1kB audio:3812kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
 FFSTREAMINFO;
 
@@ -290,7 +290,7 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'data/_input_m4b/001-Jingle und Ansage.m
     minor_version   : 512
     compatible_brands: isomiso2mp41
     title           : Jingle und Ansage
-    artist          : J.K. Rowling
+    artist          : Timothy Zahn
     album_artist    : Rufus Beck
     comment         : test
     genre           : Hörbuch
@@ -322,7 +322,7 @@ Output #0, null, to 'pipe:':
     minor_version   : 512
     compatible_brands: isomiso2mp41
     title           : Jingle und Ansage
-    artist          : J.K. Rowling
+    artist          : Timothy Zahn
     album_artist    : Rufus Beck
     comment         : test
     genre           : Hörbuch
@@ -435,10 +435,10 @@ EOT;
     public function testParseMp3Metadata()
     {
         $this->subject->parse($this->mp3MetaData);
-        $this->assertEquals("Harry Potter und der Gefangene von Askaban", $this->subject->getProperty("album"));
-        $this->assertEquals("J.K. Rowling", $this->subject->getProperty("artist"));
+        $this->assertEquals("Thrawn und der Gefangene von Askaban", $this->subject->getProperty("album"));
+        $this->assertEquals("Timothy Zahn", $this->subject->getProperty("artist"));
         $this->assertEquals("Rufus Beck", $this->subject->getProperty("album_artist"));
-        $this->assertEquals("J.K. Rowling", $this->subject->getProperty("composer"));
+        $this->assertEquals("Timothy Zahn", $this->subject->getProperty("composer"));
         $this->assertEquals("1", $this->subject->getProperty("disc"));
         $this->assertEquals("Hörbuch", $this->subject->getProperty("genre"));
         $this->assertEquals("22080", $this->subject->getProperty("tlen"));

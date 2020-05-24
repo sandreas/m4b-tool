@@ -6,12 +6,9 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\OptionNameTagPropertyMapper;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 
-class Equate implements TagImproverInterface
+class Equate extends AbstractTagImprover
 {
-    use LogTrait;
-
     protected $equateInstructions;
 
 
@@ -73,10 +70,14 @@ class Equate implements TagImproverInterface
                 $this->warning(sprintf("destination property %s is not a scalar value and cannot be equateed", $sourceProperty));
                 continue;
             }
-            $improvedProperties[] = $destinationProperty;
+            $improvedProperties[$destinationProperty] = [
+                "before" => $tag->$destinationProperty,
+                "after" => $tag->$sourceProperty,
+            ];
             $tag->$destinationProperty = $tag->$sourceProperty;
         }
-        $this->info(sprintf("equate changed %s tag properties: %s", count($improvedProperties), implode(", ", $improvedProperties)));
+        $this->info(sprintf("equate changed %s tag properties: %s", count($improvedProperties)));
+        $this->dumpTagDifference($improvedProperties);
 
         return $tag;
     }

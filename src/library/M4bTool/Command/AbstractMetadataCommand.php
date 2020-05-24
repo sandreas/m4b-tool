@@ -86,7 +86,7 @@ class AbstractMetadataCommand extends AbstractCommand
         $this->addOption(static::OPTION_SKIP_COVER, null, InputOption::VALUE_NONE, "skip extracting and embedding covers");
 
         // pseudo tags
-        $this->addOption(static::OPTION_TAG_SERIES, null, InputOption::VALUE_OPTIONAL, "custom series, this pseudo tag will be used to auto create sort order (e.g. Harry Potter or The Kingkiller Chronicles)");
+        $this->addOption(static::OPTION_TAG_SERIES, null, InputOption::VALUE_OPTIONAL, "custom series, this pseudo tag will be used to auto create sort order (e.g. Thrawn or The Kingkiller Chronicles)");
         $this->addOption(static::OPTION_TAG_SERIES_PART, null, InputOption::VALUE_OPTIONAL, "custom series part, this pseudo tag will be used to auto create sort order (e.g. 1 or 2.5)");
 
         $this->addOption(static::OPTION_REMOVE, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "remove these tags (either comma separated --remove='title,album' or multiple usage '--remove=title --remove=album'", []);

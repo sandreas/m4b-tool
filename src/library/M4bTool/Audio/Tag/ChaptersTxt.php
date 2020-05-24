@@ -12,10 +12,8 @@ use M4bTool\Executables\Mp4chaps;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
-class ChaptersTxt implements TagImproverInterface
+class ChaptersTxt extends AbstractTagImprover
 {
-    use LogTrait;
-
     /**
      * @var TimeUnit
      */

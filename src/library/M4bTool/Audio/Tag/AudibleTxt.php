@@ -9,10 +9,8 @@ use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\ReleaseDate;
 use SplFileInfo;
 
-class AudibleTxt implements TagImproverInterface
+class AudibleTxt extends AbstractTagImprover
 {
-    use LogTrait;
-
     protected $fileContent;
 
     public function __construct($fileContents = "")
@@ -86,7 +84,7 @@ class AudibleTxt implements TagImproverInterface
         return $tag;
     }
 
-    private function implodeArrayOrNull(&$arrayValue)
+    private function implodeArrayOrNull($arrayValue)
     {
         if (!isset($arrayValue) || !is_array($arrayValue)) {
             return null;

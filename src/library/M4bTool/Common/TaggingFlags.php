@@ -1,10 +1,8 @@
 <?php
 
 
-namespace M4bTool\M4bTool\Common;
+namespace M4bTool\Common;
 
-
-use M4bTool\Common\ConditionalFlags;
 
 class TaggingFlags extends ConditionalFlags
 {

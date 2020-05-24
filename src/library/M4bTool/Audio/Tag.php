@@ -127,7 +127,10 @@ class Tag implements ArrayAccess
         foreach ($this as $propertyName => $propertyValue) {
             if ($this->$propertyName === null || $this->$propertyName === "" || $this->$propertyName === []) {
                 $this->$propertyName = $tag->$propertyName;
-                $changedProperties[] = $propertyName;
+                $changedProperties[$propertyName] = [
+                    "before" => $this->$propertyName,
+                    "after" => $tag->$propertyName
+                ];
             }
         }
         return $changedProperties;
@@ -141,8 +144,12 @@ class Tag implements ArrayAccess
             if ($tag->$propertyName === null || $tag->$propertyName === "" || $tag->$propertyName === []) {
                 continue;
             }
+            $changedProperties[$propertyName] = [
+                "before" => $this->$propertyName,
+                "after" => $tag->$propertyName
+            ];
             $this->$propertyName = $tag->$propertyName;
-            $changedProperties[] = $propertyName;
+
 
         }
         return $changedProperties;

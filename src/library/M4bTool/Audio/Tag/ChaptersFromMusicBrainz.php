@@ -1,21 +1,19 @@
 <?php
 
 
-namespace M4bTool\M4bTool\Audio\Tag;
+namespace M4bTool\Audio\Tag;
 
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Tag\TagImproverInterface;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\ChapterMarker;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use Psr\Cache\InvalidArgumentException;
 
-class ChaptersFromMusicBrainz implements TagImproverInterface
+class ChaptersFromMusicBrainz extends AbstractTagImprover
 {
-    use LogTrait;
     /**  @var ChapterMarker */
     private $marker;
     /** @var MusicBrainzChapterParser */

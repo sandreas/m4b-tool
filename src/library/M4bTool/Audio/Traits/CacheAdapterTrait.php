@@ -1,7 +1,7 @@
 <?php
 
 
-namespace M4bTool\M4bTool\Audio\Traits;
+namespace M4bTool\Audio\Traits;
 
 
 use Exception;

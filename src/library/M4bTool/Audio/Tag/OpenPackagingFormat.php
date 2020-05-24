@@ -4,15 +4,13 @@
 namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\ReleaseDate;
 use SimpleXMLElement;
 use SplFileInfo;
 use Throwable;
 
-class OpenPackagingFormat implements TagImproverInterface
+class OpenPackagingFormat extends AbstractTagImprover
 {
-    use LogTrait;
 
     const NAMESPACE_DUBLIN_CORE = "dc";
     const NAMESPACE_OPEN_PACKAGING_FORMAT = "opf";

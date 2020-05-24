@@ -1,14 +1,13 @@
 <?php
 
 
-namespace M4bTool\M4bTool\Audio\Tag;
+namespace M4bTool\Audio\Tag;
 
 
 use Exception;
 use M4bTool\Audio\ChapterCollection;
 use M4bTool\Audio\EpubChapter;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Tag\TagImproverInterface;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Parser\EpubParser;
@@ -16,10 +15,8 @@ use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Throwable;
 
-class ChaptersFromEpub implements TagImproverInterface
+class ChaptersFromEpub extends AbstractTagImprover
 {
-    use LogTrait;
-
     /** @var ChapterCollection */
     protected $chapterCollection;
     /** @var ChapterHandler */

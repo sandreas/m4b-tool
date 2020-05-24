@@ -1,19 +1,17 @@
 <?php
 
 
-namespace M4bTool\M4bTool\Audio\Tag;
+namespace M4bTool\Audio\Tag;
 
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Tag\TagImproverInterface;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use SplFileInfo;
 
-class ChaptersFromFileTracks implements TagImproverInterface
+class ChaptersFromFileTracks extends AbstractTagImprover
 {
-    use LogTrait;
     /**
      * @var ChapterHandler
      */

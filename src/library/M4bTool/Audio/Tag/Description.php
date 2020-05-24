@@ -5,12 +5,10 @@ namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use SplFileInfo;
 
-class Description implements TagImproverInterface
+class Description extends AbstractTagImprover
 {
-    use LogTrait;
 
     private $descriptionContent;
 

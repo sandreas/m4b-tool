@@ -6,14 +6,12 @@ namespace M4bTool\Audio\Tag;
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Chapter\ChapterMarker;
 use Sandreas\Time\TimeUnit;
 
-class GuessChaptersBySilence implements TagImproverInterface
+class GuessChaptersBySilence extends AbstractTagImprover
 {
-    use LogTrait;
 
     /** @var ChapterHandler */
     protected $chapterMarker;

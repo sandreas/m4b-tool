@@ -5,13 +5,11 @@ namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Filesystem\FileLoader;
 use SplFileInfo;
 
-class Cover implements TagImproverInterface
+class Cover extends AbstractTagImprover
 {
-    use LogTrait;
 
     /**
      * @var FileLoader

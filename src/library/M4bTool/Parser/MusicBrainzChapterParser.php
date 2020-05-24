@@ -4,7 +4,7 @@ namespace M4bTool\Parser;
 
 use Exception;
 use M4bTool\Audio\Chapter;
-use M4bTool\M4bTool\Audio\Traits\CacheAdapterTrait;
+use M4bTool\Audio\Traits\CacheAdapterTrait;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 

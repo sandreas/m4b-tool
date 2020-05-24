@@ -5,15 +5,13 @@ namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Command\AbstractConversionCommand;
 use M4bTool\Common\Flags;
 use M4bTool\Common\ReleaseDate;
 use Symfony\Component\Console\Input\InputInterface;
 
-class InputOptions implements TagImproverInterface
+class InputOptions extends AbstractTagImprover
 {
-    use LogTrait;
 
     /** @var InputInterface */
     protected $input;
@@ -65,7 +63,8 @@ class InputOptions implements TagImproverInterface
 
         $improvedProperties = $tag->mergeOverwrite($mergeTag);
 
-        $this->info(sprintf("input options improved the following %s properties: %s", count($improvedProperties), implode(", ", $improvedProperties)));
+        $this->info(sprintf("input options improved the following %s properties:", count($improvedProperties)));
+        $this->dumpTagDifference($improvedProperties);
 
         // todo: extract this into an extra improver?
         if (!$tag->sortTitle && $tag->series) {

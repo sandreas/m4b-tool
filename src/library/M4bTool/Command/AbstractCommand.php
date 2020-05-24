@@ -18,7 +18,7 @@ use M4bTool\Executables\Mp4chaps;
 use M4bTool\Executables\Mp4info;
 use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
-use M4bTool\M4bTool\Audio\Traits\CacheAdapterTrait;
+use M4bTool\Audio\Traits\CacheAdapterTrait;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
 use Psr\Log\LogLevel;

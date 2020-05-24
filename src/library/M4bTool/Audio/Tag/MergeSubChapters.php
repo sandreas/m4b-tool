@@ -6,13 +6,10 @@ namespace M4bTool\Audio\Tag;
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 
-class MergeSubChapters implements TagImproverInterface
+class MergeSubChapters extends AbstractTagImprover
 {
-    use LogTrait;
-
     private $chapterHandler;
 
     public function __construct(ChapterHandler $chapterHandler)

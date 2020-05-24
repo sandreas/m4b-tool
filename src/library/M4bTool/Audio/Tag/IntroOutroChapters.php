@@ -6,12 +6,10 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use Sandreas\Time\TimeUnit;
 
-class IntroOutroChapters implements TagImproverInterface
+class IntroOutroChapters extends AbstractTagImprover
 {
-    use LogTrait;
 
     public function improve(Tag $tag): Tag
     {

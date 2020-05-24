@@ -15,7 +15,7 @@ use M4bTool\Audio\Tag\OpenPackagingFormat;
 use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Common\Flags;
-use M4bTool\M4bTool\Common\TaggingFlags;
+use M4bTool\Common\TaggingFlags;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;

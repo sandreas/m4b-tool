@@ -6,13 +6,11 @@ namespace M4bTool\Audio\Tag;
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Parser\FfmetaDataParser;
 use SplFileInfo;
 
-class Ffmetadata implements TagImproverInterface
+class Ffmetadata extends AbstractTagImprover
 {
-    use LogTrait;
 
     /**
      * @var FfmetaDataParser
@@ -54,7 +52,8 @@ class Ffmetadata implements TagImproverInterface
 
         $improvedProperties = $tag->mergeOverwrite($this->ffparser->toTag());
 
-        $this->info(sprintf("ffmetadata.txt improved the following %s properties: %s", count($improvedProperties), implode(", ", $improvedProperties)));
+        $this->info(sprintf("ffmetadata.txt improved the following %s properties:", count($improvedProperties)));
+        $this->dumpTagDifference($improvedProperties);
 
         return $tag;
     }

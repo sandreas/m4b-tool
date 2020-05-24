@@ -19,8 +19,8 @@ use M4bTool\Executables\Tasks\ConversionTask;
 use M4bTool\Executables\Tasks\Pool;
 use M4bTool\Filesystem\DirectoryLoader;
 use M4bTool\Filesystem\FileLoader;
-use M4bTool\M4bTool\Audio\Tag\ChaptersFromFileTracks;
-use M4bTool\M4bTool\Audio\Tag\ChaptersFromMusicBrainz;
+use M4bTool\Audio\Tag\ChaptersFromFileTracks;
+use M4bTool\Audio\Tag\ChaptersFromMusicBrainz;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use RecursiveDirectoryIterator;
 use Sandreas\Strings\Format\FormatParser;
@@ -110,7 +110,7 @@ class MergeCommand extends AbstractConversionCommand
 
         $this->addOption(static::OPTION_CHAPTER_USE_FILENAMES, null, InputOption::VALUE_NONE, "Use filenames for chapter titles instead of tag contents");
         $this->addOption(static::OPTION_CHAPTER_NO_REINDEXING, null, InputOption::VALUE_NONE, "Do not perform any reindexing for index-only chapter names (by default m4b-tool will try to detect index-only chapters like Chapter 1, Chapter 2 and reindex it with its numbers only)");
-        $this->addOption(static::OPTION_PREPEND_SERIES_TO_LONGDESC, null, InputOption::VALUE_NONE, "Prepend series and part to description, if available (e.g. Harry Potter 1: Harry Potter and the Philosopher's Stone is a...) - this option is mainly meant for iPods not showing the series or part in the listing");
+        $this->addOption(static::OPTION_PREPEND_SERIES_TO_LONGDESC, null, InputOption::VALUE_NONE, "Prepend series and part to description, if available (e.g. Thrawn 1: Thrawn and the Philosopher's Stone is a...) - this option is mainly meant for iPods not showing the series or part in the listing");
 
         $this->addOption(static::OPTION_EQUATE, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, sprintf("Forces the same value for specific tag fields (e.g. --%s=artist,albumartist,sortArtist takes value of artist and forces albumartist and sortartist to contain the same value)", static::OPTION_EQUATE), []);
     }
