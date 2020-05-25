@@ -5,7 +5,6 @@ namespace M4bTool\Executables;
 
 
 use Exception;
-use M4bTool\Audio\Chapter;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagReaderInterface;
@@ -78,7 +77,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             $output = $this->getAllProcessOutput($process);
             preg_match("/^.*([0-9]\.[0-9]\.[0-9]).*$/sU", $output, $matches);
             $version = $matches[1] ?? null;
-        };
+        }
         return $version;
     }
 
@@ -222,7 +221,6 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
         }
 
-        /** @var Chapter $chapter */
         foreach ($tag->chapters as $chapter) {
             $returnValue .= "[CHAPTER]\n" .
                 "TIMEBASE=1/1000\n" .

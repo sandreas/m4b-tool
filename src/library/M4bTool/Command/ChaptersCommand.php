@@ -374,7 +374,7 @@ class ChaptersCommand extends AbstractCommand
         ];
 
 
-        $this->chapters = $this->chapterMarker->normalizeChapters($this->chapters, $options);;
+        $this->chapters = $this->chapterMarker->normalizeChapters($this->chapters, $options);
 
         $specialOffsetChapterNumbers = $this->parseSpecialOffsetChaptersOption();
 
@@ -419,9 +419,6 @@ class ChaptersCommand extends AbstractCommand
                         $silenceChapterPrefix = $silenceClone->getStart()->milliseconds() < $chapter->getStart()->milliseconds() ? "=> silence " . $silenceIndex . " before: " : "=> silence " . $silenceIndex . " after: ";
 
 
-                        /**
-                         * @var TimeUnit $potentialChapterStart
-                         */
                         $potentialChapterStart = clone $silenceClone->getStart();
                         $halfLen = (int)round($silenceClone->getLength()->milliseconds() / 2);
                         $potentialChapterStart->add($halfLen);

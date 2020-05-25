@@ -6,7 +6,6 @@ namespace M4bTool\Audio\Tag;
 
 use Exception;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use SplFileInfo;
 

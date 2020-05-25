@@ -6,7 +6,6 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\Flags;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;

@@ -1,7 +1,7 @@
 <?php
 
 
-namespace M4bTool\Parser;
+namespace M4bTool\Audio;
 
 
 class EmbeddedCover
@@ -30,7 +30,7 @@ class EmbeddedCover
 
 
     /**
-     * EmbeddedCover constructor.
+     *
      * @param int $compressionFormat
      * @param int $width
      * @param int $height

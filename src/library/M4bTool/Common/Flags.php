@@ -6,7 +6,7 @@ namespace M4bTool\Common;
 
 class Flags
 {
-    private $rawValue = 0;
+    private $rawValue;
 
     public function __construct($rawValue = 0)
     {

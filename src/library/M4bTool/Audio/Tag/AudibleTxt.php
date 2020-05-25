@@ -5,7 +5,6 @@ namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\ReleaseDate;
 use SplFileInfo;
 

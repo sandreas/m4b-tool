@@ -8,7 +8,6 @@ use Exception;
 use M4bTool\Audio\ChapterCollection;
 use M4bTool\Audio\EpubChapter;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Parser\EpubParser;
 use Sandreas\Time\TimeUnit;

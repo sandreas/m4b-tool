@@ -192,28 +192,28 @@ class ChapterHandlerTest extends TestCase
     public function testAdjustChaptersNamed()
     {
         $chapters = [
-            $this->createChapter("First Chapter"),
-            $this->createChapter("First Chapter"),
-            $this->createChapter("Second Chapter"),
-            $this->createChapter("Third Chapter"),
-            $this->createChapter("Chapter"),
-            $this->createChapter("Chapter 4"),
-            $this->createChapter("Chapter 4"),
-            $this->createChapter("Chapter 6"),
-            $this->createChapter("Chapter without index"),
+            $this->createChapter("First Chapter1"),
+            $this->createChapter("First Chapter1"),
+            $this->createChapter("Second Chapter2"),
+            $this->createChapter("Third Chapter3"),
+            $this->createChapter("ChapterX"),
+            $this->createChapter("Chapter4 4"),
+            $this->createChapter("Chapter4 4"),
+            $this->createChapter("Chapter6 6"),
+            $this->createChapter("ChapterX without index"),
         ];
 
         $actual = $this->subject->adjustChapters($chapters);
         $this->assertEquals(count($actual), count($chapters));
-        $this->assertEquals("First Chapter (1)", $actual[0]->getName());
-        $this->assertEquals("First Chapter (2)", $actual[1]->getName());
-        $this->assertEquals("Second Chapter", $actual[2]->getName());
-        $this->assertEquals("Third Chapter", $actual[3]->getName());
-        $this->assertEquals("Chapter", $actual[4]->getName());
-        $this->assertEquals("Chapter 4 (1)", $actual[5]->getName());
-        $this->assertEquals("Chapter 4 (2)", $actual[6]->getName());
-        $this->assertEquals("Chapter 6", $actual[7]->getName());
-        $this->assertEquals("Chapter without index", $actual[8]->getName());
+        $this->assertEquals("First Chapter1 (1)", $actual[0]->getName());
+        $this->assertEquals("First Chapter1 (2)", $actual[1]->getName());
+        $this->assertEquals("Second Chapter2", $actual[2]->getName());
+        $this->assertEquals("Third Chapter3", $actual[3]->getName());
+        $this->assertEquals("ChapterX", $actual[4]->getName());
+        $this->assertEquals("Chapter4 4 (1)", $actual[5]->getName());
+        $this->assertEquals("Chapter4 4 (2)", $actual[6]->getName());
+        $this->assertEquals("Chapter6 6", $actual[7]->getName());
+        $this->assertEquals("ChapterX without index", $actual[8]->getName());
     }
 
 }

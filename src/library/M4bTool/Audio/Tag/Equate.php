@@ -76,7 +76,7 @@ class Equate extends AbstractTagImprover
             ];
             $tag->$destinationProperty = $tag->$sourceProperty;
         }
-        $this->info(sprintf("equate changed %s tag properties: %s", count($improvedProperties)));
+        $this->info(sprintf("equate changed %s tag properties:", count($improvedProperties)));
         $this->dumpTagDifference($improvedProperties);
 
         return $tag;

@@ -6,6 +6,7 @@ namespace M4bTool\Parser;
 
 use Exception;
 use M4bTool\Audio\Chapter;
+use M4bTool\Audio\EmbeddedCover;
 use M4bTool\Audio\Tag;
 use M4bTool\Common\ReleaseDate;
 use M4bTool\StringUtilities\Scanner;
@@ -109,7 +110,7 @@ class FfmetaDataParser
         $parsingMode = static::PARSE_SKIP;
         while ($this->scanner->scanLine()) {
             $line = $this->scanner->getTrimmedResult();
-            $lineString = mb_strtolower($line);
+            $lineString = trim(mb_strtolower($line));
 
             if ($lineString === static::METADATA_MARKER) {
                 $parsingMode = static::PARSE_METADATA;
@@ -288,7 +289,7 @@ class FfmetaDataParser
 
     }
 
-    private function applyAudioStreamMapping($mapping, &$haystack, &$property)
+    private function applyAudioStreamMapping($mapping, $haystack, &$property)
     {
         foreach ($mapping as $needle => $result) {
             if (stripos($haystack, $needle) !== false) {

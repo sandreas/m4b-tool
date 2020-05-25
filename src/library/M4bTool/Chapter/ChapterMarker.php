@@ -325,9 +325,6 @@ class ChapterMarker
             } else if (!$options["no-chapter-numbering"]) {
                 $suffix = " (" . $chapterIndex . ")";
             }
-            /**
-             * @var TimeUnit $start
-             */
             $start = $chapter->getStart();
             if ($index === 1 && $firstChapterOffset) {
                 $start->add($firstChapterOffset, TimeUnit::MILLISECOND);

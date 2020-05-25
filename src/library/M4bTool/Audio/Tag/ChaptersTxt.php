@@ -7,7 +7,6 @@ namespace M4bTool\Audio\Tag;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
-use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Executables\Mp4chaps;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;

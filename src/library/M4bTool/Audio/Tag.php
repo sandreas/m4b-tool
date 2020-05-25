@@ -4,7 +4,6 @@ namespace M4bTool\Audio;
 
 
 use ArrayAccess;
-use M4bTool\Parser\EmbeddedCover;
 
 /**
  * Class Tag

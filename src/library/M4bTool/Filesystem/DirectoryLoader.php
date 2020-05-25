@@ -40,7 +40,7 @@ class DirectoryLoader
 
             $loadedDirs[] = $currentDirAsString;
 
-        };
+        }
 
 
         return array_values(array_diff($loadedDirs, $excludeDirectories));

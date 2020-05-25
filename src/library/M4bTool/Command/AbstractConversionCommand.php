@@ -379,7 +379,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         if (file_put_contents($descriptionTargetFile, $description) === false) {
             $this->warning("extracting description to " . $descriptionTargetFile . " failed");
             return null;
-        };
+        }
         $this->notice("extracted description to " . $descriptionTargetFile . "");
         return $descriptionTargetFile;
     }
