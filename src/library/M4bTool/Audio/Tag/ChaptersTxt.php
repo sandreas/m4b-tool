@@ -13,6 +13,7 @@ use SplFileInfo;
 
 class ChaptersTxt extends AbstractTagImprover
 {
+    const DEFAULT_FILENAME = "chapters.txt";
     /**
      * @var TimeUnit
      */
@@ -41,7 +42,7 @@ class ChaptersTxt extends AbstractTagImprover
     public static function fromFile(SplFileInfo $reference, $fileName = null, TimeUnit $totalLength = null)
     {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-        $fileName = $fileName ? $fileName : "chapters.txt";
+        $fileName = $fileName ? $fileName : static::DEFAULT_FILENAME;
         $fileToLoad = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
         if ($fileToLoad->isFile()) {
             return new static(new Mp4chaps(), file_get_contents($fileToLoad), $totalLength);

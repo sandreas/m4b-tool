@@ -9,6 +9,7 @@ use SplFileInfo;
 
 class Description extends AbstractTagImprover
 {
+    const DEFAULT_FILENAME = "description.txt";
 
     private $descriptionContent;
 
@@ -29,7 +30,7 @@ class Description extends AbstractTagImprover
     public static function fromFile(SplFileInfo $reference, $fileName = null)
     {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-        $fileName = $fileName ? $fileName : "description.txt";
+        $fileName = $fileName ? $fileName : static::DEFAULT_FILENAME;
         $fileToLoad = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
         if ($fileToLoad->isFile()) {
             return new static(file_get_contents($fileToLoad));
@@ -48,7 +49,7 @@ class Description extends AbstractTagImprover
             $tag->description = $this->descriptionContent;
             $tag->longDescription = $this->descriptionContent;
         } else {
-            $this->info("description.txt not found - tags not improved");
+            $this->info(sprintf("%s not found - tags not improved", static::DEFAULT_FILENAME));
         }
         return $tag;
     }

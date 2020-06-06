@@ -81,6 +81,7 @@ class AbstractCommand extends Command implements LoggerInterface
     const OPTION_OUTPUT_FILE = "output-file";
     const OPTION_OUTPUT_FILE_SHORTCUT = "o";
 
+    const ENV_TMP_DIR = "M4BTOOL_TMP_DIR";
 
     const LOG_LEVEL_TO_VERBOSITY = [
         LogLevel::DEBUG => OutputInterface::VERBOSITY_DEBUG,
@@ -89,6 +90,7 @@ class AbstractCommand extends Command implements LoggerInterface
         LogLevel::WARNING => OutputInterface::VERBOSITY_NORMAL,
         LogLevel::ERROR => OutputInterface::VERBOSITY_QUIET,
     ];
+
 
     protected $startTime;
 
@@ -347,7 +349,16 @@ class AbstractCommand extends Command implements LoggerInterface
 
         $this->optForce = $this->input->getOption(static::OPTION_FORCE);
         $this->optNoCache = $this->input->getOption(static::OPTION_NO_CACHE);
-        $this->optTmpDir = $this->input->getOption(static::OPTION_TMP_DIR);
+        $this->optTmpDir = $this->input->getOption(static::OPTION_TMP_DIR) ?? $this->getEnvironmentVariable(static::ENV_TMP_DIR);
+    }
+
+    protected function getEnvironmentVariable($name)
+    {
+        $value = getenv($name);
+        if ($value === false) {
+            return null;
+        }
+        return $value;
     }
 
     protected function isWindows()

@@ -204,13 +204,13 @@ class MergeCommand extends AbstractConversionCommand
             static::DEFAULT_SUPPORTED_IMAGE_EXTENSIONS,
             static::DEFAULT_SUPPORTED_DATA_EXTENSIONS
         )), $this->alreadyProcessedBatchDirs);
-        $normalizedBatchPattern = $this->normalizeDirectory($batchPattern);
+        $normalizedBatchPattern = $this->normalizeDirectory($batchPattern, "");
 
         $verifiedDirectories = [];
         foreach ($currentBatchDirs as $baseDir) {
             $placeHolders = static::createPlaceHoldersForOptions();
             $formatParser = new FormatParser(...$placeHolders);
-            $patternDir = $this->normalizeDirectory($baseDir);
+            $patternDir = $this->normalizeDirectory($baseDir, "");
             if ($formatParser->parseFormat($normalizedBatchPattern, $patternDir)) {
                 $verifiedDirectories[$baseDir] = $formatParser;
                 $this->alreadyProcessedBatchDirs[] = $baseDir;
@@ -281,11 +281,15 @@ class MergeCommand extends AbstractConversionCommand
         );
     }
 
-    protected function normalizeDirectory($directory)
+    protected function normalizeDirectory($directory, $suffix = "/")
     {
-        return rtrim(strtr($directory, [
+        $normalized = rtrim(strtr($directory, [
             "\\" => "/",
         ]), "/");
+        if ($normalized !== "") {
+            $normalized .= $suffix;
+        }
+        return $normalized;
     }
 
     /**
@@ -573,7 +577,7 @@ class MergeCommand extends AbstractConversionCommand
     private function createOutputTempDir()
     {
         if ($this->optTmpDir) {
-            $dir = rtrim($this->optTmpDir, "\\/") . "/";
+            $dir = $this->normalizeDirectory($this->optTmpDir);
         } else {
             $basename = $this->outputFile->getBasename("." . $this->outputFile->getExtension());
             $basename = $basename === "" ? "m4b-tool" : $basename;
@@ -655,8 +659,8 @@ class MergeCommand extends AbstractConversionCommand
         $tagChanger->setLogger($this);
         // chapter loaders
         // todo: what about - don't change any chapters if found: freezeProperties? -> load($tag, $frozenProperties=[])
-        $tagChanger->add(Ffmetadata::fromFile($this->argInputFile, "ffmetadata.txt"));
-        $tagChanger->add(ChaptersTxt::fromFile($this->argInputFile, "chapters.txt"));
+        $tagChanger->add(Ffmetadata::fromFile($this->argInputFile, Ffmetadata::DEFAULT_FILENAME));
+        $tagChanger->add(ChaptersTxt::fromFile($this->argInputFile, ChaptersTxt::DEFAULT_FILENAME));
 
         if ($mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID)) {
             $mbChapterParser = new MusicBrainzChapterParser($mbId);
@@ -674,9 +678,9 @@ class MergeCommand extends AbstractConversionCommand
         $tagChanger->add(new Tag\AdjustTooLongChapters($this->metaHandler, $this->chapterHandler, $outputTmpFile, $maxChapterLength, $minSilenceLength));
 
         // tag property loaders
-        $tagChanger->add(OpenPackagingFormat::fromFile($this->argInputFile, "metadata.opf"));
-        $tagChanger->add(Tag\AudibleTxt::fromFile($this->argInputFile, "audible.txt"));
-        $tagChanger->add(Tag\Description::fromFile($this->argInputFile, "description.txt"));
+        $tagChanger->add(OpenPackagingFormat::fromFile($this->argInputFile));
+        $tagChanger->add(Tag\AudibleTxt::fromFile($this->argInputFile));
+        $tagChanger->add(Tag\Description::fromFile($this->argInputFile));
         $tagChanger->add(Tag\ContentMetadataJson::fromFile($this->argInputFile));
 
         $equateInstructions = $this->input->getOption(static::OPTION_EQUATE);
@@ -719,7 +723,11 @@ class MergeCommand extends AbstractConversionCommand
     {
         reset($this->filesToConvert);
 
-        $file = current($this->filesToConvert);
+        $files = array_filter($this->filesToConvert, function ($file) {
+            return $file instanceof SplFileInfo && $file->isFile();
+        });
+
+        $file = current($files);
         if (!$file) {
             return null;
         }

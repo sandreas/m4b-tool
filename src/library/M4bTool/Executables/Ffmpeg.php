@@ -359,7 +359,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     public function readTag(SplFileInfo $file): Tag
     {
         if (!$file->isFile()) {
-            throw new Exception(sprintf("cannot read metadata, file %s does not exist", $file));
+            throw new Exception(sprintf("cannot read metadata, file '%s' does not exist", $file));
         }
         $output = $this->getAllProcessOutput($this->createMetaDataProcess($file));
         // force utf-8

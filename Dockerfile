@@ -48,7 +48,8 @@ RUN echo "---- INSTALL BUILD DEPENDENCIES ----" \
 #
 ##############################
 FROM alpine:3.9.2
-ENV WORKDIR /mnt
+ENV WORKDIR /mnt/
+ENV M4BTOOL_TMP_DIR /tmp/m4b-tool/
 
 
 RUN echo "---- INSTALL RUNTIME PACKAGES ----" && \

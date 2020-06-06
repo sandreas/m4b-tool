@@ -10,6 +10,7 @@ use SplFileInfo;
 
 class AudibleTxt extends AbstractTagImprover
 {
+    const DEFAULT_FILENAME = "audible.txt";
     protected $fileContent;
 
     public function __construct($fileContents = "")
@@ -26,7 +27,7 @@ class AudibleTxt extends AbstractTagImprover
     public static function fromFile(SplFileInfo $reference, $fileName = null)
     {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-        $fileName = $fileName ? $fileName : "audible.txt";
+        $fileName = $fileName ? $fileName : static::DEFAULT_FILENAME;
 
 
         $fileToLoad = new SplFileInfo($path . "/" . $fileName);
@@ -44,15 +45,15 @@ class AudibleTxt extends AbstractTagImprover
     public function improve(Tag $tag): Tag
     {
         if (trim($this->fileContent) === "") {
-            $this->info("no audible.txt found - tags not improved");
+            $this->info(sprintf("no %s found - tags not improved", static::DEFAULT_FILENAME));
             return $tag;
         }
         $decoded = @json_decode($this->fileContent, true);
         if ($decoded === false) {
-            $this->warning("could not decode audible.txt");
+            $this->warning(sprintf("could not decode %s", static::DEFAULT_FILENAME));
             return $tag;
         }
-        $this->notice("audible.txt loaded for tagging");
+        $this->notice(sprintf("%s loaded for tagging", static::DEFAULT_FILENAME));
         $mergeTag = new Tag();
         $mergeTag->album = $decoded["name"] ?? null;
         // $tag->sortAlbum = $this->getProperty("sort_album") ?? $this->getProperty("album-sort");

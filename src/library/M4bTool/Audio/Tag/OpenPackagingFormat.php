@@ -11,6 +11,7 @@ use Throwable;
 
 class OpenPackagingFormat extends AbstractTagImprover
 {
+    const DEFAULT_FILENAME = "metadata.opf";
 
     const NAMESPACE_DUBLIN_CORE = "dc";
     const NAMESPACE_OPEN_PACKAGING_FORMAT = "opf";
@@ -39,7 +40,7 @@ class OpenPackagingFormat extends AbstractTagImprover
     public static function fromFile(SplFileInfo $reference, $fileName = null)
     {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-        $fileName = $fileName ? $fileName : "metadata.opf";
+        $fileName = $fileName ? $fileName : static::DEFAULT_FILENAME;
         $fileToLoad = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
         if ($fileToLoad->isFile()) {
             return new static(file_get_contents($fileToLoad));
@@ -55,7 +56,7 @@ class OpenPackagingFormat extends AbstractTagImprover
     {
 
         if (trim($this->xmlString) === "") {
-            $this->info("metadata.opf not found - tags not improved");
+            $this->info(sprintf("%s not found - tags not improved", static::DEFAULT_FILENAME));
             return $tag;
         }
         try {

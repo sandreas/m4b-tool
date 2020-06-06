@@ -11,6 +11,7 @@ use SplFileInfo;
 
 class Ffmetadata extends AbstractTagImprover
 {
+    const DEFAULT_FILENAME = "ffmetadata.txt";
 
     /**
      * @var FfmetaDataParser
@@ -32,7 +33,7 @@ class Ffmetadata extends AbstractTagImprover
     public static function fromFile(SplFileInfo $reference, $fileName = null)
     {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-        $fileName = $fileName ? $fileName : "ffmetadata.txt";
+        $fileName = $fileName ? $fileName : static::DEFAULT_FILENAME;
         $fileToLoad = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
         if ($fileToLoad->isFile()) {
             $parser = new FfmetaDataParser();
