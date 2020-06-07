@@ -1,7 +1,8 @@
 ##############################
 #
 #   m4b-tool build image
-#
+#   alias m4b-tool='docker run -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool'
+#   alias m4b-tool='docker run -it --entrypoint=m4b-tool-pre --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool'
 ##############################
 FROM alpine:3.9.2 as builder
 
@@ -83,15 +84,17 @@ ARG M4B_TOOL_DOWNLOAD_LINK="https://github.com/sandreas/m4b-tool/releases/latest
 ADD ./Dockerfile ./dist/m4b-tool.phar* /tmp/
 RUN echo "---- INSTALL M4B-TOOL ----" \
     && if [ ! -f /tmp/m4b-tool.phar ]; then \
-            cd /tmp/ && \
-            wget "${M4B_TOOL_DOWNLOAD_LINK}" && \
+            wget "${M4B_TOOL_DOWNLOAD_LINK}" -O /tmp/m4b-tool.tar.gz && \
             if [ ! -f /tmp/m4b-tool.phar ]; then \
-                tar xzf m4b-tool*.tar.gz && rm m4b-tool*.tar.gz ;\
-            fi && \
-            cd - ; \
+                tar xzf /tmp/m4b-tool.tar.gz -C /tmp/ && rm /tmp/m4b-tool.tar.gz ;\
+            fi \
        fi \
     && mv /tmp/m4b-tool.phar /usr/local/bin/m4b-tool \
-    && chmod +x /usr/local/bin/m4b-tool
+    && M4B_TOOL_PRE_RELEASE_LINK=$(wget -q -O - https://github.com/sandreas/m4b-tool/releases/tag/latest | grep M4B_TOOL_DOWNLOAD_LINK | cut -d '=' -f 2 | cut -d ' ' -f 1) \
+    && wget "${M4B_TOOL_PRE_RELEASE_LINK}" -O /tmp/m4b-tool.tar.gz \
+    && tar xzf /tmp/m4b-tool.tar.gz -C /tmp/ && rm /tmp/m4b-tool.tar.gz \
+    && mv /tmp/m4b-tool.phar /usr/local/bin/m4b-tool-pre \
+    && chmod +x /usr/local/bin/m4b-tool /usr/local/bin/m4b-tool-pre
 
 WORKDIR ${WORKDIR}
 CMD ["list"]
