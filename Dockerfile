@@ -66,6 +66,7 @@ RUN echo "---- INSTALL RUNTIME PACKAGES ----" && \
   php7-phar \
   php7-tokenizer \
   php7-xmlwriter \
+  php7-openssl \
   && echo "date.timezone = UTC" >> /etc/php7/php.ini
 
 
