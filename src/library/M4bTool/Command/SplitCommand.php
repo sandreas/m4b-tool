@@ -123,6 +123,8 @@ class SplitCommand extends AbstractConversionCommand
         }
 
         $this->splitChapters();
+
+        return 0;
     }
 
     protected function initExecution(InputInterface $input, OutputInterface $output)
