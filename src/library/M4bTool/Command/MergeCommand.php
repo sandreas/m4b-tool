@@ -600,10 +600,9 @@ class MergeCommand extends AbstractConversionCommand
         $lastIndex = $filesCount - 1;
         $padLen = strlen($filesCount);
         $pad = str_pad($index + 1, $padLen, "0", STR_PAD_LEFT);
-
-
-        $outputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . ConversionTask::CONVERTING_SUFFIX . "." . $this->optAudioExtension);
-        $finishedOutputFile = new SplFileInfo($outputTempDir . $pad . '-' . $file->getBasename("." . $file->getExtension()) . ConversionTask::FINISHED_SUFFIX . "." . $this->optAudioExtension);
+        $prefix = $outputTempDir . $pad;
+        $outputFile = new SplFileInfo($prefix . ConversionTask::CONVERTING_SUFFIX . "." . $this->optAudioExtension);
+        $finishedOutputFile = new SplFileInfo($prefix . ConversionTask::FINISHED_SUFFIX . "." . $this->optAudioExtension);
         if ($outputFile->isFile()) {
             unlink($outputFile);
         }
