@@ -634,6 +634,13 @@ m4b-tool chapters --adjust-by-silence -o "data/destination-with-adjusted-chapter
 
 It won't work, if the shift is to large or if the chapters are strongly misplaced, but since everything is done automatically, it's worth a try, isn't it?
 
+## Too long chapters
+Sometimes you have a file that contains valid chapters, but they are too long, so you would like to split them into sub-chapters. This is tricky, because the `chapters` command relays only on metadata and not on track length - so it won't work.  BUT: There might be a workaround. In the latest pre-release since July 2020 you can do the following:
+
+- Put the source file into an empty directory, e.g. `input/my-file.m4b` (this is important, don't skip this step!)
+- Run `m4b-tool merge -v --no-conversion --max-chapter-length=300,900 "input/" -o "output/my-rechaptered-file.m4b"`
+
+Because of `--no-conversion` the chaptering process is lossless, but it takes the existing chapters as input and recalculates it based on the `--max-chapter-length` parameter and a new silence detection.  
 
 ### No chapters at all
 If you have a well known audiobook, like ***Harry Potter and the Philosopher’s Stone***, 
