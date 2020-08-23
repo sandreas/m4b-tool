@@ -193,9 +193,9 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         }
 
 
-        if ($this->optAudioFormat === static::AUDIO_EXTENSION_M4B) {
-            $this->optAudioFormat = static::AUDIO_FORMAT_MP4;
-        }
+        // normalize format, so that it is not an extension (e.g. m4a is not allowed as format)
+        $this->optAudioFormat = static::AUDIO_EXTENSION_FORMAT_MAPPING[$this->optAudioFormat] ?? $this->optAudioFormat;
+
 
         if (!$this->optAudioCodec) {
             if (isset(static::AUDIO_FORMAT_CODEC_MAPPING[$this->optAudioFormat])) {

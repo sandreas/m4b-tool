@@ -45,6 +45,12 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
         }
     }
 
+    private function removeAllCoversAndIgnoreErrors(SplFileInfo $file)
+    {
+        $command = ["--remove", "--art-any", $file];
+        $this->runProcess($command);
+    }
+
     /**
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
@@ -88,11 +94,5 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
             throw new Exception(sprintf("renaming cover %s => %s failed", $extractedCoverFile, $destinationFile));
         }
         return $extractedCoverFile;
-    }
-
-    private function removeAllCoversAndIgnoreErrors(SplFileInfo $file)
-    {
-        $command = ["--remove", "--art-any", $file];
-        $this->runProcess($command);
     }
 }

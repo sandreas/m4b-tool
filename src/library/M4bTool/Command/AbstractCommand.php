@@ -40,6 +40,7 @@ class AbstractCommand extends Command implements LoggerInterface
     const AUDIO_EXTENSION_MP4 = "mp4";
     const AUDIO_EXTENSION_M4A = "m4a";
     const AUDIO_EXTENSION_M4B = "m4b";
+    const AUDIO_EXTENSION_M4R = "m4r";
 
     const AUDIO_FORMAT_MP4 = "mp4";
     const AUDIO_FORMAT_MP3 = "mp3";
@@ -56,6 +57,7 @@ class AbstractCommand extends Command implements LoggerInterface
     const AUDIO_EXTENSION_FORMAT_MAPPING = [
         self::AUDIO_EXTENSION_M4A => self::AUDIO_FORMAT_MP4,
         self::AUDIO_EXTENSION_M4B => self::AUDIO_FORMAT_MP4,
+        self::AUDIO_EXTENSION_M4R => self::AUDIO_FORMAT_MP4,
         self::AUDIO_EXTENSION_MP3 => self::AUDIO_FORMAT_MP3,
     ];
 
