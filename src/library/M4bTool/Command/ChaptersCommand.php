@@ -132,7 +132,7 @@ class ChaptersCommand extends AbstractCommand
 
         if ($optEpub !== false || $optEpubRestore) {
             $this->handleEpub($optEpub);
-            return;
+            return 0;
         }
 
         $this->silences = $this->metaHandler->detectSilences($this->filesToProcess, $this->optSilenceMinLength);
@@ -170,7 +170,7 @@ class ChaptersCommand extends AbstractCommand
 
         $chaptersTxtFile = $this->audioFileToChaptersFile($this->filesToProcess);
         $this->metaHandler->exportChapters($this->filesToProcess, $chaptersTxtFile);
-
+        return 0;
     }
 
     private function initParsers()

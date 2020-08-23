@@ -112,7 +112,7 @@ class MetaCommand extends AbstractMetadataCommand
             }
             if ($importFlags->equal(TaggingFlags::FLAG_NONE) && $exportFlags->equal(TaggingFlags::FLAG_NONE)) {
                 $this->viewMeta($this->argInputFile);
-                return;
+                return 0;
             }
 
             if ($importFlags->notEqual(TaggingFlags::FLAG_NONE) && $exportFlags->notEqual(TaggingFlags::FLAG_NONE)) {
@@ -122,15 +122,16 @@ class MetaCommand extends AbstractMetadataCommand
 
             if ($importFlags->notEqual(TaggingFlags::FLAG_NONE)) {
                 $this->import($importFlags);
-                return;
+                return 0;
             }
 
             $this->export($exportFlags);
-
         } catch (Throwable $e) {
             $this->error($e->getMessage());
             $this->debug(sprintf("trace: %s", $e->getTraceAsString()));
+            return 1;
         }
+        return 0;
     }
 
     /**

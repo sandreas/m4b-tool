@@ -157,7 +157,9 @@ class MergeCommand extends AbstractConversionCommand
         } catch (Throwable $e) {
             $this->error($e->getMessage());
             $this->debug(sprintf("trace: %s", $e->getTraceAsString()));
+            return 1;
         }
+        return 0;
 
 
     }
