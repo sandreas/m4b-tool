@@ -5,9 +5,9 @@ namespace M4bTool\Command;
 
 
 use Exception;
+use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\CueSheet;
-use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Chapter\ChapterHandler;
@@ -19,10 +19,10 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
-use Twig\Error\LoaderError;
-use Twig\Error\SyntaxError;
 use Twig\Environment as Twig_Environment;
+use Twig\Error\LoaderError;
 use Twig\Error\LoaderError as Twig_Error_Loader;
+use Twig\Error\SyntaxError;
 use Twig\Error\SyntaxError as Twig_Error_Syntax;
 use Twig\Loader\ArrayLoader as Twig_Loader_Array;
 
@@ -329,7 +329,7 @@ class SplitCommand extends AbstractConversionCommand
     /**
      * @param Chapter $chapter
      * @param SplFileInfo $outputFile
-     * @param Tag $tag
+     * @param Tag|null $tag
      * @return SplFileInfo
      * @throws Exception
      */

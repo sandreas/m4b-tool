@@ -9,9 +9,9 @@ use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagReaderInterface;
 use M4bTool\Audio\Tag\TagWriterInterface;
+use M4bTool\Audio\Traits\CacheAdapterTrait;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\Flags;
-use M4bTool\Audio\Traits\CacheAdapterTrait;
 use M4bTool\Parser\FfmetaDataParser;
 use M4bTool\Parser\SilenceParser;
 use Psr\Cache\InvalidArgumentException;
@@ -498,10 +498,16 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $command[] = static::normalizeDirectorySeparator($outputFile);
 
         $this->notice(sprintf("merging %s files into %s, this can take a while", $count, $outputFile));
-        $this->ffmpegQuiet($command);
+        $processOutput = "";
+        if($converterOptions->debug) {
+            $processOutput = ", ffmpeg output:\n".$this->getAllProcessOutput($this->ffmpeg($command));
+        } else {
+            $this->ffmpegQuiet($command);
+        }
+
 
         if (!$outputFile->isFile()) {
-            throw new Exception("could not merge to " . $outputFile);
+            throw new Exception(sprintf("could not merge to %s%s", $outputFile, $processOutput));
         }
         if (!$converterOptions->debug) {
             unlink($listFile);

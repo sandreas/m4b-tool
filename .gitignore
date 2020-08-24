@@ -7,7 +7,7 @@
 /data/*
 !/data/.gitkeep
 /vendor
-/src/library/M4bTool/Command/Plugins/
+/src/library/Command/Plugins/
 
 .DS_Store
 fummel.php

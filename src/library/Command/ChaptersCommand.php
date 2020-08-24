@@ -10,10 +10,10 @@ use M4bTool\Audio\ChapterCollection;
 use M4bTool\Audio\Silence;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\AdjustTooLongChapters;
+use M4bTool\Audio\Tag\ChaptersFromEpub;
 use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Common\ConditionalFlags;
-use M4bTool\Audio\Tag\ChaptersFromEpub;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
@@ -192,7 +192,7 @@ class ChaptersCommand extends AbstractCommand
     }
 
     /**
-     * @param string $epubFile
+     * @param string|null $epubFile
      * @throws Exception
      */
     private function handleEpub(string $epubFile = null)

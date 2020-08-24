@@ -16,12 +16,12 @@ use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Common\Flags;
 use M4bTool\Common\TaggingFlags;
+use M4bTool\Filesystem\FileLoader;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
-use M4bTool\Filesystem\FileLoader;
 
 
 class MetaCommand extends AbstractMetadataCommand

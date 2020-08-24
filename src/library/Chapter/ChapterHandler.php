@@ -5,8 +5,8 @@ namespace M4bTool\Chapter;
 
 
 use Exception;
-use M4bTool\Audio\Chapter;
 use M4bTool\Audio\BinaryWrapper;
+use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\Flags;
