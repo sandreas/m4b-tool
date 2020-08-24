@@ -56,17 +56,6 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         return $this->getMediaFileDuration($file) ?? $this->ffmpeg->estimateDuration($file);
     }
 
-    private function getMediaFileDuration(SplFileInfo $file)
-    {
-        try {
-            $mediaFile = MediaFile::open($file);
-            return new TimeUnit($mediaFile->getAudio()->getLength(), TimeUnit::SECOND);
-        } catch (Exception $e) {
-            return null;
-        }
-    }
-
-
     public function detectFormat(SplFileInfo $file)
     {
         if ($format = static::getFormatByExtension($file)) {
@@ -81,6 +70,16 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
     {
         $ext = mb_strtolower($file->getExtension());
         return static::EXTENSION_FORMAT_MAPPING[$ext] ?? null;
+    }
+
+    private function getMediaFileDuration(SplFileInfo $file)
+    {
+        try {
+            $mediaFile = MediaFile::open($file);
+            return new TimeUnit($mediaFile->getAudio()->getLength(), TimeUnit::SECOND);
+        } catch (Exception $e) {
+            return null;
+        }
     }
 
     /**
@@ -128,7 +127,7 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
 
     private function normalizeDefaultFile(SplFileInfo $referenceFile, ?SplFileInfo $destinationFile, $defaultFileName)
     {
-        return $destinationFile && !$referenceFile->isFile() ? $destinationFile : new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $defaultFileName);
+        return $destinationFile && !$referenceFile->isFile() ? $destinationFile : new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $referenceFile->getBasename($referenceFile->getExtension()) . $defaultFileName);
     }
 
     /**

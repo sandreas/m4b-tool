@@ -32,15 +32,15 @@ class Ffmetadata extends AbstractTagImprover
      */
     public static function fromFile(SplFileInfo $reference, $fileName = null)
     {
-        $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-        $fileName = $fileName ? $fileName : static::DEFAULT_FILENAME;
-        $fileToLoad = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
-        if ($fileToLoad->isFile()) {
+
+        $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
+
+        if ($fileToLoad) {
             $parser = new FfmetaDataParser();
             $parser->parse(file_get_contents($fileToLoad));
-
             return new static($parser);
         }
+
         return new static();
     }
 

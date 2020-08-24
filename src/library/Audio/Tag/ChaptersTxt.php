@@ -41,14 +41,11 @@ class ChaptersTxt extends AbstractTagImprover
      */
     public static function fromFile(SplFileInfo $reference, $fileName = null, TimeUnit $totalLength = null)
     {
-        $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-        $fileName = $fileName ? $fileName : static::DEFAULT_FILENAME;
-        $fileToLoad = new SplFileInfo($path . DIRECTORY_SEPARATOR . $fileName);
-        if ($fileToLoad->isFile()) {
-            return new static(new Mp4chaps(), file_get_contents($fileToLoad), $totalLength);
-        }
-        return new static();
+        $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
+        return $fileToLoad ? new static(new Mp4chaps(), file_get_contents($fileToLoad), $totalLength) : new static();
     }
+
+
 
 
     /**

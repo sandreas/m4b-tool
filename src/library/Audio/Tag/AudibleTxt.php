@@ -26,15 +26,8 @@ class AudibleTxt extends AbstractTagImprover
      */
     public static function fromFile(SplFileInfo $reference, $fileName = null)
     {
-        $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-        $fileName = $fileName ? $fileName : static::DEFAULT_FILENAME;
-
-
-        $fileToLoad = new SplFileInfo($path . "/" . $fileName);
-        if ($fileToLoad->isFile()) {
-            return new static(file_get_contents($fileToLoad));
-        }
-        return new static();
+        $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
+        return $fileToLoad ? new static(file_get_contents($fileToLoad)) : new static();
     }
 
 

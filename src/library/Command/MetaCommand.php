@@ -79,13 +79,13 @@ class MetaCommand extends AbstractMetadataCommand
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $importFlags = new TaggingFlags();
-        $importFlags->insertIf(TaggingFlags::FLAG_ALL, $input->getOption(static::OPTION_IMPORT_ALL));
+        $importFlags->insertIf(TaggingFlags::FLAG_ALL, $input->getOption(static::OPTION_IMPORT_ALL) !== false);
         $importFlags->insertIf(TaggingFlags::FLAG_TAG_BY_COMMAND_LINE_ARGUMENTS, count($input->getOption(static::OPTION_REMOVE)));
-        $importFlags->insertIf(TaggingFlags::FLAG_COVER, $input->getOption(static::OPTION_IMPORT_COVER));
-        $importFlags->insertIf(TaggingFlags::FLAG_DESCRIPTION, $input->getOption(static::OPTION_IMPORT_DESCRIPTION));
-        $importFlags->insertIf(TaggingFlags::FLAG_FFMETADATA, $input->getOption(static::OPTION_IMPORT_FFMETADATA));
-        $importFlags->insertIf(TaggingFlags::FLAG_OPF, $input->getOption(static::OPTION_IMPORT_OPF));
-        $importFlags->insertIf(TaggingFlags::FLAG_CHAPTERS, $input->getOption(static::OPTION_IMPORT_CHAPTERS));
+        $importFlags->insertIf(TaggingFlags::FLAG_COVER, $input->getOption(static::OPTION_IMPORT_COVER) !== false);
+        $importFlags->insertIf(TaggingFlags::FLAG_DESCRIPTION, $input->getOption(static::OPTION_IMPORT_DESCRIPTION) !== false);
+        $importFlags->insertIf(TaggingFlags::FLAG_FFMETADATA, $input->getOption(static::OPTION_IMPORT_FFMETADATA) !== false);
+        $importFlags->insertIf(TaggingFlags::FLAG_OPF, $input->getOption(static::OPTION_IMPORT_OPF) !== false);
+        $importFlags->insertIf(TaggingFlags::FLAG_CHAPTERS, $input->getOption(static::OPTION_IMPORT_CHAPTERS) !== false);
         $importFlags->insertIf(TaggingFlags::FLAG_TAG_BY_COMMAND_LINE_ARGUMENTS, (count($input->getOption(static::OPTION_REMOVE)) > 0));
 
         foreach (static::ALL_TAG_OPTIONS as $tagOption) {
@@ -96,13 +96,13 @@ class MetaCommand extends AbstractMetadataCommand
         }
 
         $exportFlags = new ConditionalFlags();
-        $exportFlags->insertIf(TaggingFlags::FLAG_ALL, $input->getOption(static::OPTION_EXPORT_ALL));
-        $exportFlags->insertIf(TaggingFlags::FLAG_COVER, $input->getOption(static::OPTION_EXPORT_COVER));
-        $exportFlags->insertIf(TaggingFlags::FLAG_DESCRIPTION, $input->getOption(static::OPTION_EXPORT_DESCRIPTION));
-        $exportFlags->insertIf(TaggingFlags::FLAG_FFMETADATA, $input->getOption(static::OPTION_EXPORT_FFMETADATA));
+        $exportFlags->insertIf(TaggingFlags::FLAG_ALL, $input->getOption(static::OPTION_EXPORT_ALL) !== false);
+        $exportFlags->insertIf(TaggingFlags::FLAG_COVER, $input->getOption(static::OPTION_EXPORT_COVER) !== false);
+        $exportFlags->insertIf(TaggingFlags::FLAG_DESCRIPTION, $input->getOption(static::OPTION_EXPORT_DESCRIPTION) !== false);
+        $exportFlags->insertIf(TaggingFlags::FLAG_FFMETADATA, $input->getOption(static::OPTION_EXPORT_FFMETADATA) !== false);
 //        $exportFlags->insertIf(TaggingFlags::FLAG_OPF, $input->getOption(static::OPTION_EXPORT_OPF));
 //        $exportFlags->insertIf(TaggingFlags::FLAG_AUDIBLE_TXT, $input->getOption(static::OPTION_EXPORT_AUDIBLE_TXT));
-        $exportFlags->insertIf(TaggingFlags::FLAG_CHAPTERS, $input->getOption(static::OPTION_EXPORT_CHAPTERS));
+        $exportFlags->insertIf(TaggingFlags::FLAG_CHAPTERS, $input->getOption(static::OPTION_EXPORT_CHAPTERS) !== false);
 
 
         try {
@@ -301,12 +301,17 @@ class MetaCommand extends AbstractMetadataCommand
      */
     private function prepareExportFile(SplFileInfo $argInputFile, $defaultFileName, $optionValue = null)
     {
-        $optionValue = $optionValue ? $optionValue : $defaultFileName;
-        $path = ($argInputFile->isDir() ? $argInputFile : $argInputFile->getPath());
-        if ($path !== "") {
-            $path .= DIRECTORY_SEPARATOR;
+        $destinationFile = Tag\AbstractTagImprover::buildExportMetaFile($argInputFile, $defaultFileName, $optionValue);
+
+        if ($destinationFile === null) {
+            $optionValue = $optionValue ? $optionValue : $defaultFileName;
+            $path = ($argInputFile->isDir() ? $argInputFile : $argInputFile->getPath());
+            if ($path !== "") {
+                $path .= DIRECTORY_SEPARATOR;
+            }
+            $destinationFile = new SplFileInfo($path . $optionValue);
         }
-        $destinationFile = new SplFileInfo($path . $optionValue);
+
         if ($destinationFile->isFile()) {
             if (!$this->optForce) {
                 throw new Exception(sprintf("File %s already exists and --%s is not active - skipping export", $destinationFile, static::OPTION_FORCE));
