@@ -109,13 +109,25 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
 
     /**
      * @param SplFileInfo $audioFile
-     * @param SplFileInfo|null $destinationFile
+     * @param SplFileInfo $destinationFile
      * @return SplFileInfo|null
      * @throws Exception
      */
-    public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
+    public function exportCoverPrefixed(SplFileInfo $audioFile, SplFileInfo $destinationFile)
     {
-        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "cover.jpg");
+        return $this->exportCover($audioFile, $destinationFile, $audioFile->getBasename($audioFile->getExtension()));
+    }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $destinationFile
+     * @param string $prefix
+     * @return SplFileInfo|null
+     * @throws Exception
+     */
+    public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $prefix = "")
+    {
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "cover.jpg", $prefix);
         $this->ensureFileDoesNotExist($destinationFile);
 
         if ($this->detectFormat($audioFile) === static::FORMAT_MP4) {
@@ -125,9 +137,9 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         return $this->ffmpeg->exportCover($audioFile, $destinationFile);
     }
 
-    private function normalizeDefaultFile(SplFileInfo $referenceFile, ?SplFileInfo $destinationFile, $defaultFileName)
+    private function normalizeDefaultFile(SplFileInfo $referenceFile, ?SplFileInfo $destinationFile, $defaultFileName, $prefix = "")
     {
-        return $destinationFile && !$referenceFile->isFile() ? $destinationFile : new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $referenceFile->getBasename($referenceFile->getExtension()) . $defaultFileName);
+        return $destinationFile ? $destinationFile : new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $prefix . $defaultFileName);
     }
 
     /**
@@ -143,28 +155,33 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
 
     /**
      * @param SplFileInfo $audioFile
-     * @param SplFileInfo|null $coverFile
+     * @param SplFileInfo|null $destinationFile
+     * @param Flags|null $flags
+     * @return SplFileInfo|null
      * @throws Exception
      */
-    public function importCover(SplFileInfo $audioFile, SplFileInfo $coverFile = null)
+    public function exportChaptersPrefixed(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, Flags $flags = null)
     {
-        $destinationFile = $this->normalizeDefaultFile($audioFile, $coverFile, "cover.jpg");
-        $this->ensureFileExists($destinationFile);
-
-        $tag = $this->readTag($audioFile);
-        $tag->cover = $coverFile;
-        $this->writeTag($audioFile, $tag);
+        return $this->exportChapters($audioFile, $destinationFile, $flags, $audioFile->getBasename($audioFile->getExtension()));
     }
 
     /**
-     * @param SplFileInfo $destinationFile
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo|null $destinationFile
+     * @param Flags $flags
+     * @param string $prefix
+     * @return SplFileInfo|null
      * @throws Exception
      */
-    private function ensureFileExists(SplFileInfo $destinationFile)
+    public function exportChapters(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, Flags $flags = null, $prefix = "")
     {
-        if (!$destinationFile->isFile()) {
-            throw new Exception(sprintf("destination file %s does not exist", $destinationFile));
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "chapters.txt", $prefix);
+        if ($flags && !$flags->contains(static::FLAG_FORCE)) {
+            $this->ensureFileDoesNotExist($destinationFile);
         }
+        $tag = $this->readTag($audioFile);
+        file_put_contents($destinationFile, $this->mp4v2->buildChaptersTxt($tag->chapters));
+        return $destinationFile;
     }
 
     /**
@@ -175,6 +192,24 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
     public function readTag(SplFileInfo $file): Tag
     {
         return $this->ffmpeg->readTag($file);
+    }
+
+    public function toMp4v2ChaptersFormat($chapters)
+    {
+        return $this->mp4v2->buildChaptersTxt($chapters);
+    }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param array $chapters
+     * @param Flags|null $flags
+     * @throws Exception
+     */
+    public function importChapters(SplFileInfo $audioFile, array $chapters, Flags $flags = null)
+    {
+        $tag = $this->readTag($audioFile);
+        $tag->chapters = $chapters;
+        $this->writeTag($audioFile, $tag, $flags);
     }
 
     /**
@@ -249,62 +284,24 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
     /**
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
-     * @param Flags $flags
      * @return SplFileInfo|null
      * @throws Exception
      */
-    public function exportChapters(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, Flags $flags = null)
+    public function exportDescriptionPrefixed(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
     {
-        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "chapters.txt");
-        if ($flags && !$flags->contains(static::FLAG_FORCE)) {
-            $this->ensureFileDoesNotExist($destinationFile);
-        }
-        $tag = $this->readTag($audioFile);
-        file_put_contents($destinationFile, $this->mp4v2->buildChaptersTxt($tag->chapters));
-        return $destinationFile;
-    }
-
-    public function toMp4v2ChaptersFormat($chapters)
-    {
-        return $this->mp4v2->buildChaptersTxt($chapters);
-    }
-
-    /**
-     * @param SplFileInfo $audioFile
-     * @param SplFileInfo|null $chaptersFile
-     * @param Flags|null $flags
-     * @throws Exception
-     */
-    public function importChaptersFile(SplFileInfo $audioFile, SplFileInfo $chaptersFile = null, Flags $flags = null)
-    {
-        $destinationFile = $this->normalizeDefaultFile($audioFile, $chaptersFile, "chapters.txt");
-        $this->ensureFileExists($destinationFile);
-
-        $chapters = $this->mp4v2->parseChaptersTxt(file_get_contents($destinationFile));
-        $this->importChapters($audioFile, $chapters, $flags);
-    }
-
-    /**
-     * @param SplFileInfo $audioFile
-     * @param array $chapters
-     * @param Flags|null $flags
-     * @throws Exception
-     */
-    public function importChapters(SplFileInfo $audioFile, array $chapters, Flags $flags = null)
-    {
-        $tag = $this->readTag($audioFile);
-        $tag->chapters = $chapters;
-        $this->writeTag($audioFile, $tag, $flags);
+        return $this->exportDescription($audioFile, $destinationFile, $audioFile->getBasename($audioFile->getExtension()));
     }
 
     /**
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
+     * @param string $prefix
+     * @return SplFileInfo|null
      * @throws Exception
      */
-    public function exportDescription(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
+    public function exportDescription(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $prefix = "")
     {
-        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "description.txt");
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "description.txt", $prefix);
         $this->ensureFileDoesNotExist($destinationFile);
         $tag = $this->readTag($audioFile);
 
@@ -316,20 +313,35 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
             }
         }
         file_put_contents($destinationFile, $description);
+        return $destinationFile;
+    }
+
+    /**
+     * @param SplFileInfo $audioFile
+     * @param SplFileInfo $destinationFile
+     * @return SplFileInfo|null
+     * @throws Exception
+     */
+    public function exportFfmetadataPrefixed(SplFileInfo $audioFile, SplFileInfo $destinationFile)
+    {
+        return $this->exportFfmetadata($audioFile, $destinationFile, $audioFile->getBasename($audioFile->getExtension()));
     }
 
     /**
      * @param SplFileInfo $audioFile
      * @param SplFileInfo|null $destinationFile
+     * @param string $prefix
+     * @return SplFileInfo|null
      * @throws Exception
      */
-    public function exportFfmetadata(SplFileInfo $audioFile, SplFileInfo $destinationFile = null)
+    public function exportFfmetadata(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $prefix = "")
     {
-        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "ffmetadata.txt");
+        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, "ffmetadata.txt", $prefix);
         $this->ensureFileDoesNotExist($destinationFile);
         $tag = $this->readTag($audioFile);
         $metaDataString = $this->ffmpeg->buildFfmetadata($tag);
         file_put_contents($destinationFile, $metaDataString);
+        return $destinationFile;
     }
 
     /**
@@ -361,12 +373,4 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         return $this->mp4v2->parseChaptersTxt($chapterString);
     }
 
-    /**
-     * @param Chapter[] $chapters
-     * @return string
-     */
-    public function buildChaptersTxt(array $chapters)
-    {
-        return $this->mp4v2->buildChaptersTxt($chapters);
-    }
 }

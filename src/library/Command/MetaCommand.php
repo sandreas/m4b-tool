@@ -261,7 +261,7 @@ class MetaCommand extends AbstractMetadataCommand
         $inputFile = $this->argInputFile;
         if ($exportFlags->contains(TaggingFlags::FLAG_COVER)) {
             try {
-                $this->metaHandler->exportCover($inputFile, $this->prepareExportFile($inputFile, "cover.jpg", $this->input->getOption(static::OPTION_EXPORT_COVER)));
+                $this->metaHandler->exportCoverPrefixed($inputFile, $this->prepareExportFile($inputFile, $this->input->getOption(static::OPTION_EXPORT_COVER)));
             } catch (Exception $e) {
                 $this->error($e->getMessage());
             }
@@ -269,7 +269,7 @@ class MetaCommand extends AbstractMetadataCommand
 
         if ($exportFlags->contains(TaggingFlags::FLAG_DESCRIPTION)) {
             try {
-                $this->metaHandler->exportDescription($inputFile, $this->prepareExportFile($inputFile, "description.txt", $this->input->getOption(static::OPTION_EXPORT_DESCRIPTION)));
+                $this->metaHandler->exportDescriptionPrefixed($inputFile, $this->prepareExportFile($inputFile, $this->input->getOption(static::OPTION_EXPORT_DESCRIPTION)));
             } catch (Exception $e) {
                 $this->error($e->getMessage());
             }
@@ -277,7 +277,7 @@ class MetaCommand extends AbstractMetadataCommand
 
         if ($exportFlags->contains(TaggingFlags::FLAG_FFMETADATA)) {
             try {
-                $this->metaHandler->exportFfmetadata($inputFile, $this->prepareExportFile($inputFile, "ffmetadata.txt", $this->input->getOption(static::OPTION_EXPORT_FFMETADATA)));
+                $this->metaHandler->exportFfmetadataPrefixed($inputFile, $this->prepareExportFile($inputFile, $this->input->getOption(static::OPTION_EXPORT_FFMETADATA)));
             } catch (Exception $e) {
                 $this->error($e->getMessage());
             }
@@ -285,7 +285,7 @@ class MetaCommand extends AbstractMetadataCommand
 
         if ($exportFlags->contains(TaggingFlags::FLAG_CHAPTERS)) {
             try {
-                $this->metaHandler->exportChapters($inputFile, $this->prepareExportFile($inputFile, "chapters.txt", $this->input->getOption(static::OPTION_EXPORT_CHAPTERS)));
+                $this->metaHandler->exportChaptersPrefixed($inputFile, $this->prepareExportFile($inputFile, $this->input->getOption(static::OPTION_EXPORT_CHAPTERS)));
             } catch (Exception $e) {
                 $this->error($e->getMessage());
             }
@@ -294,23 +294,20 @@ class MetaCommand extends AbstractMetadataCommand
 
     /**
      * @param SplFileInfo $argInputFile
-     * @param $defaultFileName
-     * @param null $optionValue
+     * @param string $optionValue
      * @return SplFileInfo
      * @throws Exception
      */
-    private function prepareExportFile(SplFileInfo $argInputFile, $defaultFileName, $optionValue = null)
+    private function prepareExportFile(SplFileInfo $argInputFile, $optionValue = "")
     {
-        $destinationFile = Tag\AbstractTagImprover::buildExportMetaFile($argInputFile, $defaultFileName, $optionValue);
-
-        if ($destinationFile === null) {
-            $optionValue = $optionValue ? $optionValue : $defaultFileName;
-            $path = ($argInputFile->isDir() ? $argInputFile : $argInputFile->getPath());
-            if ($path !== "") {
-                $path .= DIRECTORY_SEPARATOR;
-            }
-            $destinationFile = new SplFileInfo($path . $optionValue);
+        if ($optionValue === null || $optionValue === "") {
+            return null;
         }
+        $path = ($argInputFile->isDir() ? $argInputFile : $argInputFile->getPath());
+        if ($path !== "") {
+            $path .= DIRECTORY_SEPARATOR;
+        }
+        $destinationFile = new SplFileInfo($path . $optionValue);
 
         if ($destinationFile->isFile()) {
             if (!$this->optForce) {
