@@ -139,7 +139,11 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
 
     private function normalizeDefaultFile(SplFileInfo $referenceFile, ?SplFileInfo $destinationFile, $defaultFileName, $prefix = "")
     {
-        return $destinationFile ? $destinationFile : new SplFileInfo($referenceFile->getPath() . DIRECTORY_SEPARATOR . $prefix . $defaultFileName);
+        $path = $referenceFile->getPath();
+        if ($path !== "") {
+            $path .= DIRECTORY_SEPARATOR;
+        }
+        return $destinationFile ? $destinationFile : new SplFileInfo($path . $prefix . $defaultFileName);
     }
 
     /**
