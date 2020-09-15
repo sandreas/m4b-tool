@@ -40,7 +40,7 @@ class ChapterHandler
      */
     protected $silenceBetweenFile;
 
-    public function __construct(BinaryWrapper $meta)
+    public function __construct(BinaryWrapper $meta = null)
     {
         $this->meta = $meta;
         $this->maxLength = new TimeUnit();
@@ -325,7 +325,7 @@ class ChapterHandler
         return $this->adjustNamedChapters($chapters);
     }
 
-    private function areChaptersNumberedConsecutively($chapters)
+    public function areChaptersNumberedConsecutively($chapters)
     {
         if ($this->flags->contains(static::NO_REINDEXING)) {
             return false;
