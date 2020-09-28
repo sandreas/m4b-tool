@@ -28,6 +28,29 @@ Track   Type    Info
  Artist: My Artist
 EOT;
 
+    const SAMPLE_OUTPUT_MS_LENGTH = <<<EOT
+File:
+  major brand:      isom
+  minor version:    200
+  compatible brand: isom
+  compatible brand: iso2
+  compatible brand: mp41
+  fast start:       yes
+
+Movie:
+  duration:   19012 ms
+  time scale: 1000
+  fragments:  no
+
+Found 1 Tracks
+Track 1:
+  flags:        3 ENABLED IN-MOVIE
+  id:           1
+  type:         Audio
+  duration: 19012 ms
+EOT;
+
+
     /**
      * @var Mp4info
      */
@@ -83,6 +106,19 @@ EOT;
 
         $timeUnitExact = $this->subject->inspectExactDuration($this->mockFile);
         $this->assertEquals(684, $timeUnitExact->milliseconds());
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function testInspectDurationWithMsLength()
+    {
+        $this->mockProcess->shouldReceive("getOutput")->andReturn(static::SAMPLE_OUTPUT_MS_LENGTH);
+        $timeUnit = $this->subject->estimateDuration($this->mockFile);
+        $this->assertEquals(19012, $timeUnit->milliseconds());
+
+        $timeUnitExact = $this->subject->inspectExactDuration($this->mockFile);
+        $this->assertEquals(19012, $timeUnitExact->milliseconds());
     }
 
     /**

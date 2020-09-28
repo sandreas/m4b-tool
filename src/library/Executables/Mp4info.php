@@ -38,11 +38,19 @@ class Mp4info extends AbstractMp4v2Executable implements DurationDetectorInterfa
     {
         $process = $this->runProcess([$file]);
         $output = $process->getOutput() . $process->getErrorOutput();
-        preg_match("/([0-9]+\.[0-9]{3}) secs,/isU", $output, $matches);
-        if (!isset($matches[1])) {
-            throw new Exception(sprintf("Could not detect length for file %s, output '%s' does not contain a valid length value", $file->getBasename(), $output));
+
+        // 1       audio   MPEG-4 AAC LC, 0.684 secs, 32 kbps, 44100 Hz
+        preg_match("/([0-9]+\.[0-9]{3}) secs,/im", $output, $matches);
+        if (isset($matches[1])) {
+            return new TimeUnit($matches[1], TimeUnit::SECOND);
         }
 
-        return new TimeUnit($matches[1], TimeUnit::SECOND);
+        // duration:   19012 ms
+        preg_match("/duration:[\s]+([0-9]+)\s+ms/im", $output, $matches);
+        if (isset($matches[1])) {
+            return new TimeUnit($matches[1], TimeUnit::MILLISECOND);
+        }
+
+        throw new Exception(sprintf("Could not detect length for file %s, output '%s' does not contain a valid length value", $file->getBasename(), $output));
     }
 }
