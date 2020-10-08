@@ -1,40 +1,47 @@
 {
-  "chmod": "0755",
-  "directories": [
-    "src"
-  ],
-  "files": [
-    "LICENSE",
-    "vendor/autoload.php"
-  ],
-  "finder": [
-    {
-      "name": "*.php",
-      "exclude": [
-        "tests",
-        "Tests",
-        "examples"
-      ],
-      "in": [
-          "vendor/bluemoehre",
-        "vendor/composer",
-        "vendor/doctrine",
-        "vendor/hamcrest",
-        "vendor/lywzx",
-        "vendor/monolog",
-        "vendor/myclabs",
-        "vendor/phar-io",
-        "vendor/psr",
-        "vendor/sandreas",
-        "vendor/symfony",
-        "vendor/twig",
-          "vendor/theseer",
-          "vendor/wapmorgan"
-      ]
-    }
-  ],
-  "git-version": "package_version",
-  "main": "bin/m4b-tool.php",
-  "output": "dist/m4b-tool.phar",
-  "stub": true
+    "chmod": "0755",
+    "directories": [
+        "src"
+    ],
+    "files": [
+        "LICENSE",
+        "vendor/autoload.php"
+    ],
+    "finder": [
+        {
+            "name": "*.php",
+            "exclude": [
+                ".git",
+                "tests",
+                "Tests",
+                "examples",
+                "docs",
+                ".github",
+                "*.md",
+                "*.txt",
+                "*.json",
+                "lywzx/php-epub/example"
+            ],
+            "in": [
+                "vendor/bluemoehre",
+                "vendor/composer",
+                "vendor/doctrine",
+                "vendor/hamcrest",
+                "vendor/lywzx",
+                "vendor/monolog",
+                "vendor/myclabs",
+                "vendor/phar-io",
+                "vendor/psr",
+                "vendor/sandreas",
+                "vendor/symfony",
+                "vendor/twig",
+                "vendor/theseer",
+                "vendor/wapmorgan"
+            ]
+        }
+    ],
+    "git-version": "package_version",
+    "main": "bin/m4b-tool.php",
+    "output": "dist/m4b-tool.phar",
+    "stub": true
 }

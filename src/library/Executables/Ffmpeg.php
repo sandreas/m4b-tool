@@ -56,6 +56,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         "title-sort" => "sortTitle",
         "album-sort" => "sortAlbum",
         "artist-sort" => "sortArtist",
+        "TSO2" => "sortAlbumArtist",
+        "TSOC" => "sortWriter",
 //        "show" => "",
 //        "episode_id" => "",
 //        "network" => "",
@@ -216,7 +218,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             }
             $propertyValue = $this->makeTagProperty($tag, $metaDataKey, $tagProperty);
             if ($propertyValue !== "") {
-                $returnValue .= $propertyValue . "\n";
+                $returnValue .= $propertyValue;
             }
 
         }

@@ -87,11 +87,13 @@ class Tag implements ArrayAccess
     public $sortArtist; // -sortartist on mp4tags (means sort author in itunes)
     public $genre;
     public $writer;
+    public $sortWriter;
     public $album;
     public $sortAlbum; // -sortalbum on mp4tags (means sort title in itunes)
     public $disk;
     public $disks;
     public $albumArtist;
+    public $sortAlbumArtist;
     public $year;
     public $track;
     public $tracks;

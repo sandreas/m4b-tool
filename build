@@ -7,7 +7,7 @@ if [[ "$1" == "--with-plugins" ]]; then
     PHP_CODE="echo '';"
 else
     PHP_CODE="try {\
-    \$p = 'phar://'.realpath(__DIR__.'/dist/m4b-tool.phar').'/src/library/M4bTool/Command/Plugins/'; \
+    \$p = 'phar://'.realpath(__DIR__.'/dist/m4b-tool.phar').'/src/library/Command/Plugins/'; \
     \$f = new Phar(\$p);\
     foreach(\$f as \$file) {\
     unlink(\$file);\
