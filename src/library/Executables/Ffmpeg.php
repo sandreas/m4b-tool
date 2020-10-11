@@ -47,7 +47,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         "lyrics" => "lyrics",
         "author" => "writer",
         "grouping" => "series",
-        "year" => "year",
+        "date" => "year",
         "comment" => "comment",
         "description" => "description",
         "longdesc" => "longDescription",
@@ -62,6 +62,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 //        "episode_id" => "",
 //        "network" => "",
     ];
+    const FFMPEG_PARAM_ID3_V23 = "3";
+    const FFMPEG_PARAM_ID3_V24 = "4";
 
     protected $threads;
     protected $extraArguments = [];
@@ -133,8 +135,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $outputFile = $this->createTempFileInSameDirectory($file);
         $command = ["-i", $file];
 
-
-        $metaDataFile = $this->appendTagFilesToCommand($command, $tag);
+        $format = $this->determineFormatFromOptions($file);
+        $metaDataFile = $this->appendTagFilesToCommand($command, $tag, $format);
 
         $command[] = $outputFile;
         $process = $this->ffmpegQuiet($command);
@@ -161,23 +163,40 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         return new SplFileInfo((string)$file . "-" . uniqid("", true) . "." . $file->getExtension());
     }
 
+    private function determineFormatFromOptions(SplFileInfo $file, $forceFormat = null)
+    {
+        if ($forceFormat) {
+            return $forceFormat;
+        }
+        return static::EXTENSION_FORMAT_MAPPING[$file->getExtension()] ?? null;
+    }
+
     /**
      * @param $command
      * @param Tag|null $tag
+     * @param null $format
      * @return SplFileInfo|null
      * @throws Exception
      */
-    protected function appendTagFilesToCommand(&$command, Tag $tag = null)
+    protected function appendTagFilesToCommand(&$command, Tag $tag = null, $format = null)
     {
         $ffmetadataFile = $this->createTempFile("txt");
         if ($tag === null) {
             return null;
         }
-        $commandAddition = [];
+
+        if ($format === static::FORMAT_MP3) {
+            $id3Version = $this->determineId3VersionByTag($tag);
+            $commandAddition = ["-id3v2_version", $id3Version];
+        } else {
+            $commandAddition = [];
+        }
+
+
         $metaDataFileIndex = 1;
         if ($tag->hasCoverFile()) {
             $command = array_merge($command, ["-i", $tag->cover]);
-            $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy", "-id3v2_version", "3"];
+            $commandAddition = ["-map", "0:0", "-map", "1:0", "-c", "copy"];
             $metaDataFileIndex++;
         }
 
@@ -198,6 +217,16 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     protected function createTempFile($ext)
     {
         return new SplFileInfo(tempnam(sys_get_temp_dir(), "") . "." . $ext);
+    }
+
+    protected function determineId3VersionByTag(Tag $tag)
+    {
+        // id3 does not support sort tags with v2.3 - so chainge the version to 2.4
+        // see https://wiki.multimedia.cx/index.php/FFmpeg_Metadata#MP3
+        if ($tag->sortAlbum || $tag->sortArtist || $tag->sortTitle) {
+            return static::FFMPEG_PARAM_ID3_V24;
+        }
+        return static::FFMPEG_PARAM_ID3_V23;
     }
 
     public function buildFfmetadata(Tag $tag)
@@ -501,8 +530,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
         $this->notice(sprintf("merging %s files into %s, this can take a while", $count, $outputFile));
         $processOutput = "";
-        if($converterOptions->debug) {
-            $processOutput = ", ffmpeg output:\n".$this->getAllProcessOutput($this->ffmpeg($command));
+        if ($converterOptions->debug) {
+            $processOutput = ", ffmpeg output:\n" . $this->getAllProcessOutput($this->ffmpeg($command));
         } else {
             $this->ffmpegQuiet($command);
         }
@@ -650,8 +679,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $command = [
             "-i", $inputFile,
         ];
-
-        $metaDataFile = $this->appendTagFilesToCommand($command, $options->tag);
+        $format = $this->determineFormatFromOptions($options->destination, $options->format);
+        $metaDataFile = $this->appendTagFilesToCommand($command, $options->tag, $format);
         if (!$options->ignoreSourceTags && (!$metaDataFile || !$metaDataFile->isFile())) {
             $command[] = "-map_metadata";
             $command[] = "0";
