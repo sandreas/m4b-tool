@@ -8,10 +8,12 @@ use Exception;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\CueSheet;
+use M4bTool\Audio\Silence;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Common\ConditionalFlags;
+use Psr\Cache\InvalidArgumentException;
 use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -28,12 +30,15 @@ use Twig\Loader\ArrayLoader as Twig_Loader_Array;
 
 class SplitCommand extends AbstractConversionCommand
 {
+    const SPLIT_CHAPTER_DUMMY_LENGTH_MS = 1000;
+
     const OPTION_USE_EXISTING_CHAPTERS_FILE = "use-existing-chapters-file";
     const OPTION_CHAPTERS_FILENAME = "chapters-filename";
     const OPTION_OUTPUT_DIRECTORY = "output-dir";
     const OPTION_FILENAME_TEMPLATE = "filename-template";
     const OPTION_FIXED_LENGTH = "fixed-length";
     const OPTION_REINDEX_CHAPTERS = "reindex-chapters";
+    const OPTION_BY_SILENCE = "by-silence";
 
     /**
      * @var SplFileInfo
@@ -58,6 +63,7 @@ class SplitCommand extends AbstractConversionCommand
      * @var TimeUnit|void|null
      */
     protected $estimatedTotalDuration;
+    protected $chaptersFileContents = "";
 
     protected function configure()
     {
@@ -72,6 +78,7 @@ class SplitCommand extends AbstractConversionCommand
         $this->addOption(static::OPTION_REINDEX_CHAPTERS, null, InputOption::VALUE_NONE, "use a numeric index instead of the real chapter name for splitting");
         $this->addOption(static::OPTION_FIXED_LENGTH, null, InputOption::VALUE_OPTIONAL, "split file by a fixed length seconds (float numbers, e.g. 10.583 are allowed, too)", "");
         $this->addOption(static::OPTION_CHAPTERS_FILENAME, null, InputOption::VALUE_OPTIONAL, "provide a filename that contains chapters", "");
+        $this->addOption(static::OPTION_BY_SILENCE, null, InputOption::VALUE_NONE, "split audio file by silences");
 
     }
 
@@ -82,10 +89,10 @@ class SplitCommand extends AbstractConversionCommand
      * @throws Throwable
      * @throws Twig_Error_Loader
      * @throws Twig_Error_Syntax
+     * @throws InvalidArgumentException
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-
         $this->initExecution($input, $output);
         $this->ensureInputFileIsFile();
 
@@ -139,62 +146,8 @@ class SplitCommand extends AbstractConversionCommand
             $this->outputDirectory = new SplFileInfo($path . $this->argInputFile->getBasename("." . $this->argInputFile->getExtension()) . "_splitted/");
         }
 
+
         $this->optFilenameTemplate = $input->getOption(static::OPTION_FILENAME_TEMPLATE);
-    }
-
-
-    /**
-     * @throws Exception
-     */
-    private function loadChaptersFile()
-    {
-        $chaptersFile = $this->input->getOption(static::OPTION_CHAPTERS_FILENAME);
-        if ($chaptersFile === "") {
-            if (!$this->input->getOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE) && $this->hasMp4AudioFileExtension($this->argInputFile)) {
-                $this->notice(sprintf("export chapter list of %s", $this->argInputFile));
-                $this->chaptersFile = $this->audioFileToChaptersFile($this->argInputFile);
-                if (!$this->chaptersFile->isFile()) {
-                    $this->metaHandler->exportChapters($this->argInputFile, $this->chaptersFile);
-                }
-            } else {
-                $this->chaptersFile = new SplFileInfo($this->argInputFile->getPath() . "/chapters.txt");
-            }
-
-            if ($this->chaptersFile === null || !$this->chaptersFile->isFile()) {
-                $cueSheet = new SplFileInfo(Strings::trimSuffix($this->argInputFile, $this->argInputFile->getExtension()) . "cue");
-                if ($cueSheet->isFile()) {
-                    $this->chaptersFile = $cueSheet;
-                    $this->notice("found cue sheet " . $this->chaptersFile->getBasename());
-                }
-
-            }
-        } else {
-            $this->chaptersFile = new SplFileInfo($chaptersFile);
-        }
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function parseChapters()
-    {
-        if (!$this->chaptersFile->isFile()) {
-            return;
-        }
-        $chapterFileContents = file_get_contents($this->chaptersFile);
-
-        $cueSheet = new CueSheet();
-        if ($cueSheet->guessSupport($chapterFileContents, $this->chaptersFile)) {
-            $tag = $cueSheet->parse($chapterFileContents);
-            $this->chapters = $tag->chapters;
-        } else {
-            $this->chapters = $this->metaHandler->parseChaptersTxt(file_get_contents($this->chaptersFile));
-        }
-
-        if (count($this->chapters) > 0) {
-            $lastChapter = end($this->chapters);
-            $lastChapter->setEnd(clone $this->estimatedTotalDuration);
-        }
     }
 
     /**
@@ -261,6 +214,81 @@ class SplitCommand extends AbstractConversionCommand
     }
 
     /**
+     * @throws InvalidArgumentException
+     * @throws Exception
+     */
+    private function loadChaptersFile()
+    {
+        if ($this->chaptersFileContents !== "") {
+            return;
+        }
+        $chaptersFile = $this->input->getOption(static::OPTION_CHAPTERS_FILENAME);
+        if ($chaptersFile === "") {
+            if ($this->input->hasOption(static::OPTION_BY_SILENCE)) {
+                $bySilence = (int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH);
+                if ($bySilence < 1) {
+                    $this->error("split by silence value cannot be less than 1");
+                }
+                $silences = $this->metaHandler->detectSilences($this->argInputFile, new TimeUnit($bySilence));
+                array_unshift($silences, new Silence(new TimeUnit(0), new TimeUnit(1)));
+                $chapters = array_map(function (Silence $silence) {
+                    static $i = 1;
+                    $start = new TimeUnit($silence->getStart()->milliseconds() + ($silence->getLength()->milliseconds() / 2));
+                    return new Chapter($start, new TimeUnit(static::SPLIT_CHAPTER_DUMMY_LENGTH_MS), (string)$i++);
+                }, $silences);
+
+                $this->chaptersFileContents = $this->mp4v2->buildChaptersTxt($chapters);
+            } else if (!$this->input->getOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE) && $this->hasMp4AudioFileExtension($this->argInputFile)) {
+                $this->notice(sprintf("export chapter list of %s", $this->argInputFile));
+                $this->chaptersFile = $this->audioFileToChaptersFile($this->argInputFile);
+                if (!$this->chaptersFile->isFile()) {
+                    $this->metaHandler->exportChapters($this->argInputFile, $this->chaptersFile);
+                }
+            } else {
+                $this->chaptersFile = new SplFileInfo($this->argInputFile->getPath() . "/chapters.txt");
+            }
+
+            if ($this->chaptersFile === null || !$this->chaptersFile->isFile()) {
+                $cueSheet = new SplFileInfo(Strings::trimSuffix($this->argInputFile, $this->argInputFile->getExtension()) . "cue");
+                if ($cueSheet->isFile()) {
+                    $this->chaptersFile = $cueSheet;
+                    $this->notice("found cue sheet " . $this->chaptersFile->getBasename());
+                }
+
+            }
+        } else {
+            $this->chaptersFile = new SplFileInfo($chaptersFile);
+        }
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function parseChapters()
+    {
+        if ($this->chaptersFileContents === "" && $this->chaptersFile->isFile()) {
+            $this->chaptersFileContents = file_get_contents($this->chaptersFile);
+        }
+
+        if ($this->chaptersFileContents === "") {
+            return;
+        }
+
+        $cueSheet = new CueSheet();
+        if ($cueSheet->guessSupport($this->chaptersFileContents, $this->chaptersFile)) {
+            $tag = $cueSheet->parse($this->chaptersFileContents);
+            $this->chapters = $tag->chapters;
+        } else {
+            $this->chapters = $this->metaHandler->parseChaptersTxt($this->chaptersFileContents);
+        }
+
+        if (count($this->chapters) > 0) {
+            $lastChapter = end($this->chapters);
+            $lastChapter->setEnd(clone $this->estimatedTotalDuration);
+        }
+    }
+
+    /**
      * @throws Twig_Error_Loader
      * @throws Twig_Error_Syntax
      * @throws Exception
@@ -284,6 +312,19 @@ class SplitCommand extends AbstractConversionCommand
         $flags->insertIf(TagInterface::FLAG_NO_CLEANUP, $this->input->getOption(static::OPTION_NO_CLEANUP));
 
         $index = 0;
+        $optAddSilence = array_map(function ($value) {
+            return (int)$value;
+        }, array_filter(explode(",", $this->input->getOption(static::OPTION_ADD_SILENCE))));
+        if (count($optAddSilence) === 1) {
+            $optAddSilence[1] = $optAddSilence[0];
+        }
+        $tmpDir = $this->optTmpDir ? $this->optTmpDir : sys_get_temp_dir();
+        $beforeSilence = null;
+        $beforeSilenceFile = null;
+        $afterSilence = null;
+        $afterSilenceFile = null;
+
+
         foreach ($this->chapters as $chapter) {
             $tag = $this->inputOptionsToTag();
             $tag->mergeMissing($metaDataTag);
@@ -301,6 +342,29 @@ class SplitCommand extends AbstractConversionCommand
 
             $outputFile = $this->extractChapter($chapter, $outputFile, $tag);
             if ($outputFile) {
+                if (count($optAddSilence) > 0) {
+                    if ($beforeSilenceFile === null) {
+                        $this->notice(sprintf("merge required for adding silences to splitted files (before: %s, after: %s)", $optAddSilence[0], $optAddSilence[1]));
+                        $beforeSilenceFile = $this->createSilenceFile($tmpDir, new TimeUnit($optAddSilence[0]), 0, $outputFile);
+                    }
+
+                    if ($afterSilenceFile === null) {
+                        $afterSilenceFile = $this->createSilenceFile($tmpDir, new TimeUnit($optAddSilence[1]), 1, $outputFile);
+                    }
+
+
+                    $inputFile = new SplFileInfo($outputFile->getPath() . "/" . $outputFile->getBasename($outputFile->getExtension()) . "silence-to-add." . $outputFile->getExtension());
+                    rename($outputFile, $inputFile);
+                    $filesToMerge = [
+                        $beforeSilenceFile, $inputFile->getRealPath(), $afterSilenceFile
+                    ];
+                    $this->ffmpeg->mergeFiles($filesToMerge, $outputFile, $this->buildFileConverterOptions($inputFile, $outputFile, $tmpDir));
+                    unlink($inputFile);
+                    if (!$outputFile->isFile()) {
+                        throw new Exception(sprintf("could not create output file with silences %s", $outputFile));
+                    }
+                }
+
                 // TODO atm this is only necessary for mp4-files, because ffmpeg does not support embedding covers
                 $this->tagFile($outputFile, $tag);
                 $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
@@ -348,5 +412,36 @@ class SplitCommand extends AbstractConversionCommand
             }
         }
         return $outputFile;
+    }
+
+    /**
+     * @param $tmpDir
+     * @param TimeUnit $silenceLength
+     * @param $index
+     * @param SplFileInfo $outputFile
+     * @return SplFileInfo
+     * @throws Exception
+     */
+    protected function createSilenceFile($tmpDir, TimeUnit $silenceLength, $index, SplFileInfo $outputFile)
+    {
+        $silenceBaseFile = new SplFileInfo(rtrim($tmpDir, "/") . sprintf("/silence%s.caf", $index));
+        $silenceFinishedFile = new SplFileInfo(rtrim($tmpDir, "/") . sprintf("/silence-finished%s." . $outputFile->getExtension(), $index));
+        $this->ffmpeg->createSilence($silenceLength, $silenceBaseFile);
+        if (!$silenceBaseFile->isFile()) {
+            throw new Exception(sprintf("Could not create silence base file %s", $silenceBaseFile));
+        }
+        $options = $this->buildFileConverterOptions($silenceBaseFile, $silenceFinishedFile, $tmpDir);
+        $options->force = true;
+        $process = $this->ffmpeg->convertFile($options);
+        $process->wait();
+        unlink($silenceBaseFile);
+        if (!$process->isSuccessful()) {
+            throw new Exception(sprintf("Could not create silence finished file %s: %s", $silenceFinishedFile, $process->getErrorOutput()));
+        }
+
+        if (!$silenceFinishedFile->isFile()) {
+            throw new Exception(sprintf("Could not create silence finished file %s", $silenceFinishedFile));
+        }
+        return $silenceFinishedFile;
     }
 }

@@ -111,7 +111,7 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
         }
 
         $totalLength = $commentTags[static::COMMENT_TAG_TOTAL_LENGTH] ?? null;
-        if ($totalLength !== null && $totalLength->milliseconds() > $lastChapter->getEnd()->milliseconds()) {
+        if ($totalLength !== null && $lastChapter && $totalLength->milliseconds() > $lastChapter->getEnd()->milliseconds()) {
             $lastChapter->setEnd($totalLength);
         }
         return $chapters;

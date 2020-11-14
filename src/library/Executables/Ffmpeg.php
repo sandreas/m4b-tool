@@ -575,9 +575,9 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         if ($silenceLengthSeconds < 0.001) {
             throw new Exception("Silence length has to be greater than 0.001 seconds");
         }
-        $this->ffmpegQuiet(["-f", "lavfi", "-i", "anullsrc", "-t", $silenceLengthSeconds, $outputFile]);
+        $process = $this->ffmpegQuiet(["-f", "lavfi", "-i", "anullsrc", "-t", $silenceLengthSeconds, $outputFile]);
         if (!$outputFile->isFile()) {
-            throw new Exception(sprintf("Could not create silence file %s", $outputFile));
+            throw new Exception(sprintf("Could not create silence file %s, %s", $outputFile, $this->getAllProcessOutput($process)));
         }
     }
 
@@ -735,7 +735,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $process->setTimeout(0);
         $process->start();
         $process->addTerminateEventCallback(function () use ($metaDataFile) {
-            if ($metaDataFile->isFile()) {
+            if ($metaDataFile && $metaDataFile->isFile()) {
                 unlink($metaDataFile);
             }
         });
