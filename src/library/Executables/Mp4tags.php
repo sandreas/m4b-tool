@@ -36,6 +36,7 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
         "sortTitle" => "f", // "sortname",
         "sortAlbum" => "k", // "sortalbum",
         "sortArtist" => "F", //"sortartist",
+        "grouping" => "G",
     ];
 
     const SORT_PARAMETERS = [

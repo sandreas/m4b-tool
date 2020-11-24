@@ -46,7 +46,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         "encoder" => "encoder",
         "lyrics" => "lyrics",
         "author" => "writer",
-        "grouping" => "series",
+        "grouping" => ["series", "grouping"],
         "date" => "year",
         "comment" => "comment",
         "description" => "description",

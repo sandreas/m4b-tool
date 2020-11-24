@@ -68,7 +68,7 @@ class AudibleTxt extends AbstractTagImprover
         // $tag->track = $this->getProperty("track");
         // $tag->encoder = $this->getProperty("encoder");
         // $tag->lyrics = $this->getProperty("lyrics");
-        $mergeTag->year = ReleaseDate::createFromValidString($decoded["audibleMeta"]["datePublished"]);
+        $mergeTag->year = ReleaseDate::createFromValidString($decoded["audibleMeta"]["datePublished"] ?? "");
         $mergeTag->description = $decoded["description"] ?? null;
         $mergeTag->longDescription = $decoded["description"] ?? null;
         // cover is only a link, so skip it

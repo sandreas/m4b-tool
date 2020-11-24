@@ -19,6 +19,7 @@ use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Process\Process;
+use Throwable;
 use wapmorgan\MediaFile\MediaFile;
 
 class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface, FileConverterInterface
@@ -74,11 +75,24 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
 
     private function getMediaFileDuration(SplFileInfo $file)
     {
+        // MediaFile does not handle a division by zero correctly under some circumstances
+        set_error_handler(function ($errorCode, $errorMessage, $file, $line) {
+            if (!(error_reporting() & $errorCode)) {
+                return false;
+            }
+            throw new Exception(sprintf('%s (Code: %s) in %s, line %s', $errorMessage, $errorCode, $file, $line));
+        });
+
         try {
             $mediaFile = MediaFile::open($file);
-            return new TimeUnit($mediaFile->getAudio()->getLength(), TimeUnit::SECOND);
-        } catch (Exception $e) {
+            $lengthMs = $mediaFile->getAudio()->getLength();
+            return new TimeUnit($lengthMs, TimeUnit::SECOND);
+        } catch (Throwable $e) {
+            $this->ffmpeg->warning(sprintf("Could not open file %s with MediaInfo library: %s", $file, $e->getMessage()));
+            $this->ffmpeg->debug($e->getTraceAsString());
             return null;
+        } finally {
+            restore_error_handler();
         }
     }
 
@@ -347,6 +361,68 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         file_put_contents($destinationFile, $metaDataString);
         return $destinationFile;
     }
+
+//    /**
+//     * @param SplFileInfo $audioFile
+//     * @param SplFileInfo|null $destinationFile
+//     * @param string $prefix
+//     * @return SplFileInfo|null
+//     * @throws Exception
+//     */
+//    public function exportCueSheet(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $prefix = "")
+//    {
+//        $defaultFileName = $audioFile->getBasename($audioFile->getExtension()) . "cue";
+//        $destinationFile = $this->normalizeDefaultFile($audioFile, $destinationFile, $defaultFileName, $prefix);
+//        $this->ensureFileDoesNotExist($destinationFile);
+//        $tag = $this->readTag($audioFile);
+//
+//        $cueContents = $this->cueMap("REM GENRE", $tag->genre) .
+//            $this->cueMap("REM DATE", $tag->year) .
+//            $this->cueMap("PERFORMER", $tag->artist ?? $tag->performer) .
+//            $this->cueMap("SONGWRITER", $tag->writer) .
+//            $this->cueMap("TITLE", $tag->title) .
+//            $this->cueMap("FILE", $audioFile->getBasename(), $audioFile->getExtension());
+//
+//        $trackIndex = 1;
+//        foreach ($tag->chapters as $chapter) {
+//            $cueContents .= "  TRACK ";
+//        }
+//
+//        /*
+//REM GENRE Fantasy
+//REM DATE 1999-11-08
+//PERFORMER "Stephen Fry"
+//SONGWRITER "J. K. Rowling"
+//TITLE "Harry Potter and the Philosopher's stone"
+//FILE "harry-potter-1.m4b" m4b
+//  TRACK 01 AUDIO
+//    TITLE "The Boy Who Lived."
+//    PERFORMER "Stephen Fry"
+//    INDEX 01 00:00:00
+//  TRACK 02 AUDIO
+//    TITLE "The Vanishing Glass"
+//    PERFORMER "Stephen Fry"
+//    INDEX 01 06:42:00
+//         */
+//
+//
+//        $metaDataString = $this->ffmpeg->buildFfmetadata($tag);
+//        file_put_contents($destinationFile, $metaDataString);
+//        return $destinationFile;
+//    }
+//
+//    private function cueMap($cueProperty, $tagValue, $suffix = "")
+//    {
+//        if ($tagValue === null || $tagValue === "") {
+//            return "";
+//        }
+//        return $cueProperty . " " . rtrim($this->cueEscape((string)$tagValue) . " " . $this->cueEscape($suffix));
+//    }
+//
+//    private function cueEscape($tagValue)
+//    {
+//        return str_replace('"', '', $tagValue);
+//    }
 
     /**
      * @param FileConverterOptions $options

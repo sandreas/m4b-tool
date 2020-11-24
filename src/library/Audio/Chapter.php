@@ -84,7 +84,12 @@ class Chapter extends AbstractPart implements JsonSerializable
         ], function ($value) {
             return $value !== "" && $value !== null;
         });
+    }
 
-
+    public static function jsonDeserialize(array $chapterAsArray)
+    {
+        $chapter = new static(new TimeUnit((int)($chapterAsArray["start"] ?? 0)), new TimeUnit((int)($chapterAsArray["length"] ?? 0)), $chapterAsArray["name"] ?? "");
+        $chapter->introduction = $chapterAsArray["introduction"] ?? null;
+        return $chapter;
     }
 }

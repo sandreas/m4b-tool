@@ -36,10 +36,9 @@ class AdjustTooLongChapters extends AbstractTagImprover
      */
     protected $silenceLength;
 
-    public function __construct(BinaryWrapper $metaDataHandler, ChapterHandler $chapterHandler, $file, $maxChapterLengthOriginalValue, $silenceLength)
+    public function __construct(BinaryWrapper $metaDataHandler, ChapterHandler $chapterHandler, $file, $maxChapterLengthOriginalValue, TimeUnit $silenceLength)
     {
         $maxChapterLengthParts = explode(",", $maxChapterLengthOriginalValue);
-
         $desiredChapterLengthSeconds = $maxChapterLengthParts[0] ?? 0;
         $maxChapterLengthSeconds = $maxChapterLengthParts[1] ?? $desiredChapterLengthSeconds;
 
@@ -48,7 +47,7 @@ class AdjustTooLongChapters extends AbstractTagImprover
         $this->file = $file;
         $this->maxChapterLength = new TimeUnit((int)$maxChapterLengthSeconds, TimeUnit::SECOND);
         $this->desiredChapterLength = new TimeUnit((int)$desiredChapterLengthSeconds, TimeUnit::SECOND);
-        $this->silenceLength = new TimeUnit((int)$silenceLength);
+        $this->silenceLength = $silenceLength;
 
     }
 

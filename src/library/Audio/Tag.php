@@ -4,6 +4,7 @@ namespace M4bTool\Audio;
 
 
 use ArrayAccess;
+use JsonSerializable;
 
 /**
  * Class Tag
@@ -48,7 +49,7 @@ use ArrayAccess;
  * -X  -crating     STR  Add content rating tag. "Inoffensive", "Clean", "Explicit"
  * -r, -remove      STR  Remove tags by code (e.g. "-r cs" removes the comment and song tags)
  */
-class Tag implements ArrayAccess
+class Tag implements ArrayAccess, JsonSerializable
 {
     const EXTRA_PROPERTY_ISBN = "isbn";
     const EXTRA_PROPERTY_ASIN = "asin";
@@ -92,6 +93,7 @@ class Tag implements ArrayAccess
     public $sortAlbum; // -sortalbum on mp4tags (means sort title in itunes)
     public $disk;
     public $disks;
+    public $grouping;
     public $albumArtist;
     public $sortAlbumArtist;
     public $year;
@@ -229,5 +231,24 @@ class Tag implements ArrayAccess
     public function offsetUnset($offset)
     {
         $this->$offset = null;
+    }
+
+    /**
+     * Specify data which should be serialized to JSON
+     * @link https://php.net/manual/en/jsonserializable.jsonserialize.php
+     * @return mixed data which can be serialized by <b>json_encode</b>,
+     * which is a value of any type other than a resource.
+     * @since 5.4.0
+     */
+    public function jsonSerialize()
+    {
+        $result = (array)$this;
+        if ($this->cover !== null && $this->cover !== "") {
+            $result["cover"] = (string)$this->cover;
+        }
+
+        return array_filter($result, function ($value, $key) {
+            return $value !== "" && $value !== null && $value != [] && !$this->isTransientProperty($key);
+        }, ARRAY_FILTER_USE_BOTH);
     }
 }

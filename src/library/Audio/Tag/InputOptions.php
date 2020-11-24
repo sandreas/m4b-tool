@@ -56,8 +56,8 @@ class InputOptions extends AbstractTagImprover
         $mergeTag->comment = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_COMMENT);
         $mergeTag->copyright = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_COPYRIGHT);
         $mergeTag->encodedBy = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ENCODED_BY);
+        $mergeTag->grouping = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_GROUPING);
         $mergeTag->encoder = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ENCODER);
-
         $mergeTag->series = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES);
         $mergeTag->seriesPart = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES_PART);
 

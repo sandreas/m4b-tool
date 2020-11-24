@@ -78,7 +78,7 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
         /** @var Chapter $lastChapter */
         $lastChapter = null;
         foreach ($lines as $line) {
-            $trimmedLine = trim($line);
+            $trimmedLine = ltrim($line);
 
             // parse comment tags or ignore comment line
             if (strpos($trimmedLine, "#") === 0) {
@@ -88,7 +88,7 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
 
             // ignore lines that do not contain time and chapter name
             $parts = preg_split('/\s+/', $trimmedLine, 2, PREG_SPLIT_NO_EMPTY);
-            if (count($parts) !== 2) {
+            if (count($parts) === 0) {
                 continue;
             }
 

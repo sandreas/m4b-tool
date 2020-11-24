@@ -5,17 +5,19 @@ namespace M4bTool\Audio;
 
 
 use Exception;
+use M4bTool\Audio\Tag\AbstractTagImprover;
 use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
-class CueSheet implements MetaDataFormat
+class CueSheet extends AbstractTagImprover
 {
     const REM = "REM";
     const GENRE = "GENRE";
     const DATE = "DATE";
 //    const DISC_ID = "DISCID";
     const PERFORMER = "PERFORMER";
+    const SONGWRITER = "SONGWRITER";
     const TITLE = "TITLE";
     const FILE = "FILE";
     const TRACK = "TRACK";
@@ -26,12 +28,48 @@ class CueSheet implements MetaDataFormat
 
     const TAG_PROPERTY_MAPPING = [
         self::GENRE => "genre",
+        self::SONGWRITER => "writer",
         self::PERFORMER => "performer",
         self::TITLE => "title",
         self::COMMENT => "comment",
         self::DATE => "year"
     ];
     const MAX_CHAPTER_SPACING_MS = 4000;
+    const DEFAULT_FILENAME = "cuesheet.cue";
+
+
+    protected $fileContents;
+
+
+    public function __construct($fileContents = null)
+    {
+        $this->fileContents = $fileContents;
+    }
+
+    public static function fromFile(SplFileInfo $reference, $fileName = null)
+    {
+        $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
+        return new static($fileToLoad);
+    }
+
+    public function guessSupport(string $contents, SplFileInfo $file = null)
+    {
+        if ($file !== null) {
+            return strtolower($file->getExtension()) === "cue";
+        }
+        return preg_match("/\bTRACK\s+[0-9]+\s+AUDIO\b/isU", $contents) &&
+            preg_match("/\bINDEX\s+[0-9]+\s+[0-9]+:[0-9]+:[0-9]+\b/isU", $contents);
+    }
+
+    public function improve(Tag $tag): Tag
+    {
+        if ($this->fileContents === null) {
+            return $tag;
+        }
+        $mergeTag = $this->parse($this->fileContents);
+        $tag->mergeMissing($mergeTag);
+        return $tag;
+    }
 
     /**
      * @param string $cueSheetContent
@@ -95,6 +133,15 @@ class CueSheet implements MetaDataFormat
         return $tag;
     }
 
+    private function trimmedNextLine(&$lines)
+    {
+        $line = array_shift($lines);
+        if ($line === null) {
+            return null;
+        }
+        return trim($line);
+    }
+
     private function applyTagPropertyMapping($line, Tag $tag)
     {
         foreach (static::TAG_PROPERTY_MAPPING as $prefix => $tagProperty) {
@@ -117,23 +164,9 @@ class CueSheet implements MetaDataFormat
         return trim(mb_substr($line, mb_strlen($propertyName) + 1), '"');
     }
 
-    private function trimmedNextLine(&$lines)
-    {
-        $line = array_shift($lines);
-        if ($line === null) {
-            return null;
-        }
-        return trim($line);
-    }
-
     private function isRemLine(string $line)
     {
         return $this->hasPrefixCaseInsensitive($line, static::REM . " ");
-    }
-
-    private function isTrackLine(string $line)
-    {
-        return $this->parsePropertyValue($line, static::TRACK) !== null;
     }
 
     private function hasPrefixCaseInsensitive($string, $prefix)
@@ -142,12 +175,8 @@ class CueSheet implements MetaDataFormat
 
     }
 
-    public function guessSupport(string $contents, SplFileInfo $file = null)
+    private function isTrackLine(string $line)
     {
-        if ($file !== null) {
-            return strtolower($file->getExtension()) === "cue";
-        }
-        return preg_match("/\bTRACK\s+[0-9]+\s+AUDIO\b/isU", $contents) &&
-            preg_match("/\bINDEX\s+[0-9]+\s+[0-9]+:[0-9]+:[0-9]+\b/isU", $contents);
+        return $this->parsePropertyValue($line, static::TRACK) !== null;
     }
 }

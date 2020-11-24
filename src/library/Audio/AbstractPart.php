@@ -64,6 +64,6 @@ abstract class AbstractPart
      */
     public function getEnd()
     {
-        return new TimeUnit($this->start->milliseconds() + $this->length->milliseconds(), TimeUnit::MILLISECOND);
+        return new TimeUnit($this->getStart()->milliseconds() + $this->getLength()->milliseconds(), TimeUnit::MILLISECOND);
     }
 }

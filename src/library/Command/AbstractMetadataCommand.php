@@ -26,7 +26,9 @@ class AbstractMetadataCommand extends AbstractCommand
     const OPTION_TAG_COPYRIGHT = "copyright";
     const OPTION_TAG_ENCODED_BY = "encoded-by";
     const OPTION_TAG_ENCODER = "encoder";
+    const OPTION_TAG_GROUPING = "grouping";
     const OPTION_SKIP_COVER = "skip-cover";
+    const OPTION_SKIP_COVER_IF_EXISTS = "skip-cover-if-exists";
     const OPTION_COVER = "cover";
 
     // pseudo tags
@@ -82,10 +84,14 @@ class AbstractMetadataCommand extends AbstractCommand
         $this->addOption(static::OPTION_TAG_COMMENT, null, InputOption::VALUE_OPTIONAL, "custom comment, otherwise the existing metadata will be used");
         $this->addOption(static::OPTION_TAG_COPYRIGHT, null, InputOption::VALUE_OPTIONAL, "custom copyright, otherwise the existing metadata will be used");
         $this->addOption(static::OPTION_TAG_ENCODED_BY, null, InputOption::VALUE_OPTIONAL, "custom encoded-by, otherwise the existing metadata will be used");
-        $this->addOption(static::OPTION_TAG_ENCODER, null, InputOption::VALUE_OPTIONAL, sprintf("custom encoder, otherwise %s will be used", static::APP_NAME));
-        $this->addOption(static::OPTION_TAG_COVER, null, InputOption::VALUE_OPTIONAL, "custom cover, otherwise the existing metadata will be used");
-        $this->addOption(static::OPTION_SKIP_COVER, null, InputOption::VALUE_NONE, "skip extracting and embedding covers");
+        $this->addOption(static::OPTION_TAG_GROUPING, null, InputOption::VALUE_OPTIONAL, sprintf("custom grouping, otherwise existing metadata will be used"));
 
+        $this->addOption(static::OPTION_TAG_ENCODER, null, InputOption::VALUE_OPTIONAL, sprintf("custom encoder, otherwise %s will be used", static::APP_NAME));
+
+
+        $this->addOption(static::OPTION_TAG_COVER, null, InputOption::VALUE_OPTIONAL, "custom cover, otherwise the existing metadata will be used");
+        $this->addOption(static::OPTION_SKIP_COVER_IF_EXISTS, null, InputOption::VALUE_NONE, "skip cover extraction only if a file exists, but still embed the existing cover");
+        $this->addOption(static::OPTION_SKIP_COVER, null, InputOption::VALUE_NONE, "skip extracting and embedding covers");
         // pseudo tags
         $this->addOption(static::OPTION_TAG_SERIES, null, InputOption::VALUE_OPTIONAL, "custom series, this pseudo tag will be used to auto create sort order (e.g. Thrawn or The Kingkiller Chronicles)");
         $this->addOption(static::OPTION_TAG_SERIES_PART, null, InputOption::VALUE_OPTIONAL, "custom series part, this pseudo tag will be used to auto create sort order (e.g. 1 or 2.5)");

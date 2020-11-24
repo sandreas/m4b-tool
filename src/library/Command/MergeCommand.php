@@ -15,6 +15,7 @@ use M4bTool\Audio\Tag\Ffmetadata;
 use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Audio\Tag\OpenPackagingFormat;
 use M4bTool\Audio\Tag\TagImproverComposite;
+use M4bTool\Chapter\ChapterGroup\ChapterLengthCalculator;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Common\ConditionalFlags;
 use M4bTool\Executables\Tasks\ConversionTask;
@@ -39,6 +40,8 @@ class MergeCommand extends AbstractConversionCommand
     const ARGUMENT_MORE_INPUT_FILES = "more-input-files";
     const OPTION_INCLUDE_EXTENSIONS = "include-extensions";
     const OPTION_BATCH_PATTERN = "batch-pattern";
+    const OPTION_BATCH_FILTER = "batch-filter";
+    const OPTION_BATCH_RESUME_FILE = "batch-resume-file";
     const OPTION_DRY_RUN = "dry-run";
     const OPTION_JOBS = "jobs";
 
@@ -46,7 +49,17 @@ class MergeCommand extends AbstractConversionCommand
 
     const OPTION_CHAPTER_NO_REINDEXING = "no-chapter-reindexing";
     const OPTION_CHAPTER_USE_FILENAMES = "use-filenames-as-chapters";
+    const OPTION_CHAPTER_ALGORITHM = "chapter-algo";
+    const OPTION_TAG_DEBUG_PATH = "tag-debug-path";
 
+    const CHAPTER_ALGORITHM_NONE = "none";
+    const CHAPTER_ALGORITHM_LEGACY = "legacy";
+    const CHAPTER_ALGORITHM_GROUPING = "grouping";
+    const CHAPTER_ALGORITHMS = [
+        self::CHAPTER_ALGORITHM_NONE,
+        self::CHAPTER_ALGORITHM_LEGACY,
+        self::CHAPTER_ALGORITHM_GROUPING
+    ];
     const MAPPING_OPTIONS_PLACEHOLDERS = [
         self::OPTION_TAG_NAME => "n",
         self::OPTION_TAG_SORT_NAME => "N",
@@ -63,6 +76,7 @@ class MergeCommand extends AbstractConversionCommand
         self::OPTION_TAG_COMMENT => "c",
         self::OPTION_TAG_COPYRIGHT => "C",
         self::OPTION_TAG_ENCODED_BY => "e",
+        self::OPTION_TAG_GROUPING => "G",
         self::OPTION_TAG_SERIES => "s",
         self::OPTION_TAG_SERIES_PART => "p",
 
@@ -90,6 +104,17 @@ class MergeCommand extends AbstractConversionCommand
      */
     protected $silenceBetweenFile;
 
+    /** @var string */
+    protected $resumeFile;
+
+    /** @var array */
+    protected $resumeFileLines = [];
+
+    /** @var int */
+    public $currentBatchJobNumber = 0;
+    /** @var int */
+    public $batchJobsCount = 0;
+
 
     protected function configure()
     {
@@ -105,10 +130,17 @@ class MergeCommand extends AbstractConversionCommand
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
 
         $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title) - parameter --output-file must be a directory", []);
+        $this->addOption(static::OPTION_BATCH_FILTER, null, InputOption::VALUE_OPTIONAL, "Skip files that do not contain this string", "");
+        $this->addOption(static::OPTION_BATCH_RESUME_FILE, null, InputOption::VALUE_OPTIONAL, "Enables you to resume a interrupted batch encoding process by skipping all items in this file and appending currently processed output files", "");
         $this->addOption(static::OPTION_DRY_RUN, null, InputOption::VALUE_NONE, "perform a dry run without converting all the files in batch mode (requires --" . static::OPTION_BATCH_PATTERN . ")");
         $this->addOption(static::OPTION_JOBS, null, InputOption::VALUE_OPTIONAL, "Specifies the number of jobs (commands) to run simultaneously", 1);
 
         $this->addOption(static::OPTION_CHAPTER_USE_FILENAMES, null, InputOption::VALUE_NONE, "Use filenames for chapter titles instead of tag contents");
+
+        $this->addOption(static::OPTION_CHAPTER_ALGORITHM, null, InputOption::VALUE_OPTIONAL, "Use a specific algorithm to reindex / rename the chapters: " . implode(", ", static::CHAPTER_ALGORITHMS), static::CHAPTER_ALGORITHM_LEGACY);
+        $this->addOption(static::OPTION_TAG_DEBUG_PATH, null, InputOption::VALUE_OPTIONAL, "dump tagging debug information to this path", "");
+
+
         $this->addOption(static::OPTION_CHAPTER_NO_REINDEXING, null, InputOption::VALUE_NONE, "Do not perform any reindexing for index-only chapter names (by default m4b-tool will try to detect index-only chapters like Chapter 1, Chapter 2 and reindex it with its numbers only)");
         $this->addOption(static::OPTION_PREPEND_SERIES_TO_LONGDESC, null, InputOption::VALUE_NONE, "Prepend series and part to description, if available (e.g. Thrawn 1: Thrawn and the Philosopher's Stone is a...) - this option is mainly meant for iPods not showing the series or part in the listing");
 
@@ -142,6 +174,8 @@ class MergeCommand extends AbstractConversionCommand
             $batchPatterns = $input->getOption(static::OPTION_BATCH_PATTERN);
             if ($this->isBatchMode($input)) {
                 $this->ensureValidInputForBatchMode($input);
+                $this->loadResumeFile($input);
+
 
                 $batchJobs = [];
                 foreach ($batchPatterns as $batchPattern) {
@@ -162,6 +196,34 @@ class MergeCommand extends AbstractConversionCommand
         return 0;
 
 
+    }
+
+    private function loadResumeFile(InputInterface $input)
+    {
+        $this->resumeFile = trim((string)$input->getOption(static::OPTION_BATCH_RESUME_FILE));
+        if ($this->resumeFile === "") {
+            return true;
+        }
+        if (!file_exists($this->resumeFile)) {
+            if (!touch($this->resumeFile)) {
+                $this->error(sprintf("Could not create resume file %s", $this->resumeFile));
+                return false;
+            }
+            return true;
+        }
+
+        $this->resumeFileLines = array_map(function ($line) {
+            return trim($line);
+        }, file($this->resumeFile));
+        return true;
+    }
+
+    private function storeOutputFileToResumeFile(SplFileInfo $outputFile)
+    {
+        if ($this->resumeFile === "") {
+            return;
+        }
+        file_put_contents($this->resumeFile, $outputFile . PHP_EOL, FILE_APPEND);
     }
 
     private function isBatchMode(InputInterface $input)
@@ -315,13 +377,17 @@ class MergeCommand extends AbstractConversionCommand
     private function processBatchJobs(MergeCommand $command, OutputInterface $output, array $batchJobs)
     {
         gc_enable();
+        $currentBatchJobNumber = 0;
+        $batchJobsCount = count($batchJobs);
         foreach ($batchJobs as $clonedInput) {
-
+            $currentBatchJobNumber++;
             $baseDir = $clonedInput->getArgument(static::ARGUMENT_INPUT);
 
             try {
-                $this->notice(sprintf("processing %s", $baseDir));
+                $this->notice(sprintf("processing batch job %s/%s: %s", $this->currentBatchJobNumber, $this->batchJobsCount, $baseDir));
                 $clonedCommand = clone $command;
+                $clonedCommand->currentBatchJobNumber = $currentBatchJobNumber;
+                $clonedCommand->batchJobsCount = $batchJobsCount;
                 $clonedOutput = clone $output;
                 $clonedCommand->execute($clonedInput, $clonedOutput);
                 unset($clonedCommand);
@@ -358,14 +424,40 @@ class MergeCommand extends AbstractConversionCommand
     {
         $this->initExecution($input, $output);
 
-        if (!$this->optForce && $this->isBatchMode($this->input) && $this->outputFile->isFile()) {
-            $this->notice(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
+        if ($this->shouldSkip()) {
             return;
         }
 
         $this->loadInputFiles();
         $this->ensureOutputFileIsNotEmpty($this->outputFile);
         $this->processInputFiles();
+    }
+
+    // todo: skip-output-with-age argument
+    private function shouldSkip()
+    {
+        if (!$this->outputFile->isFile()) {
+            return false;
+        }
+
+        if (!$this->optForce) {
+            $this->notice(sprintf("Output file %s already exists - skipping while in batch mode", $this->outputFile));
+            return true;
+        }
+
+        $batchIncludeFilter = $this->input->getOption(static::OPTION_BATCH_FILTER);
+        if ($batchIncludeFilter !== "" && stripos($this->argInputFile, $batchIncludeFilter) === false) {
+            $this->notice(sprintf("Input file %s does not include filter pattern %s - skipping while in batch mode", $this->argInputFile, $batchIncludeFilter));
+            return true;
+        }
+
+        if (in_array((string)$this->outputFile, $this->resumeFileLines)) {
+            $this->notice(sprintf("Output file is present in --%s %s - skipping %s while in batch mode", static::OPTION_BATCH_RESUME_FILE, $this->input->getOption(static::OPTION_BATCH_RESUME_FILE), $this->outputFile));
+            return true;
+        }
+
+        $this->notice(sprintf("Output file %s exists, but --%s is present - overwrite file", $this->outputFile, static::OPTION_FORCE));
+        return false;
     }
 
     /**
@@ -379,12 +471,13 @@ class MergeCommand extends AbstractConversionCommand
         }
 
         $this->debug("== load input files ==");
+
         $inputFiles = $this->input->getArgument(static::ARGUMENT_MORE_INPUT_FILES);
+        array_unshift($inputFiles, $this->argInputFile);
         $includeExtensions = $this->parseIncludeExtensions();
 
         $loader = new FileLoader();
         $loader->setIncludeExtensions($includeExtensions);
-        $loader->add($this->argInputFile);
         foreach ($inputFiles as $fileLink) {
             $loader->add(new SplFileInfo($fileLink));
         }
@@ -426,6 +519,8 @@ class MergeCommand extends AbstractConversionCommand
         $this->tagMergedFile($outputTempFile);
 
         $this->moveFinishedOutputFile($outputTempFile, $this->outputFile);
+
+        $this->storeOutputFileToResumeFile($this->outputFile);
 
         $this->deleteTemporaryFiles();
 
@@ -516,7 +611,12 @@ class MergeCommand extends AbstractConversionCommand
         }
 
 
-        $this->notice(sprintf("preparing conversion with %d simultaneous %s, please wait...", $jobs, $jobs === 1 ? "job" : "jobs"));
+        if ($this->batchJobsCount > 0) {
+            $this->notice(sprintf("### batch job %s/%s ###: preparing conversion with %d simultaneous %s, please wait...", $this->currentBatchJobNumber, $this->batchJobsCount, $jobs, $jobs === 1 ? "job" : "jobs"));
+        } else {
+            $this->notice(sprintf("preparing conversion with %d simultaneous %s, please wait...", $jobs, $jobs === 1 ? "job" : "jobs"));
+        }
+
 
 
         $taskPool->process(function (Pool $taskPool) {
@@ -655,8 +755,38 @@ class MergeCommand extends AbstractConversionCommand
     private function tagMergedFile(SplFileInfo $outputTmpFile)
     {
 
+        $tagDebugPath = $this->input->getOption(static::OPTION_TAG_DEBUG_PATH);
+        $maxChapterLengthParts = explode(",", $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH));
+        $desiredChapterLengthSeconds = $maxChapterLengthParts[0] ?? 0;
+        $maxChapterLengthSeconds = $maxChapterLengthParts[1] ?? $desiredChapterLengthSeconds;
+
+        $maxChapterLength = new TimeUnit((int)$maxChapterLengthSeconds, TimeUnit::SECOND);
+        $desiredChapterLength = new TimeUnit((int)$desiredChapterLengthSeconds, TimeUnit::SECOND);
+        $silenceLength = new TimeUnit((int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH));
+        $detectSilenceFunction = function () use ($silenceLength, $outputTmpFile) {
+            $cacheKey = "m4b-tool.silence-cache." . $silenceLength->milliseconds() . "-" . hash("sha256", $outputTmpFile);
+            return $this->cacheAdapterGet($cacheKey, function () use ($silenceLength, $outputTmpFile) {
+                return $this->metaHandler->detectSilences($outputTmpFile, $silenceLength);
+            }, 7200);
+        };
+
+        $lengthCalc = new ChapterLengthCalculator($detectSilenceFunction, $desiredChapterLength, $maxChapterLength);
+
+
+        $tagDebugFile = null;
+        if ($tagDebugPath !== "") {
+            $tagDebugPath = new SplFileInfo($tagDebugPath);
+            $dumpProperties = ["genre", "artist", "series", "series-part", "name"];
+            $tagDebugFileName = "";
+            foreach ($dumpProperties as $p) {
+                $tagDebugFileName .= "_" . $this->input->getOption($p);
+            }
+            $tagDebugFileName = ltrim($tagDebugFileName, '_');
+            $tagDebugFile = new SplFileInfo($tagDebugPath . "/" . $tagDebugFileName);
+        }
+
         $tag = new Tag();
-        $tagChanger = new TagImproverComposite();
+        $tagChanger = new TagImproverComposite($tagDebugFile, $detectSilenceFunction);
         $tagChanger->setLogger($this);
         // chapter loaders
         // todo: what about - don't change any chapters if found: freezeProperties? -> load($tag, $frozenProperties=[])
@@ -672,17 +802,33 @@ class MergeCommand extends AbstractConversionCommand
             $this->chapterHandler->setSilenceBetweenFile($this->silenceBetweenFile);
         }
 
-        $tagChanger->add(new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert));
+        $chaptersFromFileTags = new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert);
 
-        $maxChapterLength = $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH);
-        $minSilenceLength = (int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH);
-        $tagChanger->add(new Tag\AdjustTooLongChapters($this->metaHandler, $this->chapterHandler, $outputTmpFile, $maxChapterLength, $minSilenceLength));
+        $tagChanger->add($chaptersFromFileTags);
+
+
+        if ($this->input->getOption(static::OPTION_CHAPTER_ALGORITHM) !== static::CHAPTER_ALGORITHM_LEGACY) {
+            $chaptersFromFileTags->disableAdjustments();
+        }
+
 
         // tag property loaders
         $tagChanger->add(OpenPackagingFormat::fromFile($this->argInputFile));
         $tagChanger->add(Tag\AudibleTxt::fromFile($this->argInputFile));
+        $tagChanger->add(Tag\AudibleJson::fromFile($this->argInputFile));
+        $tagChanger->add(Tag\M4bToolJson::fromFile($this->argInputFile));
         $tagChanger->add(Tag\Description::fromFile($this->argInputFile));
         $tagChanger->add(Tag\ContentMetadataJson::fromFile($this->argInputFile));
+        $tagChanger->add(Tag\AudibleChaptersJson::fromFile($this->argInputFile, null, null, $lengthCalc));
+        switch ($this->input->getOption(static::OPTION_CHAPTER_ALGORITHM)) {
+            case static::CHAPTER_ALGORITHM_GROUPING:
+                $tagChanger->add(new Tag\AdjustChaptersByGroupLogic($this->metaHandler, $lengthCalc, $outputTmpFile));
+                break;
+            case static::CHAPTER_ALGORITHM_LEGACY:
+                $tagChanger->add(new Tag\AdjustTooLongChapters($this->metaHandler, $this->chapterHandler, $outputTmpFile, $maxChapterLength, $silenceLength));
+                break;
+        }
+
 
         $equateInstructions = $this->input->getOption(static::OPTION_EQUATE);
 
@@ -690,6 +836,7 @@ class MergeCommand extends AbstractConversionCommand
         $flags = $this->buildTagFlags();
 
         $tagChanger->add(new InputOptions($this->input, $flags));
+
 
         if (is_array($equateInstructions) && count($equateInstructions) > 0) {
             $tagChanger->add(new Tag\Equate($equateInstructions, $this->keyMapper));

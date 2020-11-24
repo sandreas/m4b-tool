@@ -15,5 +15,6 @@ class TaggingFlags extends ConditionalFlags
     const FLAG_OPF = 1 << 4;
 //    const FLAG_AUDIBLE_TXT = 1 << 5;
     const FLAG_CHAPTERS = 1 << 6;
+    const FLAG_CUE_SHEET = 1 << 7;
 
 }

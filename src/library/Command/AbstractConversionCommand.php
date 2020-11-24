@@ -282,6 +282,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
             return null;
         }
 
+
         if ($this->input->getOption(static::OPTION_SKIP_COVER)) {
             $this->notice(sprintf("skip cover extraction by user demand (--%s)", static::OPTION_SKIP_COVER));
             return null;
@@ -293,6 +294,13 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
             return null;
         }
 
+        if ($coverTargetFile->isFile() && $this->input->getOption(static::OPTION_SKIP_COVER_IF_EXISTS)) {
+            $this->notice(sprintf("skip cover extraction, but will embedding file %s - it exists and option %s is present", $coverTargetFile->getBasename(), static::OPTION_SKIP_COVER_IF_EXISTS));
+            return $coverTargetFile;
+        }
+
+
+        // todo: --skip-cover-if-exists
         $movedCoverTargetFile = null;
         // backup existing cover file if forced
         if ($coverTargetFile->isFile() && $force) {

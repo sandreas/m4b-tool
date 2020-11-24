@@ -76,7 +76,7 @@ class ChapterHandler
      * @return array
      * @throws Exception
      */
-    public function buildChaptersFromFiles(array $files, array $fileNames = [])
+    public function buildChaptersFromFiles(array $files, array $fileNames = [], $enableAdjustments = true)
     {
         $chapters = [];
         $lastStart = new TimeUnit();
@@ -116,6 +116,9 @@ class ChapterHandler
             $chapter = new Chapter($lastStart, $duration, $chapterName);
             $chapters[] = $chapter;
             $lastStart = $chapter->getEnd();
+        }
+        if (!$enableAdjustments) {
+            return $chapters;
         }
         return $this->adjustChapters($chapters);
     }

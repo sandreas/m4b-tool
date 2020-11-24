@@ -5,6 +5,7 @@ namespace M4bTool\Command;
 
 
 use Exception;
+use M4bTool\Audio\CueSheet;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\ChaptersTxt;
 use M4bTool\Audio\Tag\Cover;
@@ -34,6 +35,7 @@ class MetaCommand extends AbstractMetadataCommand
     const OPTION_EXPORT_FFMETADATA = "export-ffmetadata";
     // const OPTION_EXPORT_OPF = "export-opf"; // not supported atm
     const OPTION_EXPORT_CHAPTERS = "export-chapters";
+    const OPTION_EXPORT_CUE_SHEET = "export-cue-sheet";
 
     const OPTION_IMPORT_ALL = "import-all";
     const OPTION_IMPORT_COVER = "import-cover";
@@ -41,6 +43,7 @@ class MetaCommand extends AbstractMetadataCommand
     const OPTION_IMPORT_FFMETADATA = "import-ffmetadata";
     const OPTION_IMPORT_OPF = "import-opf";
     const OPTION_IMPORT_CHAPTERS = "import-chapters";
+    const OPTION_IMPORT_CUE_SHEET = "import-cue-sheet";
 
     const EMPTY_MARKER = "Empty tag fields";
 
@@ -58,7 +61,7 @@ class MetaCommand extends AbstractMetadataCommand
         $this->addOption(static::OPTION_IMPORT_FFMETADATA, null, InputOption::VALUE_OPTIONAL, "import metadata in ffmetadata1 format (e.g. ffmetadata.txt)", false);
         $this->addOption(static::OPTION_IMPORT_OPF, null, InputOption::VALUE_OPTIONAL, "import metadata from opf format (e.g. metadata.opf)", false);
         $this->addOption(static::OPTION_IMPORT_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "import chapters from mp4v2 format (e.g. chapters.txt)", false);
-
+        $this->addOption(static::OPTION_IMPORT_CUE_SHEET, null, InputOption::VALUE_OPTIONAL, "import cue sheet", false);
         $this->addOption(static::OPTION_EXPORT_ALL, null, InputOption::VALUE_NONE, "export all default tag sources as files (e.g. cover.jpg, description.txt, chapters.txt, etc.)");
         $this->addOption(static::OPTION_EXPORT_COVER, null, InputOption::VALUE_OPTIONAL, "export cover cover file (e.g. cover.jpg)", false);
         $this->addOption(static::OPTION_EXPORT_DESCRIPTION, null, InputOption::VALUE_OPTIONAL, "export description from plaintext file (e.g. description.txt)", false);
@@ -66,8 +69,7 @@ class MetaCommand extends AbstractMetadataCommand
         // currently not supported
         // $this->addOption(static::OPTION_EXPORT_OPF, null, InputOption::VALUE_OPTIONAL, "export metadata from opf format (e.g. metadata.opf)", false);
         $this->addOption(static::OPTION_EXPORT_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "export chapters from mp4v2 format (e.g. chapters.txt)", false);
-
-
+        $this->addOption(static::OPTION_EXPORT_CUE_SHEET, null, InputOption::VALUE_OPTIONAL, "export cue sheet", false);
     }
 
     /**
@@ -81,11 +83,15 @@ class MetaCommand extends AbstractMetadataCommand
         $importFlags = new TaggingFlags();
         $importFlags->insertIf(TaggingFlags::FLAG_ALL, $input->getOption(static::OPTION_IMPORT_ALL) !== false);
         $importFlags->insertIf(TaggingFlags::FLAG_TAG_BY_COMMAND_LINE_ARGUMENTS, count($input->getOption(static::OPTION_REMOVE)));
+
+
         $importFlags->insertIf(TaggingFlags::FLAG_COVER, $input->getOption(static::OPTION_IMPORT_COVER) !== false);
         $importFlags->insertIf(TaggingFlags::FLAG_DESCRIPTION, $input->getOption(static::OPTION_IMPORT_DESCRIPTION) !== false);
         $importFlags->insertIf(TaggingFlags::FLAG_FFMETADATA, $input->getOption(static::OPTION_IMPORT_FFMETADATA) !== false);
         $importFlags->insertIf(TaggingFlags::FLAG_OPF, $input->getOption(static::OPTION_IMPORT_OPF) !== false);
         $importFlags->insertIf(TaggingFlags::FLAG_CHAPTERS, $input->getOption(static::OPTION_IMPORT_CHAPTERS) !== false);
+        $importFlags->insertIf(TaggingFlags::FLAG_CUE_SHEET, $input->getOption(static::OPTION_IMPORT_CUE_SHEET) !== false);
+
         $importFlags->insertIf(TaggingFlags::FLAG_TAG_BY_COMMAND_LINE_ARGUMENTS, (count($input->getOption(static::OPTION_REMOVE)) > 0));
 
         foreach (static::ALL_TAG_OPTIONS as $tagOption) {
@@ -103,6 +109,7 @@ class MetaCommand extends AbstractMetadataCommand
 //        $exportFlags->insertIf(TaggingFlags::FLAG_OPF, $input->getOption(static::OPTION_EXPORT_OPF));
 //        $exportFlags->insertIf(TaggingFlags::FLAG_AUDIBLE_TXT, $input->getOption(static::OPTION_EXPORT_AUDIBLE_TXT));
         $exportFlags->insertIf(TaggingFlags::FLAG_CHAPTERS, $input->getOption(static::OPTION_EXPORT_CHAPTERS) !== false);
+        $exportFlags->insertIf(TaggingFlags::FLAG_CUE_SHEET, $input->getOption(static::OPTION_EXPORT_CUE_SHEET) !== false);
 
 
         try {
@@ -221,6 +228,10 @@ class MetaCommand extends AbstractMetadataCommand
             $this->notice("trying to load opf");
             $tagLoaderComposite->add(OpenPackagingFormat::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_OPF)));
         }
+        if ($tagChangerFlags->contains(TaggingFlags::FLAG_CUE_SHEET)) {
+            $this->notice("trying to load cue sheet");
+            $tagLoaderComposite->add(CueSheet::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_CUE_SHEET)));
+        }
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_FFMETADATA)) {
             $this->notice("trying to load ffmetadata");
             $tagLoaderComposite->add(Ffmetadata::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_FFMETADATA)));
@@ -229,12 +240,10 @@ class MetaCommand extends AbstractMetadataCommand
             $this->notice("trying to load chapters");
             $tagLoaderComposite->add(ChaptersTxt::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_CHAPTERS)));
         }
-
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_DESCRIPTION)) {
             $this->notice("trying to load description");
             $tagLoaderComposite->add(Description::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_DESCRIPTION)));
         }
-
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_TAG_BY_COMMAND_LINE_ARGUMENTS)) {
             $this->notice("trying to load tags from input arguments");
             $tagLoaderComposite->add(new InputOptions($this->input, new Flags(InputOptions::FLAG_ADJUST_FOR_IPOD)));
@@ -274,6 +283,15 @@ class MetaCommand extends AbstractMetadataCommand
                 $this->error($e->getMessage());
             }
         }
+
+        if ($exportFlags->contains(TaggingFlags::FLAG_CUE_SHEET)) {
+            try {
+                $this->exportCueSheet($inputFile, $this->prepareExportFile($inputFile, $this->input->getOption(static::OPTION_EXPORT_CUE_SHEET)));
+            } catch (Exception $e) {
+                $this->error($e->getMessage());
+            }
+        }
+
 
         if ($exportFlags->contains(TaggingFlags::FLAG_FFMETADATA)) {
             try {

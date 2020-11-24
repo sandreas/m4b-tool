@@ -17,11 +17,14 @@ class ContentMetadataJson extends AbstractTagImprover
     protected $chaptersContent;
     /** @var Flags */
     protected $flags;
+    /** @var int */
+    protected $chapterIndex;
 
     public function __construct($fileContents = "", Flags $flags = null)
     {
         $this->chaptersContent = $fileContents;
         $this->flags = $flags ?? new Flags();
+        $this->chapterIndex = 1;
     }
 
     /**
@@ -33,24 +36,29 @@ class ContentMetadataJson extends AbstractTagImprover
      */
     public static function fromFile(SplFileInfo $reference, $fileName = null, Flags $flags = null)
     {
+        $fileContents = static::loadFileContents($reference, $fileName);
+        return new static($fileContents, $flags);
+    }
+
+    protected static function loadFileContents(SplFileInfo $reference, $fileName = null)
+    {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
         $fileName = $fileName ? $fileName : "content_metadata_*.json";
-
 
         $globPattern = $path . "/" . $fileName;
         $files = glob($globPattern);
         if (!is_array($files) || count($files) === 0) {
-            return new static("", $flags);
+            return "";
         }
 
         $fileToLoad = new SplFileInfo($files[0]);
         if ($fileToLoad->isFile()) {
-            return new static(static::stripBOM(file_get_contents($fileToLoad)), $flags);
+            return static::stripBOM(file_get_contents($fileToLoad));
         }
-        return new static();
+        return "";
     }
 
-    private static function stripBOM($contents)
+    protected static function stripBOM($contents)
     {
         if (substr($contents, 0, 3) === static::BOM) {
             return substr($contents, 3);
@@ -79,14 +87,7 @@ class ContentMetadataJson extends AbstractTagImprover
         if (isset($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"])) {
             $chapters[] = new Chapter(new TimeUnit(0), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"]), Chapter::DEFAULT_INTRO_NAME);
         }
-        $i = 1;
-        foreach ($decodedChapters as $decodedChapter) {
-            $lengthMs = $decodedChapter["length_ms"] ?? 0;
-            $title = $decodedChapter["title"] ?? $i++;
-            $lastKey = count($chapters) - 1;
-            $lastChapterEnd = isset($chapters[$lastKey]) ? new TimeUnit($chapters[$lastKey]->getEnd()->milliseconds()) : new TimeUnit();
-            $chapters[] = new Chapter($lastChapterEnd, new TimeUnit($lengthMs), $title);
-        }
+        $this->createChapters($chapters, $decodedChapters);
 
         $lastChapter = end($chapters);
 
@@ -101,5 +102,27 @@ class ContentMetadataJson extends AbstractTagImprover
             $tag->extraProperties["audible_id"] = $audibleId;
         }
         return $tag;
+    }
+
+
+    /**
+     * @param Chapter[] $chapters
+     * @param $decodedChapters
+     * @param int $level
+     */
+    private function createChapters(&$chapters, $decodedChapters, $level = 0)
+    {
+        foreach ($decodedChapters as $decodedChapter) {
+            $lengthMs = $decodedChapter["length_ms"] ?? 0;
+            $title = trim($decodedChapter["title"]) ?? $this->chapterIndex++;
+            $lastKey = count($chapters) - 1;
+            $lastChapterEnd = isset($chapters[$lastKey]) ? new TimeUnit($chapters[$lastKey]->getEnd()->milliseconds()) : new TimeUnit();
+            $chapters[] = new Chapter($lastChapterEnd, new TimeUnit($lengthMs), $title);
+
+            // handle sub chapters
+            if (isset($decodedChapter["chapters"]) && is_array($decodedChapter["chapters"])) {
+                $this->createChapters($chapters, $decodedChapter["chapters"], $level + 1);
+            }
+        }
     }
 }
