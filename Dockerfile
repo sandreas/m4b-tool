@@ -85,7 +85,7 @@ ARG M4B_TOOL_DOWNLOAD_LINK="https://github.com/sandreas/m4b-tool/releases/latest
 # workaround to copy a local m4b-tool.phar IF it exists
 ADD ./Dockerfile ./dist/m4b-tool.phar* /tmp/
 
-RUN \
+RUN echo "---- INSTALL M4B-TOOL ----" && \
   M4B_TOOL_PRE_RELEASE_LINK="$(wget -q -O - https://github.com/sandreas/m4b-tool/releases/tag/latest | grep M4B_TOOL_DOWNLOAD_LINK | cut -d '=' -f 2 | cut -d ' ' -f 1)" && \
   wget "$M4B_TOOL_PRE_RELEASE_LINK" -O /tmp/m4b-tool.tar.gz && \
   tar -xf /tmp/m4b-tool.tar.gz -C /tmp && \
