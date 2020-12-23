@@ -804,6 +804,23 @@ composer update
 ./build
 ```
 
+## macOS
+
+### Install Dependencies (brew)
+
+```shell
+brew update
+brew install php@7.4 phpunit
+brew link php@7.4
+```
+
+### Build
+
+```
+composer update
+./build
+```
+
 ## Windows 
 ```
 composer update
