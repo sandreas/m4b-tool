@@ -4,9 +4,11 @@
 namespace M4bTool\Audio\Tag;
 
 
+use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Command\AbstractConversionCommand;
 use M4bTool\Common\Flags;
+use M4bTool\Common\PurchaseDateTime;
 use M4bTool\Common\ReleaseDate;
 use Symfony\Component\Console\Input\InputInterface;
 
@@ -24,6 +26,11 @@ class InputOptions extends AbstractTagImprover
         $this->flags = $flags ?? new Flags();
     }
 
+    /**
+     * @param Tag $tag
+     * @return Tag
+     * @throws Exception
+     */
     public function improve(Tag $tag): Tag
     {
         $mergeTag = new Tag();
@@ -57,6 +64,7 @@ class InputOptions extends AbstractTagImprover
         $mergeTag->copyright = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_COPYRIGHT);
         $mergeTag->encodedBy = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ENCODED_BY);
         $mergeTag->grouping = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_GROUPING);
+        $mergeTag->purchaseDate = PurchaseDateTime::createFromValidString($this->input->getOption(AbstractConversionCommand::OPTION_TAG_PURCHASE_DATE));
         $mergeTag->encoder = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_ENCODER);
         $mergeTag->series = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES);
         $mergeTag->seriesPart = $this->input->getOption(AbstractConversionCommand::OPTION_TAG_SERIES_PART);

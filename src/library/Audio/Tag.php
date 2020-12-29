@@ -5,6 +5,7 @@ namespace M4bTool\Audio;
 
 use ArrayAccess;
 use JsonSerializable;
+use M4bTool\Common\PurchaseDateTime;
 
 /**
  * Class Tag
@@ -94,6 +95,8 @@ class Tag implements ArrayAccess, JsonSerializable
     public $disk;
     public $disks;
     public $grouping;
+    /** @var PurchaseDateTime */
+    public $purchaseDate;
     public $albumArtist;
     public $sortAlbumArtist;
     public $year;

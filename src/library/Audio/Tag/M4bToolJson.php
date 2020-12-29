@@ -7,7 +7,7 @@ namespace M4bTool\Audio\Tag;
 use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Common\Flags;
-use Sandreas\DateTime\DateTime;
+use M4bTool\Common\PurchaseDateTime;
 use SplFileInfo;
 use Throwable;
 
@@ -51,11 +51,9 @@ class M4bToolJson extends AbstractTagImprover
         }
         try {
             $properties = json_decode($this->fileContents, true);
-            if (isset($properties["created"])) {
-                $date = new DateTime($properties["created"]);
-                $tag->grouping = $date->format(DateTime::ATOM);
-                $this->info(sprintf("grouping set to %s", $tag->grouping));
-
+            if (isset($properties["purchaseDate"])) {
+                $tag->purchaseDate = PurchaseDateTime::createFromValidString($properties["purchaseDate"]);
+                $this->info(sprintf("purchaseDate set to %s", $tag->purchaseDate));
             }
         } catch (Throwable $t) {
             $this->warning(sprintf("could not decode m4b-tool.json: %s", $t->getMessage()));

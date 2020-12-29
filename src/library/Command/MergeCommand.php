@@ -77,6 +77,7 @@ class MergeCommand extends AbstractConversionCommand
         self::OPTION_TAG_COPYRIGHT => "C",
         self::OPTION_TAG_ENCODED_BY => "e",
         self::OPTION_TAG_GROUPING => "G",
+        self::OPTION_TAG_PURCHASE_DATE => "U",
         self::OPTION_TAG_SERIES => "s",
         self::OPTION_TAG_SERIES_PART => "p",
 
@@ -105,7 +106,7 @@ class MergeCommand extends AbstractConversionCommand
     protected $silenceBetweenFile;
 
     /** @var string */
-    protected $resumeFile;
+    protected $resumeFile = "";
 
     /** @var array */
     protected $resumeFileLines = [];
@@ -201,7 +202,7 @@ class MergeCommand extends AbstractConversionCommand
     private function loadResumeFile(InputInterface $input)
     {
         $this->resumeFile = trim((string)$input->getOption(static::OPTION_BATCH_RESUME_FILE));
-        if ($this->resumeFile === "") {
+        if ($this->resumeFile === "" || $this->resumeFile === null) {
             return true;
         }
         if (!file_exists($this->resumeFile)) {
@@ -384,7 +385,9 @@ class MergeCommand extends AbstractConversionCommand
             $baseDir = $clonedInput->getArgument(static::ARGUMENT_INPUT);
 
             try {
-                $this->notice(sprintf("processing batch job %s/%s: %s", $this->currentBatchJobNumber, $this->batchJobsCount, $baseDir));
+                if ($this->currentBatchJobNumber > 0 && $this->batchJobsCount > 0) {
+                    $this->notice(sprintf("processing batch job %s/%s: %s", $this->currentBatchJobNumber, $this->batchJobsCount, $baseDir));
+                }
                 $clonedCommand = clone $command;
                 $clonedCommand->currentBatchJobNumber = $currentBatchJobNumber;
                 $clonedCommand->batchJobsCount = $batchJobsCount;
@@ -424,6 +427,7 @@ class MergeCommand extends AbstractConversionCommand
     {
         $this->initExecution($input, $output);
 
+        // $this->showPurchaseDateCommand();
         if ($this->shouldSkip()) {
             return;
         }
@@ -433,7 +437,22 @@ class MergeCommand extends AbstractConversionCommand
         $this->processInputFiles();
     }
 
-    // todo: skip-output-with-age argument
+    /*
+    private function showPurchaseDateCommand() {
+        $m4bToolJson = new SplFileInfo($this->argInputFile."/".Tag\M4bToolJson::DEFAULT_FILENAME);
+        if(!$m4bToolJson->isFile()) {
+            return;
+        }
+        $improver = new Tag\M4bToolJson(file_get_contents($m4bToolJson));
+        $tag = $improver->improve(new Tag());
+
+        $this->notice(sprintf('mp4tags -U "%s" "%s"', (string)$tag->purchaseDate, $this->outputFile));
+        if($this->input->getOption(static::OPTION_RESTORE_MTIME) && $tag->purchaseDate instanceof ReleaseDate) {
+            touch($this->outputFile, $tag->purchaseDate->getTimeStamp());
+        }
+    }
+    */
+
     private function shouldSkip()
     {
         if (!$this->outputFile->isFile()) {
