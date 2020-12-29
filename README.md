@@ -800,7 +800,7 @@ sudo apt install ffmpeg mp4v2-utils fdkaac php-cli composer phpunit php-mbstring
 ### Build
 
 ```
-composer update
+composer install
 ./build
 ```
 
@@ -817,13 +817,13 @@ brew link php@7.4
 ### Build
 
 ```
-composer update
+composer install
 ./build
 ```
 
 ## Windows 
 ```
-composer update
+composer install
 build
 ```
 
