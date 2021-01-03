@@ -20,7 +20,7 @@ class FfmetaDataParser
 
     const PARSE_SKIP = 0;
     const PARSE_METADATA = 1;
-    const PARSE_CHAPTERS = 2;
+    // const PARSE_CHAPTERS = 2;
 
 
     const METADATA_MARKER = ";ffmetadata1";
@@ -380,6 +380,7 @@ class FfmetaDataParser
         return $this->format;
     }
 
+
     public function toTag()
     {
         $tag = new Tag();
@@ -405,13 +406,24 @@ class FfmetaDataParser
         $tag->lyrics = $this->getProperty("lyrics");
         $tag->comment = $this->getProperty("comment");
 
-        $tag->year = ReleaseDate::createFromValidString($this->getProperty("date"));
+        try {
+            $tag->year = ReleaseDate::createFromValidString($this->getProperty("date"));
+        } catch (Exception $e) {
+            // ignore
+        }
+
 
 
         $tag->description = $this->getProperty("description");
         $tag->longDescription = $this->getProperty("longdesc") ?? $this->getProperty("synopsis");
         $tag->cover = $this->cover;
         $tag->chapters = $this->chapters;
+
+        $overDriveMediaMarkers = $this->getProperty("overdrive mediamarkers");
+        if ($overDriveMediaMarkers) {
+            $tag->extraProperties[Tag::EXTRA_PROPERTY_OVERDRIVE_MEDIA_MARKERS] = $overDriveMediaMarkers;
+        }
+
         return $tag;
     }
 

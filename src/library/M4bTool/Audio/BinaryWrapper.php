@@ -54,7 +54,7 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
             return $estimatedDuration;
         }
 
-        return $this->getMediaFileDuration($file) ?? $this->ffmpeg->estimateDuration($file);
+        return /*$this->getMediaFileDuration($file) ??*/ $this->ffmpeg->estimateDuration($file);
     }
 
     public function detectFormat(SplFileInfo $file)

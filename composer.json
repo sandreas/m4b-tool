@@ -18,7 +18,8 @@
     "ext-curl": "*",
     "lywzx/php-epub": "^0.1.2",
       "doctrine/collections": "^1.6",
-      "wapmorgan/media-file": "^0.1.4"
+      "wapmorgan/media-file": "^0.1.4",
+      "psr/http-message": "^1.0"
   },
   "autoload": {
     "psr-4": {

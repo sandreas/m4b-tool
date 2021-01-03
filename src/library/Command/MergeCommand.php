@@ -10,6 +10,7 @@ use IteratorIterator;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\ChaptersFromFileTracks;
 use M4bTool\Audio\Tag\ChaptersFromMusicBrainz;
+use M4bTool\Audio\Tag\ChaptersFromOverdrive;
 use M4bTool\Audio\Tag\ChaptersTxt;
 use M4bTool\Audio\Tag\Ffmetadata;
 use M4bTool\Audio\Tag\InputOptions;
@@ -86,7 +87,10 @@ class MergeCommand extends AbstractConversionCommand
 
     const SILENCE_INDEX_MARKER = -1;
     const OPTION_EQUATE = "equate";
-
+    /** @var int */
+    public $currentBatchJobNumber = 0;
+    /** @var int */
+    public $batchJobsCount = 0;
     protected $meta = [];
     /**
      * @var SplFileInfo[]
@@ -94,28 +98,18 @@ class MergeCommand extends AbstractConversionCommand
     protected $filesToConvert = [];
     protected $filesToMerge = [];
     protected $filesToDelete = [];
-
     /** @var SplFileInfo */
     protected $outputFile;
-
     /** @var string[] */
     protected $alreadyProcessedBatchDirs = [];
     /**
      * @var SplFileInfo
      */
     protected $silenceBetweenFile;
-
     /** @var string */
     protected $resumeFile = "";
-
     /** @var array */
     protected $resumeFileLines = [];
-
-    /** @var int */
-    public $currentBatchJobNumber = 0;
-    /** @var int */
-    public $batchJobsCount = 0;
-
 
     protected function configure()
     {
@@ -199,34 +193,6 @@ class MergeCommand extends AbstractConversionCommand
 
     }
 
-    private function loadResumeFile(InputInterface $input)
-    {
-        $this->resumeFile = trim((string)$input->getOption(static::OPTION_BATCH_RESUME_FILE));
-        if ($this->resumeFile === "" || $this->resumeFile === null) {
-            return true;
-        }
-        if (!file_exists($this->resumeFile)) {
-            if (!touch($this->resumeFile)) {
-                $this->error(sprintf("Could not create resume file %s", $this->resumeFile));
-                return false;
-            }
-            return true;
-        }
-
-        $this->resumeFileLines = array_map(function ($line) {
-            return trim($line);
-        }, file($this->resumeFile));
-        return true;
-    }
-
-    private function storeOutputFileToResumeFile(SplFileInfo $outputFile)
-    {
-        if ($this->resumeFile === "") {
-            return;
-        }
-        file_put_contents($this->resumeFile, $outputFile . PHP_EOL, FILE_APPEND);
-    }
-
     private function isBatchMode(InputInterface $input)
     {
         return count($input->getOption(static::OPTION_BATCH_PATTERN));
@@ -248,6 +214,26 @@ class MergeCommand extends AbstractConversionCommand
         if ($outputFile->isFile()) {
             throw new Exception(sprintf("The use of --%s assumes that --%s is a directory", static::OPTION_BATCH_PATTERN, static::OPTION_OUTPUT_FILE));
         }
+    }
+
+    private function loadResumeFile(InputInterface $input)
+    {
+        $this->resumeFile = trim((string)$input->getOption(static::OPTION_BATCH_RESUME_FILE));
+        if ($this->resumeFile === "" || $this->resumeFile === null) {
+            return true;
+        }
+        if (!file_exists($this->resumeFile)) {
+            if (!touch($this->resumeFile)) {
+                $this->error(sprintf("Could not create resume file %s", $this->resumeFile));
+                return false;
+            }
+            return true;
+        }
+
+        $this->resumeFileLines = array_map(function ($line) {
+            return trim($line);
+        }, file($this->resumeFile));
+        return true;
     }
 
     /**
@@ -437,22 +423,6 @@ class MergeCommand extends AbstractConversionCommand
         $this->processInputFiles();
     }
 
-    /*
-    private function showPurchaseDateCommand() {
-        $m4bToolJson = new SplFileInfo($this->argInputFile."/".Tag\M4bToolJson::DEFAULT_FILENAME);
-        if(!$m4bToolJson->isFile()) {
-            return;
-        }
-        $improver = new Tag\M4bToolJson(file_get_contents($m4bToolJson));
-        $tag = $improver->improve(new Tag());
-
-        $this->notice(sprintf('mp4tags -U "%s" "%s"', (string)$tag->purchaseDate, $this->outputFile));
-        if($this->input->getOption(static::OPTION_RESTORE_MTIME) && $tag->purchaseDate instanceof ReleaseDate) {
-            touch($this->outputFile, $tag->purchaseDate->getTimeStamp());
-        }
-    }
-    */
-
     private function shouldSkip()
     {
         if (!$this->outputFile->isFile()) {
@@ -478,6 +448,22 @@ class MergeCommand extends AbstractConversionCommand
         $this->notice(sprintf("Output file %s exists, but --%s is present - overwrite file", $this->outputFile, static::OPTION_FORCE));
         return false;
     }
+
+    /*
+    private function showPurchaseDateCommand() {
+        $m4bToolJson = new SplFileInfo($this->argInputFile."/".Tag\M4bToolJson::DEFAULT_FILENAME);
+        if(!$m4bToolJson->isFile()) {
+            return;
+        }
+        $improver = new Tag\M4bToolJson(file_get_contents($m4bToolJson));
+        $tag = $improver->improve(new Tag());
+
+        $this->notice(sprintf('mp4tags -U "%s" "%s"', (string)$tag->purchaseDate, $this->outputFile));
+        if($this->input->getOption(static::OPTION_RESTORE_MTIME) && $tag->purchaseDate instanceof ReleaseDate) {
+            touch($this->outputFile, $tag->purchaseDate->getTimeStamp());
+        }
+    }
+    */
 
     /**
      * @throws Exception
@@ -635,7 +621,6 @@ class MergeCommand extends AbstractConversionCommand
         } else {
             $this->notice(sprintf("preparing conversion with %d simultaneous %s, please wait...", $jobs, $jobs === 1 ? "job" : "jobs"));
         }
-
 
 
         $taskPool->process(function (Pool $taskPool) {
@@ -821,6 +806,8 @@ class MergeCommand extends AbstractConversionCommand
             $this->chapterHandler->setSilenceBetweenFile($this->silenceBetweenFile);
         }
 
+        $tagChanger->add(new ChaptersFromOverdrive($this->metaHandler, $this->filesToConvert));
+
         $chaptersFromFileTags = new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert);
 
         $tagChanger->add($chaptersFromFileTags);
@@ -925,6 +912,14 @@ class MergeCommand extends AbstractConversionCommand
         }
 
         $this->notice(sprintf("moved temporary %s to %s", $outputTempFile->getBasename(), $outputFile));
+    }
+
+    private function storeOutputFileToResumeFile(SplFileInfo $outputFile)
+    {
+        if ($this->resumeFile === "") {
+            return;
+        }
+        file_put_contents($this->resumeFile, $outputFile . PHP_EOL, FILE_APPEND);
     }
 
     private function deleteTemporaryFiles()

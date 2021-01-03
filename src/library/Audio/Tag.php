@@ -56,6 +56,7 @@ class Tag implements ArrayAccess, JsonSerializable
     const EXTRA_PROPERTY_ASIN = "asin";
     const EXTRA_PROPERTY_AUDIBLE_ID = "audible_id";
     const EXTRA_PROPERTY_GOOGLE_ID = "google_id";
+    const EXTRA_PROPERTY_OVERDRIVE_MEDIA_MARKERS = "overdrive mediamarkers";
 
     const MEDIA_TYPE_MOVIE_OLD = 0;
     const MEDIA_TYPE_MUSIC = 1;
