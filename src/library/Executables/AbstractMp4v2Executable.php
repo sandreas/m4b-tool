@@ -32,7 +32,7 @@ abstract class AbstractMp4v2Executable extends AbstractExecutable
         return parent::runProcess($arguments, $messageInCaseOfError);
     }
 
-    public static function createConventionalFile(SplFileInfo $audioFile, $suffix, $extension, $index = null)
+    public static function buildConventionalFileName(SplFileInfo $audioFile, $suffix, $extension, $index = null)
     {
         $dirName = $audioFile->getPath();
         if ($dirName !== "") {

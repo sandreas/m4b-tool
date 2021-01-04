@@ -258,7 +258,9 @@ class MetaCommand extends AbstractMetadataCommand
         foreach ($outputLines as $outputLine) {
             $this->notice($outputLine);
         }
-        $this->metaHandler->writeTag($this->argInputFile, $tag, $this->buildTagFlags());
+        $flags = $this->buildTagFlags();
+        $flags->insert(Tag\AbstractTagImprover::FLAG_USE_EXISTING_FILES);
+        $this->metaHandler->writeTag($this->argInputFile, $tag, $flags);
 
     }
 
@@ -284,13 +286,13 @@ class MetaCommand extends AbstractMetadataCommand
             }
         }
 
-        if ($exportFlags->contains(TaggingFlags::FLAG_CUE_SHEET)) {
-            try {
-                $this->exportCueSheet($inputFile, $this->prepareExportFile($inputFile, $this->input->getOption(static::OPTION_EXPORT_CUE_SHEET)));
-            } catch (Exception $e) {
-                $this->error($e->getMessage());
-            }
-        }
+//        if ($exportFlags->contains(TaggingFlags::FLAG_CUE_SHEET)) {
+//            try {
+//                $this->exportCueSheet($inputFile, $this->prepareExportFile($inputFile, $this->input->getOption(static::OPTION_EXPORT_CUE_SHEET)));
+//            } catch (Exception $e) {
+//                $this->error($e->getMessage());
+//            }
+//        }
 
 
         if ($exportFlags->contains(TaggingFlags::FLAG_FFMETADATA)) {

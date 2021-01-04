@@ -392,6 +392,6 @@ class AbstractCommand extends Command implements LoggerInterface
 
     protected function audioFileToChaptersFile(SplFileInfo $audioFile)
     {
-        return AbstractMp4v2Executable::createConventionalFile($audioFile, AbstractMp4v2Executable::SUFFIX_CHAPTERS, "txt");
+        return AbstractMp4v2Executable::buildConventionalFileName($audioFile, AbstractMp4v2Executable::SUFFIX_CHAPTERS, "txt");
     }
 }
