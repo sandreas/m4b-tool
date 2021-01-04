@@ -164,7 +164,7 @@ class Pool
                 $runningTaskCount++;
             }
 
-            usleep(250000);
+            usleep(5000);
 
             /** @var ConversionTask $runningTask */
             foreach ($runningTasks as $runningTask) {

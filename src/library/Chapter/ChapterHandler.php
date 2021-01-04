@@ -73,6 +73,7 @@ class ChapterHandler
     /**
      * @param SplFileInfo[] $files
      * @param array $fileNames
+     * @param bool $enableAdjustments
      * @return array
      * @throws Exception
      */

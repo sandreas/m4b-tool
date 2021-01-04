@@ -52,15 +52,14 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
         if (count($tag->chapters) === 0) {
             return;
         }
+        $flags = $flags ?? new Flags();
 
         $chaptersFile = static::buildConventionalFileName($file, static::SUFFIX_CHAPTERS, "txt");
         $chaptersFileAlreadyExisted = $chaptersFile->isFile();
-        if ($chaptersFileAlreadyExisted) {
-            $this->ensureFlagsAllowFurtherProcessing($flags, $chaptersFile);
-
-            if (!$flags->contains(static::FLAG_USE_EXISTING_FILES)) {
-                file_put_contents($chaptersFile, $this->buildChaptersTxt($tag->chapters));
-            }
+        if (!$chaptersFileAlreadyExisted || $flags->contains(static::FLAG_FORCE)) {
+            file_put_contents($chaptersFile, $this->buildChaptersTxt($tag->chapters));
+        } elseif (!$flags->contains(static::FLAG_USE_EXISTING_FILES)) {
+            throw new Exception(sprintf("Chapters file %s already exists", $chaptersFile));
         }
 
         $command[] = "-i";
@@ -68,9 +67,9 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
         $process = $this->runProcess($command);
 
 
-        $keepChapterFile = $flags && $flags->contains(static::FLAG_NO_CLEANUP);
+        $keepChapterFile = $flags->contains(static::FLAG_NO_CLEANUP);
 
-        if (!$chaptersFileAlreadyExisted && !$keepChapterFile) {
+        if (!$chaptersFileAlreadyExisted && !$keepChapterFile && $chaptersFile->isFile()) {
             unlink($chaptersFile);
         }
 
@@ -79,24 +78,7 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
         }
     }
 
-    /**
-     * @param Flags $flags
-     * @param $chaptersFile
-     * @throws Exception
-     */
-    private function ensureFlagsAllowFurtherProcessing(Flags $flags, $chaptersFile)
-    {
-        if ($flags && (
-                $flags->contains(static::FLAG_FORCE)
-                || $flags->contains(static::FLAG_USE_EXISTING_FILES)
-            )
-        ) {
-            return;
-        }
 
-
-        throw new Exception(sprintf("Chapters file %s already exists", $chaptersFile));
-    }
 
     public function buildChaptersTxt(array $chapters)
     {
