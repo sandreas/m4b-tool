@@ -38,12 +38,12 @@ class MusicBrainzChapterParser
     public function loadRecordings($retries=5, $pause=100000, $callback = 'file_get_contents')
     {
 
-        $cacheKey = "m4b-tool.chapter.mbxml." . $this->mbId;
+        $cacheKey = "m4b-tool.chapter.json." . $this->mbId;
 
-        $mbxml = $this->cacheAdapterGet($cacheKey, function () use ($retries, $pause, $callback) {
+        $mbJson = $this->cacheAdapterGet($cacheKey, function () use ($retries, $pause, $callback) {
 
             for ($i = 0; $i < $retries; $i++) {
-                $urlToGet = "http://musicbrainz.org/ws/2/release/" . $this->mbId . "?inc=recordings";
+                $urlToGet = "http://musicbrainz.org/ws/2/release/" . $this->mbId . "?inc=recordings&fmt=json";
                 $options = [
                     'http' => [
                         'method' => "GET",
@@ -55,9 +55,9 @@ class MusicBrainzChapterParser
 
                 $context = stream_context_create($options);
 
-                $mbxml = @call_user_func_array($callback, [$urlToGet, false, $context]);
-                if ($mbxml) {
-                    return $mbxml;
+                $mbJson = @call_user_func_array($callback, [$urlToGet, false, $context]);
+                if ($mbJson) {
+                    return $mbJson;
                 }
                 usleep($pause);
             }
@@ -65,26 +65,41 @@ class MusicBrainzChapterParser
         }, 86400);
 
 
-        if ($mbxml === "") {
+        if ($mbJson === "") {
             throw new Exception("Could not load musicbrainz record for id: " . $this->mbId);
         }
 
-        return preg_replace('/xmlns[^=]*="[^"]*"/i', '', $mbxml);
+        return $mbJson;
     }
 
     public function parseRecordings($chaptersString)
     {
-        $xml = simplexml_load_string($chaptersString);
-        $recordings = $xml->xpath('//recording');
+        $decoded = json_decode($chaptersString, true);
+        $recordings = $this->extractRecordingsFromDecodedJson($decoded);
         $totalLength = new TimeUnit(0, TimeUnit::MILLISECOND);
         $chapters = [];
         foreach ($recordings as $recording) {
-            $length = new TimeUnit((int)$recording->length, TimeUnit::MILLISECOND);
-            $chapter = new Chapter(new TimeUnit($totalLength->milliseconds(), TimeUnit::MILLISECOND), $length, (string)$recording->title);
+            $length = new TimeUnit((int)$recording["length"], TimeUnit::MILLISECOND);
+            $chapter = new Chapter(new TimeUnit($totalLength->milliseconds(), TimeUnit::MILLISECOND), $length, (string)$recording["title"]);
             $totalLength->add($length->milliseconds(), TimeUnit::MILLISECOND);
             $chapters[$chapter->getStart()->milliseconds()] = $chapter;
         }
         return $chapters;
+    }
+
+    private function extractRecordingsFromDecodedJson($decoded): array
+    {
+        if (!is_array($decoded)) {
+            return [];
+        }
+        if (isset($decoded["recording"])) {
+            return [$decoded["recording"]];
+        }
+        $recordings = [];
+        foreach ($decoded as $value) {
+            $recordings = array_merge($recordings, $this->extractRecordingsFromDecodedJson($value));
+        }
+        return $recordings;
     }
 
 
