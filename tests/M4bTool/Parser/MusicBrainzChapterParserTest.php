@@ -14,7 +14,7 @@ EOF;
      */
     protected $subject;
 
-    public function setUp()
+    public function setup(): void
     {
         $this->subject = new MusicBrainzChapterParser(null);
     }

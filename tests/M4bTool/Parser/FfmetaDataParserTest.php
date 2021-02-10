@@ -25,7 +25,7 @@ class FfmetaDataParserTest extends TestCase
     /** @var string */
     protected $differentTimeBase;
 
-    public function setUp()
+    public function setup(): void
     {
 
         $this->m4bMetaData = <<<FFMETA

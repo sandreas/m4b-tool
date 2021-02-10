@@ -30,18 +30,18 @@
     "optimize-autoloader": true
   },
   "require-dev": {
-    "phpunit/phpunit": "^6.1",
-    "mockery/mockery": "^0.9.9",
-    "mikey179/vfsstream": "^1.6"
+      "mikey179/vfsstream": "^1.6",
+      "phpunit/phpunit": "^9.5",
+      "mockery/mockery": "^1.4"
   },
   "repositories": [
     {
       "type": "vcs",
-      "url": "https://github.com/sandreas/php-strings"
+        "url": "git@github.com:sandreas/php-strings.git"
     },
     {
       "type": "vcs",
-      "url": "https://github.com/sandreas/php-time"
+        "url": "git@github.com:sandreas/php-time.git"
     }
   ]
 }

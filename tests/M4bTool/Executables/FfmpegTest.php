@@ -24,7 +24,7 @@ class FfmpegTest extends TestCase
      */
     protected $subject;
 
-    public function setUp()
+    public function setup(): void
     {
         $this->subject = new Ffmpeg();
     }

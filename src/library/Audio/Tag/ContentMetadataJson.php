@@ -14,6 +14,8 @@ class ContentMetadataJson extends AbstractTagImprover
 {
     const BOM = "\xEF\xBB\xBF";
 
+    public $overloadChapters = [];
+
     protected $chaptersContent;
     /** @var Flags */
     protected $flags;
@@ -73,29 +75,33 @@ class ContentMetadataJson extends AbstractTagImprover
      */
     public function improve(Tag $tag): Tag
     {
-        if (trim($this->chaptersContent) === "") {
-            $this->info("content_metadata_*.json not found - tags not improved");
-            return $tag;
-        }
-        $decoded = @json_decode($this->chaptersContent, true, 512, JSON_BIGINT_AS_STRING);
-        $decodedChapters = $decoded["content_metadata"]["chapter_info"]["chapters"] ?? [];
-        if (count($decodedChapters) === 0) {
-            return $tag;
-        }
-        /** @var Chapter[] $chapters */
-        $chapters = [];
-        if (isset($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"])) {
-            $chapters[] = new Chapter(new TimeUnit(0), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"]), Chapter::DEFAULT_INTRO_NAME);
-        }
-        $this->createChapters($chapters, $decodedChapters);
+        if (count($this->overloadChapters) === 0) {
+            if (trim($this->chaptersContent) === "") {
+                $this->info("content_metadata_*.json not found - tags not improved");
+                return $tag;
+            }
+            $decoded = @json_decode($this->chaptersContent, true, 512, JSON_BIGINT_AS_STRING);
+            $decodedChapters = $decoded["content_metadata"]["chapter_info"]["chapters"] ?? [];
+            if (count($decodedChapters) === 0) {
+                return $tag;
+            }
+            /** @var Chapter[] $chapters */
+            $chapters = [];
+            if (isset($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"])) {
+                $chapters[] = new Chapter(new TimeUnit(0), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"]), Chapter::DEFAULT_INTRO_NAME);
+            }
+            $this->createChapters($chapters, $decodedChapters);
 
-        $lastChapter = end($chapters);
+            $lastChapter = end($chapters);
 
 
-        if ($lastChapter instanceof Chapter && isset($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"])) {
-            $chapters[] = new Chapter(new TimeUnit($lastChapter->getEnd()->milliseconds()), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"]), Chapter::DEFAULT_OUTRO_NAME);
+            if ($lastChapter instanceof Chapter && isset($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"])) {
+                $chapters[] = new Chapter(new TimeUnit($lastChapter->getEnd()->milliseconds()), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandOutroDurationMs"]), Chapter::DEFAULT_OUTRO_NAME);
+            }
+            $tag->chapters = $chapters;
+        } else {
+            $tag->chapters = $this->overloadChapters;
         }
-        $tag->chapters = $chapters;
 
         $audibleId = $decoded["content_metadata"]["content_reference"]["asin"] ?? null;
         if ($audibleId !== null) {

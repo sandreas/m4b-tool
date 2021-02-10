@@ -3,10 +3,10 @@
 namespace M4bTool\Chapter;
 
 use Exception;
-use M4bTool\Audio\Chapter;
 use M4bTool\Audio\BinaryWrapper;
-use PHPUnit\Framework\TestCase;
+use M4bTool\Audio\Chapter;
 use Mockery as m;
+use PHPUnit\Framework\TestCase;
 use Sandreas\Time\TimeUnit;
 
 class ChapterHandlerTest extends TestCase
@@ -36,7 +36,7 @@ class ChapterHandlerTest extends TestCase
         return $testCode;
     }
 
-    public function setUp()
+    public function setup(): void
     {
 
         $this->mockMetaDataHandler = m::mock(BinaryWrapper::class);

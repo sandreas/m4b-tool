@@ -4,8 +4,8 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\OptionNameTagPropertyMapper;
 use M4bTool\Audio\Tag;
-use PHPUnit\Framework\TestCase;
 use Mockery as m;
+use PHPUnit\Framework\TestCase;
 
 class EquateTest extends TestCase
 {
@@ -15,7 +15,7 @@ class EquateTest extends TestCase
      */
     protected $subject;
 
-    public function setUp()
+    public function setup(): void
     {
         $equateInstructions = ["album,title", "artist,albumArtist,sortArtist"];
         /** @var m\Mock|OptionNameTagPropertyMapper $mockKeyMapper */

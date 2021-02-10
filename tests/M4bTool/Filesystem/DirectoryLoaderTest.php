@@ -2,9 +2,9 @@
 
 namespace M4bTool\Filesystem;
 
+use org\bovigo\vfs\vfsStream;
 use org\bovigo\vfs\vfsStreamDirectory;
 use PHPUnit\Framework\TestCase;
-use org\bovigo\vfs\vfsStream;
 
 class DirectoryLoaderTest extends TestCase
 {
@@ -14,7 +14,7 @@ class DirectoryLoaderTest extends TestCase
     /** @var vfsStreamDirectory */
     protected $vfs;
 
-    public function setUp()
+    public function setup(): void
     {
 
         $structure = [

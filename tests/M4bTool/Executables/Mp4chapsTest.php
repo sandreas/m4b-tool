@@ -19,7 +19,7 @@ class Mp4chapsTest extends TestCase
     /** @var Chapter[] */
     protected $chapters;
 
-    public function setUp()
+    public function setup(): void
     {
         $this->subject = new Mp4chaps();
         $this->chapters = [
@@ -35,7 +35,7 @@ class Mp4chapsTest extends TestCase
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function parseChapterTxt()
     {
@@ -79,7 +79,7 @@ class Mp4chapsTest extends TestCase
     public function testParseWithComments()
     {
         $chapterString = '
-# total-length 00:00:50.111 
+# total-length 00:00:50.111
 00:00:00.000 Chapter 1
 00:00:22.198 Chapter 2
 # a comment

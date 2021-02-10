@@ -5,8 +5,8 @@ namespace M4bTool\Chapter;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Silence;
-use Sandreas\Time\TimeUnit;
 use PHPUnit\Framework\TestCase;
+use Sandreas\Time\TimeUnit;
 
 class ChapterMarkerTest extends TestCase
 {
@@ -17,7 +17,7 @@ class ChapterMarkerTest extends TestCase
     protected $musicBrainzChapters = [];
     protected $detectedSilences = [];
 
-    public function setUp()
+    public function setup(): void
     {
         $this->subject = new ChapterMarker();
         $this->musicBrainzChapters = [

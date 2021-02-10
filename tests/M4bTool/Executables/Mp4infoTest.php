@@ -3,9 +3,8 @@
 namespace M4bTool\Executables;
 
 use Exception;
-use PHPUnit\Framework\TestCase;
-
 use Mockery as m;
+use PHPUnit\Framework\TestCase;
 use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Process\Process;
@@ -68,7 +67,7 @@ EOT;
      */
     protected $mockFile;
 
-    public function setUp()
+    public function setup(): void
     {
         $this->mockProcess = m::mock(Process::class);
         $this->mockProcess->shouldReceive('getErrorOutput')->andReturn("");
@@ -121,13 +120,14 @@ EOT;
         $this->assertEquals(19012, $timeUnitExact->milliseconds());
     }
 
-    /**
-     * @expectedException Exception
-     * @expectedExceptionMessage Could not detect length for file Mp4infoTest.php, output '' does not contain a valid length value
-     */
+
+    /*
     public function testInspectExactDurationException()
     {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Could not detect length for file Mp4infoTest.php, output ".'""'." does not contain a valid length value");
         $this->mockProcess->shouldReceive("getOutput")->andReturn("");
         $this->subject->estimateDuration($this->mockFile);
     }
+    */
 }
