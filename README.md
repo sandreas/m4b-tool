@@ -2,7 +2,7 @@
 `m4b-tool` is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manipulate audiobook files with chapters. Although `m4b-tool` is designed to handle m4b files, nearly all audio formats should be supported, e.g. mp3, aac, ogg, alac and flac.
 
 ## ❗❗❗Important Note❗❗❗
-Unfortunately I am pretty busy at the moment, so `m4b-tool 0.4.2` is a very old. Since it is not planned to release a newer version without having complete documentation, there is only [the latest pre-release](https://github.com/sandreas/m4b-tool/releases/tag/latest) getting bug fixes. It is already pretty stable, so if you are experiencing bugs with `v0.4.2`, please try the latest pre-release, if it has been already fixed there.
+Unfortunately I am pretty busy at the moment, so `m4b-tool 0.4.2` is very old. Since it is not planned to release a newer version without having complete documentation, there is only [the latest pre-release](https://github.com/sandreas/m4b-tool/releases/tag/latest) getting bug fixes. It is already pretty stable, so if you are experiencing bugs with `v0.4.2`, please try the latest pre-release, if it has been already fixed there.
 
 Thank you
 
