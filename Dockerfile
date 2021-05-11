@@ -26,6 +26,8 @@ RUN echo "---- INSTALL BUILD DEPENDENCIES ----" \
   && wget https://github.com/sandreas/mp4v2/archive/master.zip \
   && unzip master.zip \
   && cd mp4v2-master \
+  && wget "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess" -O autoaux/config.guess \
+  && wget "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.sub" -O autoaux/config.sub \
   && ./configure && \
   make -j4 && \
   make install && make distclean \
