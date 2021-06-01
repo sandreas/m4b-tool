@@ -97,7 +97,7 @@ class ChapterHandler
             } else {
                 $tag = $this->meta->readTag($file);
                 if (count($tag->chapters) > 0) {
-                    $chapters = array_merge($chapters, $tag->chapters);
+                    $chapters = $this->mergeChaptersAdjustOffset($chapters, $tag->chapters);
                     continue;
                 }
                 $chapterName = $tag->title ?? "";
@@ -122,6 +122,32 @@ class ChapterHandler
             return $chapters;
         }
         return $this->adjustChapters($chapters);
+    }
+
+    /**
+     * @param Chapter[] $existingChapters
+     * @param Chapter[] $chaptersToMerge
+     * @return Chapter[]
+     */
+    private function mergeChaptersAdjustOffset(array $existingChapters, array $chaptersToMerge)
+    {
+        if (count($chaptersToMerge) === 0) {
+            return $existingChapters;
+        }
+        if (count($existingChapters) === 0) {
+            return $chaptersToMerge;
+        }
+
+        $lastExisting = end($existingChapters);
+        $firstToMerge = reset($chaptersToMerge);
+        $offset = $lastExisting->getEnd()->milliseconds() - $firstToMerge->getStart()->milliseconds();
+        if ($offset !== 0) {
+            foreach ($chaptersToMerge as $chapter) {
+                $newStart = new TimeUnit($chapter->getStart()->milliseconds() + $offset);
+                $chapter->setStart($newStart);
+            }
+        }
+        return array_merge($existingChapters, $chaptersToMerge);
     }
 
     /**
@@ -196,7 +222,6 @@ class ChapterHandler
     {
         /** @var Silence $silence */
         $matchingSilences = [];
-        $silence = null;
         $desiredLength = $this->getNormalizedDesiredLength();
         while ($silence = array_shift($silences)) {
             // silence is after chapter end, put back on stack
@@ -602,7 +627,7 @@ class ChapterHandler
             $trackLengthMs = $track->getLength()->milliseconds();
 
             if ($trackLengthMs > 0) {
-                foreach ($overLoadChapters as $mbIndex => $mbChapter) {
+                foreach ($overLoadChapters as $mbChapter) {
                     $maxStart = max($trackStartMs, $mbChapter->getStart()->milliseconds());
                     $minEnd = min($trackEndMs, $mbChapter->getEnd()->milliseconds());
                     $overlapMs = $minEnd - $maxStart;

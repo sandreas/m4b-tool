@@ -61,6 +61,9 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
     public function exportCover(SplFileInfo $audioFile, SplFileInfo $destinationFile = null, $index = 0)
     {
         $index = (int)$index;
+
+        $count = $this->countCovers($audioFile);
+
         $this->runProcess([
             "--art-index", (string)$index,
             "--extract", $audioFile
@@ -82,6 +85,9 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
             }
         }
         if ($extractedCoverFile === null) {
+            if ($count === 0) {
+                return null;
+            }
             throw new Exception(sprintf("exporting cover to %s failed", $extractedCoverFile));
         }
 
@@ -94,5 +100,19 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
             throw new Exception(sprintf("renaming cover %s => %s failed", $extractedCoverFile, $destinationFile));
         }
         return $extractedCoverFile;
+    }
+
+    private function countCovers(SplFileInfo $audioFile)
+    {
+        $process = $this->runProcess([
+            "--list", $audioFile
+        ]);
+        $output = $this->getAllProcessOutput($process);
+        $header = "IDX     BYTES  CRC32     TYPE       FILE
+----------------------------------------------------------------------
+";
+        $trimmed = ltrim($header, $output);
+        $lines = array_filter(explode("\n", $trimmed));
+        return count($lines);
     }
 }
