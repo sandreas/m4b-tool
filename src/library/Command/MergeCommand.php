@@ -349,7 +349,7 @@ class MergeCommand extends AbstractConversionCommand
     private static function createPlaceHoldersForOptions()
     {
         $placeHolders = [];
-        foreach (static::MAPPING_OPTIONS_PLACEHOLDERS as $optionName => $placeHolder) {
+        foreach (static::MAPPING_OPTIONS_PLACEHOLDERS as $placeHolder) {
             $placeHolders[] = new PlaceHolder($placeHolder);
         }
         return $placeHolders;
@@ -661,17 +661,29 @@ class MergeCommand extends AbstractConversionCommand
 
 
         /** @var ConversionTask $task */
-        foreach ($taskPool->getTasks() as $index => $task) {
+        foreach ($taskPool->getTasks() as $task) {
             $file = $task->getOptions()->source;
             $outputFile = $task->getOptions()->destination;
 
+            $invalidOutputFile = false;
             if (!$outputFile->isFile()) {
-                throw new Exception("could not convert " . $file . " to " . $outputFile);
+                $invalidOutputFile = true;
+            } else if ($outputFile->getSize() == 0) {
+                unlink($outputFile);
+                $invalidOutputFile = true;
             }
 
-            if ($outputFile->getSize() == 0) {
-                unlink($outputFile);
-                throw new Exception("could not convert " . $file . " to " . $outputFile);
+            if ($invalidOutputFile) {
+                $message = sprintf("could not convert %s to %s", $file, $outputFile);
+                if (mb_substr($file->getBasename(), 0, 2) === "._") {
+                    $this->warning($message . ' - but file is probably a MacOS fork file, that can be ignored');
+                    $this->filesToMerge = array_values(array_filter($this->filesToMerge, function ($mergeFile) use ($outputFile) {
+                        return (string)$mergeFile !== (string)$outputFile;
+                    }));
+                    continue;
+                }
+
+                throw new Exception($message);
             }
         }
     }

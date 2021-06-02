@@ -63,7 +63,9 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
         $index = (int)$index;
 
         $count = $this->countCovers($audioFile);
-
+        if ($count === 0) {
+            return null;
+        }
         $this->runProcess([
             "--art-index", (string)$index,
             "--extract", $audioFile
@@ -85,9 +87,6 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
             }
         }
         if ($extractedCoverFile === null) {
-            if ($count === 0) {
-                return null;
-            }
             throw new Exception(sprintf("exporting cover to %s failed", $extractedCoverFile));
         }
 
@@ -111,6 +110,10 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
         $header = "IDX     BYTES  CRC32     TYPE       FILE
 ----------------------------------------------------------------------
 ";
+        if (strpos($output, $header) === false) {
+            return 0;
+        }
+
         $trimmed = ltrim($header, $output);
         $lines = array_filter(explode("\n", $trimmed));
         return count($lines);
