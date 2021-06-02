@@ -314,8 +314,8 @@ class AbstractCommand extends Command implements LoggerInterface
 
         $this->loadArguments();
 
+        $this->showM4bToolEnvironmentDetails();
         $this->warnOnOldVersion("ffmpeg", "4.0.0", $this->ffmpeg->getVersion());
-
 
         if ($this->input->getOption(static::OPTION_NO_CACHE)) {
             $this->cacheAdapter->clear();
@@ -366,7 +366,7 @@ class AbstractCommand extends Command implements LoggerInterface
 
     protected function isWindows()
     {
-        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+        return PHP_OS_FAMILY === 'Windows';
     }
 
     /**
@@ -393,5 +393,13 @@ class AbstractCommand extends Command implements LoggerInterface
     protected function audioFileToChaptersFile(SplFileInfo $audioFile)
     {
         return AbstractMp4v2Executable::buildConventionalFileName($audioFile, AbstractMp4v2Executable::SUFFIX_CHAPTERS, "txt");
+    }
+
+    private function showM4bToolEnvironmentDetails()
+    {
+        $detailsFile = "/etc/issue";
+        $details = is_readable($detailsFile) ? trim(file_get_contents($detailsFile)) : ' - ';
+        $appVersion = $this->getApplication()->getVersion() === "@package_version@" ? "development" : $this->getApplication()->getVersion();
+        $this->info(sprintf("m4b-tool %s, OS: %s (%s)", $appVersion, PHP_OS, $details));
     }
 }
