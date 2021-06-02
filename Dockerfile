@@ -91,7 +91,7 @@ RUN echo "---- INSTALL M4B-TOOL ----" \
             fi \
        fi \
     && mv /tmp/m4b-tool.phar /usr/local/bin/m4b-tool \
-    && M4B_TOOL_PRE_RELEASE_LINK=$(wget -q -O - https://github.com/sandreas/m4b-tool/releases/tag/latest | grep M4B_TOOL_DOWNLOAD_LINK | cut -d '=' -f 2 | cut -d ' ' -f 1) \
+    && M4B_TOOL_PRE_RELEASE_LINK=$(wget -q -O - https://github.com/sandreas/m4b-tool/releases/tag/latest | grep -o 'M4B_TOOL_DOWNLOAD_LINK=[^ ]*' | head -1 | cut -d '=' -f 2) \
     && wget "${M4B_TOOL_PRE_RELEASE_LINK}" -O /tmp/m4b-tool.tar.gz \
     && tar xzf /tmp/m4b-tool.tar.gz -C /tmp/ && rm /tmp/m4b-tool.tar.gz \
     && mv /tmp/m4b-tool.phar /usr/local/bin/m4b-tool-pre \

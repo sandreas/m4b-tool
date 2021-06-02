@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 rm -f dist/m4b-tool* bin/*.log
 
-
-if [[ "$1" == "--with-plugins" ]]; then
+if [ "$1" = "--with-plugins" ]; then
     echo "!!! WITH PLUGINS !!!";
     PHP_CODE="echo '';"
 else
@@ -15,4 +14,13 @@ else
     } catch(Throwable \$e) {}";
 fi
 
+COMPOSER="$(which composer)"
+[ "$?" -eq 0 ] || COMPOSER="" && command -V docker > /dev/null && COMPOSER="docker run --rm -u $(id -u):$(id -g) --interactive --tty -v ${COMPOSER_HOME:-$HOME/.composer}:/tmp -v $PWD:/app composer"
+if [ "$COMPOSER" = "" ]; then
+    echo "composer required, but not installed"
+    exit 1;
+fi
+
+$COMPOSER install --no-dev
 php -d phar.readonly=off tools/box.phar build && php -d phar.readonly=off -r "${PHP_CODE}" && chmod +x dist/*.phar && tar -C dist -czf dist/m4b-tool.tar.gz m4b-tool.phar && cd dist && zip m4b-tool.zip m4b-tool.phar && cd -
+$COMPOSER install

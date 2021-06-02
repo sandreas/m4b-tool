@@ -26,16 +26,12 @@
                 "vendor/bluemoehre",
                 "vendor/composer",
                 "vendor/doctrine",
-                "vendor/hamcrest",
                 "vendor/lywzx",
                 "vendor/monolog",
-                "vendor/myclabs",
-                "vendor/phar-io",
                 "vendor/psr",
                 "vendor/sandreas",
                 "vendor/symfony",
                 "vendor/twig",
-                "vendor/theseer",
                 "vendor/wapmorgan"
             ]
         }
