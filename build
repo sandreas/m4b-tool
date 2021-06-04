@@ -14,8 +14,8 @@ else
     } catch(Throwable \$e) {}";
 fi
 
-COMPOSER_ALIAS=$(cat .composer-alias | xargs)
-[ "$?" -eq 0 ] && COMPOSER="$COMPOSER_ALIAS" || COMPOSER="$(which composer)"
+[ -e ".composer-alias" ] && COMPOSER_ALIAS=$(xargs < .composer-alias)
+[ "$COMPOSER_ALIAS" != "" ] && COMPOSER="$COMPOSER_ALIAS" || COMPOSER="$(which composer)"
 if [ "$COMPOSER" = "" ]; then
     echo "composer required, but not installed"
     exit 1;
