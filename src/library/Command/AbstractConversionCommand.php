@@ -32,6 +32,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     const OPTION_AUDIO_EXTENSION = "audio-extension";
 
     const OPTION_ADJUST_FOR_IPOD = "adjust-for-ipod";
+    const OPTION_USE_NERO_CHAPTER_FORMAT = "use-nero-chapter-format";
     const OPTION_FIX_MIME_TYPE = "fix-mime-type";
     const OPTION_NO_CONVERSION = "no-conversion";
 
@@ -102,6 +103,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     {
         $flags = parent::buildTagFlags();
         $flags->insertIf(TagInterface::FLAG_ADJUST_FOR_IPOD, $this->input->getOption(static::OPTION_ADJUST_FOR_IPOD));
+        $flags->insertIf(TagInterface::FLAG_USE_NERO_FORMAT_CHAPTERS, $this->input->getOption(static::OPTION_USE_NERO_CHAPTER_FORMAT));
         return $flags;
     }
 
@@ -141,6 +143,9 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         $this->addOption(static::OPTION_AUDIO_PROFILE, null, InputOption::VALUE_OPTIONAL, "audio profile, when using extra low bitrate - valid values: aac_he, aac_he_v2");
 
         $this->addOption(static::OPTION_ADJUST_FOR_IPOD, null, InputOption::VALUE_NONE, "auto adjust bitrate and sampling rate for ipod, if track is too long (may result in low audio quality)");
+        $this->addOption(static::OPTION_USE_NERO_CHAPTER_FORMAT, null, InputOption::VALUE_NONE, "use nero format instead of quicktime format for chapters ");
+
+
         $this->addOption(static::OPTION_FIX_MIME_TYPE, null, InputOption::VALUE_NONE, "try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent an empty video window");
         $this->addOption(static::OPTION_NO_CONVERSION, null, InputOption::VALUE_NONE, "skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)");
 
@@ -404,7 +409,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
 
         $this->notice("ipod auto adjust active, getting track durations");
         $totalDuration = new TimeUnit();
-        foreach ($filesToConvert as $index => $file) {
+        foreach ($filesToConvert as $file) {
             $this->notice(sprintf("load estimated duration for file %s", $file));
             $duration = $this->metaHandler->estimateDuration($file);
             if (!$duration || ($duration instanceof TimeUnit && $duration->milliseconds() == 0)) {

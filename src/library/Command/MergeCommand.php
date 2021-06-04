@@ -199,7 +199,7 @@ class MergeCommand extends AbstractConversionCommand
     }
 
     /**
-     * @param $input
+     * @param InputInterface $input
      * @throws Exception
      */
     private function ensureValidInputForBatchMode(InputInterface $input)
@@ -491,6 +491,14 @@ class MergeCommand extends AbstractConversionCommand
         foreach ($loader->getSkippedFiles() as $fileName => $skipReason) {
             $this->notice(sprintf("skipping %s (%s)", $fileName, $skipReason));
         }
+
+        $this->notice(sprintf("found %s files to convert", count($this->filesToConvert)));
+        if ($this->optDebug) {
+            $this->debug(implode(PHP_EOL, array_map(function (SplFileInfo $file) {
+                return $file->getBasename();
+            }, $this->filesToConvert)));
+        }
+
     }
 
     /**
@@ -624,27 +632,31 @@ class MergeCommand extends AbstractConversionCommand
 
 
         $taskPool->process(function (Pool $taskPool) {
-            static $counter = 0;
+            static $startTime = 0;
             static $spinnerPosition = 0;
             static $maxMessageLength = 0;
 
             $queueLength = count($taskPool->getProcessingQueue());
-            if ($counter++ % 4 !== 0 && $queueLength > 0) {
+
+            // report progress every 0.5 seconds
+            $currentTime = microtime(true);
+            if ($currentTime - $startTime < 0.5 && $queueLength > 0) {
                 return;
             }
+            $startTime = $currentTime;
 
             $taskCount = count($taskPool->getTasks());
             $runningTaskCount = count($taskPool->getRunningTasks());
             $remainingTaskCount = $queueLength + $runningTaskCount;
 
-            if ($taskPool === 0) {
+            if ($taskCount === 0) {
                 $message = sprintf("\rfinished %4d tasks, preparing next step", $taskCount);
             } else if ($runningTaskCount === 0) {
                 $message = sprintf("\r%4d remaining / %4d total, preparing next task", $remainingTaskCount, $taskCount);
             } else if ($runningTaskCount > 0) {
                 $message = sprintf("\r%4d remaining / %4d total", $remainingTaskCount, $taskCount);
             } else {
-                $message = sprintf("\rpreparing conversion");
+                $message = "\rpreparing conversion";
             }
 
             $chars = ['|', '/', '-', '\\'];

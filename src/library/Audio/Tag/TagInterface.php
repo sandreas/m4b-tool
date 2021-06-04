@@ -11,4 +11,5 @@ interface TagInterface
     const FLAG_NO_CLEANUP = 1 << 2;
     const FLAG_ADJUST_FOR_IPOD = 1 << 3;
     const FLAG_USE_EXISTING_FILES = 1 << 4;
+    const FLAG_USE_NERO_FORMAT_CHAPTERS = 1 << 5;
 }

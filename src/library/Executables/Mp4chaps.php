@@ -63,6 +63,9 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
         }
 
         $command[] = "-i";
+        if ($flags->contains(static::FLAG_USE_NERO_FORMAT_CHAPTERS)) {
+            $command[] = "-N";
+        }
         $command[] = $file;
         $process = $this->runProcess($command);
 
