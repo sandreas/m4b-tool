@@ -53,8 +53,9 @@ class ChaptersFromOverdrive extends AbstractTagImprover
                 return $tag;
             }
         }
-
-        if (count($mediaMarkerChapters) > 0) {
+        $countMediaMarkers = count($mediaMarkerChapters);
+        if ($countMediaMarkers > 0) {
+            $this->info(sprintf("found %s overdrive chapters", $countMediaMarkers));
             $index = 0;
             foreach ($mediaMarkerChapters as $index => $chapter) {
                 if (isset($mediaMarkerChapters[$index - 1])) {
@@ -66,6 +67,8 @@ class ChaptersFromOverdrive extends AbstractTagImprover
                 $mediaMarkerChapters[$index]->setEnd(new TimeUnit($offsetMs));
             }
             $tag->chapters = $mediaMarkerChapters;
+        } else {
+            $this->info("no overdrive chapters found - tags not improved");
         }
 
         return $tag;
@@ -90,7 +93,6 @@ class ChaptersFromOverdrive extends AbstractTagImprover
         $xpath = new DOMXPath($doc);
 
         $result = $xpath->query("/Markers/Marker");
-        $tracksItem = null;
         /** @var DOMNode $item */
         foreach ($result as $item) {
             if ($item->childNodes->length < 2) {

@@ -13,6 +13,7 @@ use SplFileInfo;
 class TagImproverComposite implements TagImproverInterface
 {
     use LogTrait;
+
     /** @var TagImproverInterface[] */
     protected $changers = [];
 
@@ -23,10 +24,18 @@ class TagImproverComposite implements TagImproverInterface
     /** @var callable */
     protected $debugDetectSilences;
 
+    /** @var callable|null */
+    private $dumpTagCallback;
+
     public function __construct(SplFileInfo $debugFile = null, callable $debugDetectSilences = null)
     {
         $this->debugFile = $debugFile;
         $this->debugDetectSilences = $debugDetectSilences;
+    }
+
+    public function setDumpTagCallback(callable $dumpTagCallback = null)
+    {
+        $this->dumpTagCallback = $dumpTagCallback;
     }
 
     public function add(TagImproverInterface $loader)
@@ -59,6 +68,21 @@ class TagImproverComposite implements TagImproverInterface
 
     public function dumpDebugInfo($changerName, Tag $tag)
     {
+        if ($this->dumpTagCallback) {
+            $lines = ($this->dumpTagCallback)($tag);
+            $lastDebugLines = $this->debugCache["dumpTagCallback"] ?? [];
+            $changedLines = array_diff($lines, $lastDebugLines);
+            $this->debug("==== current tag ====");
+            if (count($changedLines) === 0) {
+                $this->debug("- tag has not changed since the last improver");
+
+            }
+            foreach ($changedLines as $line) {
+                $this->info($line);
+            }
+            $this->debugCache["dumpTagCallback"] = $lines;
+        }
+
         if (!$this->debugFile) {
             return;
         }
@@ -67,15 +91,15 @@ class TagImproverComposite implements TagImproverInterface
 
         $dumps = [
             "tag" => [
-                "file" => (string)$this->debugFile . "." . $changerName . "-tag.json",
+                "file" => $this->debugFile . "." . $changerName . "-tag.json",
                 "contents" => json_encode($tag, JSON_PRETTY_PRINT)
             ],
             "chapters" => [
-                "file" => (string)$this->debugFile . "." . $changerName . "-chapters.txt",
+                "file" => $this->debugFile . "." . $changerName . "-chapters.txt",
                 "contents" => count($tag->chapters) === 0 ? "" : $mp4chaps->buildChaptersTxt($tag->chapters)
             ],
             "silences" => [
-                "file" => (string)$this->debugFile . ".all-silences.json",
+                "file" => $this->debugFile . ".all-silences.json",
                 "contents" => json_encode(array_values(($this->debugDetectSilences)())),
             ]
         ];

@@ -508,8 +508,10 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
         // howto quote: http://ffmpeg.org/ffmpeg-utils.html#Quoting-and-escaping
         $listFile = $outputFile . ".listing.txt";
-        file_put_contents($listFile, $this->buildConcatListing($filesToMerge));
-
+        $concatFileContent = $this->buildConcatListing($filesToMerge);
+        file_put_contents($listFile, $concatFileContent);
+        $this->debug(sprintf("ffmpeg concat file %s content:", $listFile));
+        $this->debug(sprintf("------ start ------\n%s\n------ end ------", $concatFileContent));
         $command = [
             "-f", "concat",
             "-safe", "0",

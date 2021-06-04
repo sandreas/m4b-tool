@@ -6,6 +6,7 @@ namespace M4bTool\Command;
 use Exception;
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Audio\OptionNameTagPropertyMapper;
+use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Audio\Traits\CacheAdapterTrait;
 use M4bTool\Chapter\ChapterHandler;
@@ -36,6 +37,8 @@ class AbstractCommand extends Command implements LoggerInterface
     use LoggerTrait, CacheAdapterTrait;
 
     const APP_NAME = "m4b-tool";
+    const EMPTY_MARKER = "Empty tag fields";
+
     const AUDIO_EXTENSION_MP3 = "mp3";
     const AUDIO_EXTENSION_MP4 = "mp4";
     const AUDIO_EXTENSION_M4A = "m4a";
@@ -153,7 +156,6 @@ class AbstractCommand extends Command implements LoggerInterface
     protected $chapterHandler;
     /** @var OptionNameTagPropertyMapper */
     protected $keyMapper;
-
 
 
     public function __construct(string $name = null)
@@ -401,5 +403,55 @@ class AbstractCommand extends Command implements LoggerInterface
         $details = is_readable($detailsFile) ? trim(file_get_contents($detailsFile)) : ' - ';
         $appVersion = $this->getApplication()->getVersion() === "@package_version@" ? "development" : $this->getApplication()->getVersion();
         $this->info(sprintf("m4b-tool %s, OS: %s (%s)", $appVersion, PHP_OS, $details));
+    }
+
+    protected function dumpTagAsLines(Tag $tag)
+    {
+        $longestKey = strlen(static::EMPTY_MARKER);
+        $emptyTagNames = [];
+        $outputTagValues = [];
+        foreach ($tag as $propertyName => $value) {
+            $mappedKey = $this->keyMapper->mapTagPropertyToOption($propertyName);
+
+            if ($tag->isTransientProperty($propertyName) || in_array($propertyName, $tag->removeProperties, true)) {
+                continue;
+            }
+
+            if (trim($value) === "") {
+                $emptyTagNames[] = $mappedKey;
+                continue;
+            }
+
+            if ($propertyName === "cover" && $tag->hasCoverFile() && $imageProperties = @getimagesize($value)) {
+                $outputTagValues[$mappedKey] = $value . ", " . $imageProperties[0] . "x" . $imageProperties[1];
+                continue;
+            }
+
+
+            $outputTagValues[$mappedKey] = $value;
+            $longestKey = max(strlen($mappedKey), $longestKey);
+        }
+
+        ksort($outputTagValues, SORT_NATURAL);
+        $output = [];
+        foreach ($outputTagValues as $tagName => $tagValue) {
+            $output[] = (sprintf("%s: %s", str_pad($tagName, $longestKey + 1), $tagValue));
+        }
+
+        if (count($tag->chapters) > 0 && !in_array("chapters", $tag->removeProperties, true)) {
+            $output[] = "";
+            $output[] = str_pad("chapters", $longestKey + 1);
+            $output[] = $this->metaHandler->toMp4v2ChaptersFormat($tag->chapters);
+        } else {
+            $emptyTagNames[] = "chapters";
+        }
+
+        if (count($emptyTagNames) > 0) {
+            natsort($emptyTagNames);
+            $output[] = "";
+            $output[] = str_pad(static::EMPTY_MARKER, $longestKey + 1) . ": " . implode(", ", $emptyTagNames);
+        }
+
+        return $output;
     }
 }

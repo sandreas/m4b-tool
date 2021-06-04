@@ -45,8 +45,6 @@ class MetaCommand extends AbstractMetadataCommand
     const OPTION_IMPORT_CHAPTERS = "import-chapters";
     const OPTION_IMPORT_CUE_SHEET = "import-cue-sheet";
 
-    const EMPTY_MARKER = "Empty tag fields";
-
 
     protected function configure()
     {
@@ -150,61 +148,10 @@ class MetaCommand extends AbstractMetadataCommand
 
         $tag = $this->metaHandler->readTag($inputFile);
 
-        foreach ($this->dumpTag($tag) as $line) {
+        foreach ($this->dumpTagAsLines($tag) as $line) {
             $this->output->writeln($line);
         }
 
-    }
-
-    private function dumpTag(Tag $tag)
-    {
-
-        $longestKey = strlen(static::EMPTY_MARKER);
-        $emptyTagNames = [];
-        $outputTagValues = [];
-        foreach ($tag as $propertyName => $value) {
-            $mappedKey = $this->keyMapper->mapTagPropertyToOption($propertyName);
-
-            if ($tag->isTransientProperty($propertyName) || in_array($propertyName, $tag->removeProperties, true)) {
-                continue;
-            }
-
-            if (trim($value) === "") {
-                $emptyTagNames[] = $mappedKey;
-                continue;
-            }
-
-            if ($propertyName === "cover" && $tag->hasCoverFile() && $imageProperties = @getimagesize($value)) {
-                $outputTagValues[$mappedKey] = $value . ", " . $imageProperties[0] . "x" . $imageProperties[1];
-                continue;
-            }
-
-
-            $outputTagValues[$mappedKey] = $value;
-            $longestKey = max(strlen($mappedKey), $longestKey);
-        }
-
-        ksort($outputTagValues, SORT_NATURAL);
-        $output = [];
-        foreach ($outputTagValues as $tagName => $tagValue) {
-            $output[] = (sprintf("%s: %s", str_pad($tagName, $longestKey + 1), $tagValue));
-        }
-
-        if (count($tag->chapters) > 0 && !in_array("chapters", $tag->removeProperties, true)) {
-            $output[] = "";
-            $output[] = str_pad("chapters", $longestKey + 1);
-            $output[] = $this->metaHandler->toMp4v2ChaptersFormat($tag->chapters);
-        } else {
-            $emptyTagNames[] = "chapters";
-        }
-
-        if (count($emptyTagNames) > 0) {
-            natsort($emptyTagNames);
-            $output[] = "";
-            $output[] = str_pad(static::EMPTY_MARKER, $longestKey + 1) . ": " . implode(", ", $emptyTagNames);
-        }
-
-        return $output;
     }
 
     /**
@@ -214,47 +161,50 @@ class MetaCommand extends AbstractMetadataCommand
     private function import(Flags $tagChangerFlags)
     {
         $tag = $this->metaHandler->readTag($this->argInputFile);
-        $tagLoaderComposite = new TagImproverComposite();
-        $tagLoaderComposite->setLogger($this);
+        $tagImprover = new TagImproverComposite();
+        $tagImprover->setDumpTagCallback(function (Tag $tag) {
+            return $this->dumpTagAsLines($tag);
+        });
+        $tagImprover->setLogger($this);
 
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_COVER) && !$this->input->getOption(static::OPTION_SKIP_COVER)) {
             $this->notice("trying to load cover");
             $preferredFileName = $this->input->getOption(static::OPTION_IMPORT_COVER);
             $preferredFileName = $preferredFileName === false ? "cover.jpg" : $preferredFileName;
-            $tagLoaderComposite->add(new Cover(new FileLoader(), $this->argInputFile, $preferredFileName));
+            $tagImprover->add(new Cover(new FileLoader(), $this->argInputFile, $preferredFileName));
         }
 
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_OPF)) {
             $this->notice("trying to load opf");
-            $tagLoaderComposite->add(OpenPackagingFormat::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_OPF)));
+            $tagImprover->add(OpenPackagingFormat::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_OPF)));
         }
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_CUE_SHEET)) {
             $this->notice("trying to load cue sheet");
-            $tagLoaderComposite->add(CueSheet::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_CUE_SHEET)));
+            $tagImprover->add(CueSheet::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_CUE_SHEET)));
         }
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_FFMETADATA)) {
             $this->notice("trying to load ffmetadata");
-            $tagLoaderComposite->add(Ffmetadata::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_FFMETADATA)));
+            $tagImprover->add(Ffmetadata::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_FFMETADATA)));
         }
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_CHAPTERS)) {
             $this->notice("trying to load chapters");
-            $tagLoaderComposite->add(ChaptersTxt::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_CHAPTERS)));
+            $tagImprover->add(ChaptersTxt::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_CHAPTERS)));
         }
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_DESCRIPTION)) {
             $this->notice("trying to load description");
-            $tagLoaderComposite->add(Description::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_DESCRIPTION)));
+            $tagImprover->add(Description::fromFile($this->argInputFile, $this->input->getOption(static::OPTION_IMPORT_DESCRIPTION)));
         }
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_TAG_BY_COMMAND_LINE_ARGUMENTS)) {
             $this->notice("trying to load tags from input arguments");
-            $tagLoaderComposite->add(new InputOptions($this->input, new Flags(InputOptions::FLAG_ADJUST_FOR_IPOD)));
+            $tagImprover->add(new InputOptions($this->input, new Flags(InputOptions::FLAG_ADJUST_FOR_IPOD)));
         }
 
-        $tag = $tagLoaderComposite->improve($tag);
+        $tag = $tagImprover->improve($tag);
 
 
         $this->notice("storing tags:");
 
-        $outputLines = $this->dumpTag($tag);
+        $outputLines = $this->dumpTagAsLines($tag);
         foreach ($outputLines as $outputLine) {
             $this->notice($outputLine);
         }

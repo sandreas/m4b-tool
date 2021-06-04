@@ -814,27 +814,29 @@ class MergeCommand extends AbstractConversionCommand
         }
 
         $tag = new Tag();
-        $tagChanger = new TagImproverComposite($tagDebugFile, $detectSilenceFunction);
-        $tagChanger->setLogger($this);
+        $tagImprover = new TagImproverComposite($tagDebugFile, $detectSilenceFunction);
+        $tagImprover->setDumpTagCallback(function (Tag $tag) {
+            return $this->dumpTagAsLines($tag);
+        });
+        $tagImprover->setLogger($this);
         // chapter loaders
-        // todo: what about - don't change any chapters if found: freezeProperties? -> load($tag, $frozenProperties=[])
-        $tagChanger->add(Ffmetadata::fromFile($this->argInputFile, Ffmetadata::DEFAULT_FILENAME));
-        $tagChanger->add(ChaptersTxt::fromFile($this->argInputFile, ChaptersTxt::DEFAULT_FILENAME));
+        $tagImprover->add(Ffmetadata::fromFile($this->argInputFile, Ffmetadata::DEFAULT_FILENAME));
+        $tagImprover->add(ChaptersTxt::fromFile($this->argInputFile, ChaptersTxt::DEFAULT_FILENAME));
 
         if ($mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID)) {
             $mbChapterParser = new MusicBrainzChapterParser($mbId);
             $mbChapterParser->setCacheAdapter($this->cacheAdapter);
-            $tagChanger->add(new ChaptersFromMusicBrainz($this->chapterMarker, $this->chapterHandler, $mbChapterParser));
+            $tagImprover->add(new ChaptersFromMusicBrainz($this->chapterMarker, $this->chapterHandler, $mbChapterParser));
         }
         if ($this->silenceBetweenFile instanceof SplFileInfo) {
             $this->chapterHandler->setSilenceBetweenFile($this->silenceBetweenFile);
         }
 
-        $tagChanger->add(new ChaptersFromOverdrive($this->metaHandler, $this->filesToConvert));
+        $tagImprover->add(new ChaptersFromOverdrive($this->metaHandler, $this->filesToConvert));
 
         $chaptersFromFileTags = new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert);
 
-        $tagChanger->add($chaptersFromFileTags);
+        $tagImprover->add($chaptersFromFileTags);
 
 
         if ($this->input->getOption(static::OPTION_CHAPTER_ALGORITHM) !== static::CHAPTER_ALGORITHM_LEGACY) {
@@ -843,19 +845,19 @@ class MergeCommand extends AbstractConversionCommand
 
 
         // tag property loaders
-        $tagChanger->add(OpenPackagingFormat::fromFile($this->argInputFile));
-        $tagChanger->add(Tag\AudibleTxt::fromFile($this->argInputFile));
-        $tagChanger->add(Tag\AudibleJson::fromFile($this->argInputFile));
-        $tagChanger->add(Tag\M4bToolJson::fromFile($this->argInputFile));
-        $tagChanger->add(Tag\Description::fromFile($this->argInputFile));
-        $tagChanger->add(Tag\ContentMetadataJson::fromFile($this->argInputFile));
-        $tagChanger->add(Tag\AudibleChaptersJson::fromFile($this->argInputFile, null, null, $lengthCalc));
+        $tagImprover->add(OpenPackagingFormat::fromFile($this->argInputFile));
+        $tagImprover->add(Tag\AudibleTxt::fromFile($this->argInputFile));
+        $tagImprover->add(Tag\AudibleJson::fromFile($this->argInputFile));
+        $tagImprover->add(Tag\M4bToolJson::fromFile($this->argInputFile));
+        $tagImprover->add(Tag\Description::fromFile($this->argInputFile));
+        $tagImprover->add(Tag\ContentMetadataJson::fromFile($this->argInputFile));
+        $tagImprover->add(Tag\AudibleChaptersJson::fromFile($this->argInputFile, null, null, $lengthCalc));
         switch ($this->input->getOption(static::OPTION_CHAPTER_ALGORITHM)) {
             case static::CHAPTER_ALGORITHM_GROUPING:
-                $tagChanger->add(new Tag\AdjustChaptersByGroupLogic($this->metaHandler, $lengthCalc, $outputTmpFile));
+                $tagImprover->add(new Tag\AdjustChaptersByGroupLogic($this->metaHandler, $lengthCalc, $outputTmpFile));
                 break;
             case static::CHAPTER_ALGORITHM_LEGACY:
-                $tagChanger->add(new Tag\AdjustTooLongChapters($this->metaHandler, $this->chapterHandler, $outputTmpFile, $maxChapterLength, $silenceLength));
+                $tagImprover->add(new Tag\AdjustTooLongChapters($this->metaHandler, $this->chapterHandler, $outputTmpFile, $maxChapterLength, $silenceLength));
                 break;
         }
 
@@ -865,14 +867,14 @@ class MergeCommand extends AbstractConversionCommand
 
         $flags = $this->buildTagFlags();
 
-        $tagChanger->add(new InputOptions($this->input, $flags));
+        $tagImprover->add(new InputOptions($this->input, $flags));
 
 
         if (is_array($equateInstructions) && count($equateInstructions) > 0) {
-            $tagChanger->add(new Tag\Equate($equateInstructions, $this->keyMapper));
+            $tagImprover->add(new Tag\Equate($equateInstructions, $this->keyMapper));
         }
 
-        $tag = $tagChanger->improve($tag);
+        $tag = $tagImprover->improve($tag);
 
         // todo: this can be done in a tagimprover
         if ($this->input->getOption(static::OPTION_PREPEND_SERIES_TO_LONGDESC) && $tag->longDescription) {

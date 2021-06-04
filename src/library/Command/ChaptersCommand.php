@@ -200,7 +200,6 @@ class ChaptersCommand extends AbstractCommand
         $tag = new Tag();
 
         $epubFileObject = $epubFile === null ? $this->filesToProcess : new SplFileInfo($epubFile);
-        $totalDuration = null;
         if (!($this->filesToProcess instanceof SplFileInfo) || !$this->filesToProcess->isFile()) {
             $this->error(sprintf("No valid input file provided"));
             return;
@@ -255,17 +254,21 @@ class ChaptersCommand extends AbstractCommand
         }
 
         $inputFileDuration = $this->metaHandler->inspectExactDuration($this->filesToProcess);
-        $tagChanger = new TagImproverComposite();
-        $tagChanger->setLogger($this);
+        $tagImprover = new TagImproverComposite();
+        $tagImprover->setDumpTagCallback(function (Tag $tag) {
+            return $this->dumpTagAsLines($tag);
+        });
 
-        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, $chaptersBackupFile->getBasename(), $inputFileDuration));
-        $tagChanger->add(Tag\ContentMetadataJson::fromFile($this->filesToProcess));
-        $tagChanger->add(new Tag\MergeSubChapters($this->chapterHandler));
+        $tagImprover->setLogger($this);
+
+        $tagImprover->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, $chaptersBackupFile->getBasename(), $inputFileDuration));
+        $tagImprover->add(Tag\ContentMetadataJson::fromFile($this->filesToProcess));
+        $tagImprover->add(new Tag\MergeSubChapters($this->chapterHandler));
 
 
-        $tagChanger->add($chaptersFromEpubImprover);
-        $tagChanger->add(new Tag\IntroOutroChapters());
-        $tagChanger->add(
+        $tagImprover->add($chaptersFromEpubImprover);
+        $tagImprover->add(new Tag\IntroOutroChapters());
+        $tagImprover->add(
             new Tag\GuessChaptersBySilence($this->chapterMarker,
                 $inputFileDuration,
                 function () {
@@ -273,11 +276,11 @@ class ChaptersCommand extends AbstractCommand
                 }
             )
         );
-        $tagChanger->add(new Tag\RemoveDuplicateFollowUpChapters($this->chapterHandler));
+        $tagImprover->add(new Tag\RemoveDuplicateFollowUpChapters($this->chapterHandler));
 
-        $tagChanger->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, null, $inputFileDuration));
+        $tagImprover->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, null, $inputFileDuration));
 
-        $tagChanger->improve($tag);
+        $tagImprover->improve($tag);
 
 
         $epubChaptersFile = new SplFileInfo($this->filesToProcess->getPath() . "/" . $this->filesToProcess->getBasename($this->filesToProcess->getExtension()) . "epub-chapters.txt");
@@ -288,7 +291,7 @@ class ChaptersCommand extends AbstractCommand
             $this->chapterHandler,
             $this->filesToProcess,
             $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH),
-            (int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH)
+            new TimeUnit((int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH))
         );
         try {
             $tooLongAdjustment->setLogger($this);
@@ -449,7 +452,7 @@ class ChaptersCommand extends AbstractCommand
     {
         $tmp = explode(',', $this->input->getOption(static::OPTION_FIND_MISPLACED_CHAPTERS));
         $specialOffsetChapters = [];
-        foreach ($tmp as $key => $value) {
+        foreach ($tmp as $value) {
             $chapterNumber = trim($value);
             if (is_numeric($chapterNumber)) {
                 $specialOffsetChapters[] = (int)$chapterNumber;
