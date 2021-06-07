@@ -2,9 +2,14 @@
 `m4b-tool` is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manipulate audiobook files with chapters. Although `m4b-tool` is designed to handle m4b files, nearly all audio formats should be supported, e.g. mp3, aac, ogg, alac and flac.
 
 ## ❗❗❗Important Note❗❗❗
-Unfortunately I am pretty busy at the moment, so `m4b-tool 0.4.2` is very old. Since it is not planned to release a newer version without having complete documentation, there is only [the latest pre-release](https://github.com/sandreas/m4b-tool/releases/tag/latest) getting bug fixes. It is already pretty stable, so if you are experiencing bugs with `v0.4.2`, please try the latest pre-release, if it has been already fixed there.
+Unfortunately I am pretty busy at the moment, so `m4b-tool 0.4.2` is very old. Since it is not planned to release a
+newer version without having complete documentation, there is
+only [the latest pre-release](https://github.com/sandreas/m4b-tool/releases/tag/latest) getting bug fixes. It is already
+pretty stable, so if you are experiencing bugs with `v0.4.2`, please try the latest pre-release, if it has been already
+fixed there.
 
-Thank you
+Thank you, sandreas
+https://pilabor.com
 
 ## Features
 
@@ -23,13 +28,13 @@ m4b-tool merge "data/my-audio-book/" --output-file="data/merged.m4b"
 `split` one big m4b file by chapters into multiple mp3 files at `data/my-audio-book_splitted/` (tags are retained, `data/my-audio-book_splitted/cover.jpg` is created, if m4b contains a cover)
 ```
 m4b-tool split --audio-format mp3 --audio-bitrate 96k --audio-channels 1 --audio-samplerate 22050 "data/my-audio-book.m4b"
-``` 
+```
 
 ### Chapters adjustment of a file via silence detection
 `chapters` can try to adjust existing chapters of an m4b by silence detection
 ```
 m4b-tool chapters --adjust-by-silence -o "data/destination-with-adjusted-chapters.m4b" "data/source-with-misplaced-chapters.m4b"
-``` 
+```
 
 ## Best practices
 
@@ -59,7 +64,7 @@ input/Fantasy/J.K. Rowling/Harry Potter/1 - Harry Potter and the Philosopher's S
 ### Step 2 - add cover and a description
 Now, because you almost always want a cover and a description for your audiobook, you should add the following files in the main directory:
 
-- `cover.jpg` 
+- `cover.jpg`
 - `description.txt` (Be sure to use `UTF-8` text file encoding for the contents)
 
 Examples:
@@ -72,7 +77,8 @@ input/Fantasy/J.K. Rowling/Quidditch Through the Ages/description.txt
 
 ### Step 3 - chapters
 
-Chapters are nice to add *waypoints* for your audiobook. They help to remember the last position and improve the experience in general. 
+Chapters are nice to add *waypoints* for your audiobook. They help to remember the last position and improve the
+experience in general.
 
 #### fixed chapters
 If you would like to adjust chapters manually, you can add a `chapters.txt` (same location as `cover.jpg`) with following contents (`<chapter-start>` `<chapter-title>`):
@@ -112,14 +118,15 @@ If you own an iPod, there might be a problem with too long audiobooks, since iPo
 
 ### Step 6 - Use the `--batch-pattern` feature
 
-In `m4b-tool v.0.4.0` the `--batch-pattern` feature was added. It can be used to batch-convert multiple audiobooks at once, but also to just convert one single audiobook - because you can create tags from an existing directory structure. 
+In `m4b-tool v.0.4.0` the `--batch-pattern` feature was added. It can be used to batch-convert multiple audiobooks at
+once, but also to just convert one single audiobook - because you can create tags from an existing directory structure.
 
-> Hint: The `output-file` parameter has to be a directory, when using `--batch-pattern`. 
+> Hint: The `output-file` parameter has to be a directory, when using `--batch-pattern`.
 
 Even multiple `--batch-pattern` parameters are supported, while the first match will be used first. So if you created the directory structure as described above, the final command to merge `input/Fantasy/Harry Potter/1 - Harry Potter and the Philosopher's Stone/` to `output/Fantasy/Harry Potter/1 - Harry Potter and the Philosopher's Stone.m4b` would look like this:
 
 ```
-m4b-tool merge -v --jobs=2 --output-file="output/" --max-chapter-length=300,900 --adjust-for-ipod --batch-pattern="input/%g/%a/%s/%p - %n/"  --batch-pattern="input/%g/%a/%n/" "input/" 
+m4b-tool merge -v --jobs=2 --output-file="output/" --max-chapter-length=300,900 --adjust-for-ipod --batch-pattern="input/%g/%a/%s/%p - %n/"  --batch-pattern="input/%g/%a/%n/" "input/"
 ```
 
 >In `--batch-pattern` mode, existing files are skipped by default
@@ -215,7 +222,10 @@ m4b-tool --version
 ```
 
 #### Stick to defaults (acceptable audio quality, no sort tagging)
-If the above did not work for you or you would just to checkout `m4b-tool` before using it in production, you might want to try the *quick and easy* way. It will work, but you get lower audio quality  and there is **no support for sort tagging**. 
+
+If the above did not work for you or you would just to checkout `m4b-tool` before using it in production, you might want
+to try the *quick and easy* way. It will work, but you get lower audio quality and there is **no support for sort
+tagging**.
 
 ```
 # tap m4b-tool repository
@@ -237,7 +247,7 @@ sudo apt install ffmpeg mp4v2-utils fdkaac php-cli php-intl php-json php-mbstrin
 # install / upgrade m4b-tool
 sudo wget https://github.com/sandreas/m4b-tool/releases/download/v.0.4.2/m4b-tool.phar -O /usr/local/bin/m4b-tool && sudo chmod +x /usr/local/bin/m4b-tool
 
-# check installed m4b-tool version 
+# check installed m4b-tool version
 m4b-tool --version
 ```
 
@@ -293,7 +303,10 @@ And the correct order would have been:
 - Harry Potter and the Chamber of Secrets (Part 2)
 - Harry Potter and the Prisoner of Azkaban (Part 3)
 
-Well, there is a solution for this. You have to tag the audiobook with a custom `sortname` and / or `sortalbum`. If your player supports these tags, the order is now correct, even when the title is still the original title. To achieve this, i had to build a custom version of `mp4v2` (more accurate `mp4tags`), to add options for these tags and add the pseudo tags `--series` and `--series-part`. 
+Well, there is a solution for this. You have to tag the audiobook with a custom `sortname` and / or `sortalbum`. If your
+player supports these tags, the order is now correct, even when the title is still the original title. To achieve this,
+i had to build a custom version of `mp4v2` (more accurate `mp4tags`), to add options for these tags and add the pseudo
+tags `--series` and `--series-part`.
 
 So if you do the following:
 
@@ -322,16 +335,22 @@ In `m4b-tool` all audio conversions are performed with `ffmpeg` resulting in pre
 
 > Your ffmpeg version cannot produce top quality aac using encoder aac instead of libfdk_aac
 
-That's not really a problem, because the difference between the `aac` and `libfdk_aac` encoder is hardly noticeable in most cases. But to overcome the hint and get the best audio quality possible, you have to use a non-free encoder, that is not integrated in `ffmpeg` by default (licensing reasons). 
-Depending on the operating system you are using, installing the non-free encoder may require a little extra skills, effort and time (see the notes for your operating system above).
-You have to decide, if it is worth the additional effort for getting the slightly better quality. If you are using the docker image, you should get the best quality by default.
+That's not really a problem, because the difference between the `aac` and `libfdk_aac` encoder is hardly noticeable in
+most cases. But to overcome the hint and get the best audio quality possible, you have to use a non-free encoder, that
+is not integrated in `ffmpeg` by default (licensing reasons). Depending on the operating system you are using,
+installing the non-free encoder may require a little extra skills, effort and time (see the notes for your operating
+system above). You have to decide, if it is worth the additional effort for getting the slightly better quality. If you
+are using the docker image, you should get the best quality by default.
 
-If you are using very low bitrates (<= 32k), you could also use high efficiency profiles to further improve audio quality (e.g. `--audio-profile=aac_he` for mono). Unfortunately, `ffmpeg`'s high efficiency implementation produces audio files, that are incompatible with many players (including iTunes). To produce high efficiency files, that are compatible with at least most common players, you will need to install `fdkaac` for now.
+If you are using very low bitrates (<= 32k), you could also use high efficiency profiles to further improve audio
+quality (e.g. `--audio-profile=aac_he` for mono). Unfortunately, `ffmpeg`'s high efficiency implementation produces
+audio files, that are incompatible with many players (including iTunes). To produce high efficiency files, that are
+compatible with at least most common players, you will need to install `fdkaac` for now.
 
 More Details:
 - https://github.com/sandreas/m4b-tool/issues/19
 - https://trac.ffmpeg.org/wiki/Encode/AAC
-- https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio 
+- https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio
 
 
 
@@ -359,8 +378,8 @@ Attached files: cover.png
 
 ## Known issues
 
-If you are getting PHP Exceptions, it is a configuration issue with PHP in most cases. If are not familiar with PHP configuration, 
-you could follow these instructions, to fix a few known issues:
+If you are getting PHP Exceptions, it is a configuration issue with PHP in most cases. If are not familiar with PHP
+configuration, you could follow these instructions, to fix a few known issues:
 
 ### Exception Charset not supported
 
@@ -369,8 +388,8 @@ you could follow these instructions, to fix a few known issues:
   charset windows-1252 is not supported - use one of these instead: utf-8
 ```
 
-This mostly happens on windows, because the `mbstring`-Extension is used to internally convert charsets, so that special chars like german umlauts 
-are supported on every platform. To fix this, you need to enable the mbstring-extension:
+This mostly happens on windows, because the `mbstring`-Extension is used to internally convert charsets, so that special
+chars like german umlauts are supported on every platform. To fix this, you need to enable the mbstring-extension:
 
 Run `php --ini` on the command line:
 ```
@@ -388,7 +407,7 @@ remove the `;` to enable the extension:
 extension=php_mbstring.dll
 ```
 
-Now everything should work as expected. 
+Now everything should work as expected.
 
 
 # m4b-tool commands
@@ -397,15 +416,15 @@ The following list contains all possible commands including [`merge`](#merge), [
 
 ## merge
 
-With `m4b-tool` you can merge a set of audio files to one single m4b audiobook file. 
+With `m4b-tool` you can merge a set of audio files to one single m4b audiobook file.
 
 ### Example:
 ```
 m4b-tool merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"
 ```
 
-This merges all Audio-Files in folder `data/my-audio-book` into `my-audio-book.m4b`, using 
-the tag-title of every file for generating chapters.
+This merges all Audio-Files in folder `data/my-audio-book` into `my-audio-book.m4b`, using the tag-title of every file
+for generating chapters.
 
 If there is a file `data/my-audio-book/cover.jpg`, it will be used as cover for the resulting m4b file.
 
@@ -597,9 +616,9 @@ Help:
 If you would like to use a custom filename template, the [Twig](https://twig.symfony.com/) template engine is provided. The following variables are available:
 
 ```
-{{encoder}}         
-{{title}}           
-{{artist}}          
+{{encoder}}
+{{title}}
+{{artist}}
 {{genre}}
 {{writer}}
 {{album}}
@@ -640,33 +659,38 @@ m4b-tool chapters --adjust-by-silence -o "data/destination-with-adjusted-chapter
 It won't work, if the shift is to large or if the chapters are strongly misplaced, but since everything is done automatically, it's worth a try, isn't it?
 
 ## Too long chapters
-Sometimes you have a file that contains valid chapters, but they are too long, so you would like to split them into sub-chapters. This is tricky, because the `chapters` command relays only on metadata and not on track length - so it won't work.  BUT: There might be a workaround. In the latest pre-release since July 2020 you can do the following:
+
+Sometimes you have a file that contains valid chapters, but they are too long, so you would like to split them into
+sub-chapters. This is tricky, because the `chapters` command relays only on metadata and not on track length - so it
+won't work. BUT: There might be a workaround. In the latest pre-release since July 2020 you can do the following:
 
 - Put the source file into an empty directory, e.g. `input/my-file.m4b` (this is important, don't skip this step!)
 - Run `m4b-tool merge -v --no-conversion --max-chapter-length=300,900 "input/" -o "output/my-rechaptered-file.m4b"`
 
-Because of `--no-conversion` the chaptering process is lossless, but it takes the existing chapters as input and recalculates it based on the `--max-chapter-length` parameter and a new silence detection.  
+Because of `--no-conversion` the chaptering process is lossless, but it takes the existing chapters as input and
+recalculates it based on the `--max-chapter-length` parameter and a new silence detection.
 
 ### No chapters at all
-If you have a well known audiobook, like ***Harry Potter and the Philosopher’s Stone***, 
-you might be lucky that it is on musicbrainz.
- 
-In this case `m4b-tool` can try to correct the chapter information using silence 
-detection and the musicbrainz data.
 
-Since this is not a trivial task and prone to error, `m4b-tool` offers some parameters to correct 
-misplaced chapter positions manually. 
+If you have a well known audiobook, like ***Harry Potter and the Philosopher’s Stone***, you might be lucky that it is
+on musicbrainz.
+
+In this case `m4b-tool` can try to correct the chapter information using silence detection and the musicbrainz data.
+
+Since this is not a trivial task and prone to error, `m4b-tool` offers some parameters to correct misplaced chapter
+positions manually.
 
 ### A typical workflow
 
 #### Getting the musicbrainz id
+
 You have to find the exact musicbrainz id:
 
 - An easy way to find the book is to use the authors name or the readers name to search for it
 - Once you found the book of interest, click on the list entry to show further information
 - To get the musicbrainz id, open the ***details*** page and find the MBID (e.g. `8669da33-bf9c-47fe-adc9-23798a37b096`)
 
-Example: https://musicbrainz.org/work/8669da33-bf9c-47fe-adc9-23798a37b096 
+Example: https://musicbrainz.org/work/8669da33-bf9c-47fe-adc9-23798a37b096
 ```
 MBID: 8669da33-bf9c-47fe-adc9-23798a37b096
 ```
@@ -687,8 +711,8 @@ Explanation:
 
 #### Finding misplaced main chapters
 
-Now listen to the audiobook an go through the chapters. Lets assume, all but 2 chapters were detected correctly. 
-The two misplaced chapters are chapter number 6 and 9.
+Now listen to the audiobook an go through the chapters. Lets assume, all but 2 chapters were detected correctly. The two
+misplaced chapters are chapter number 6 and 9.
 
 To find the real position of chapters 6 and 9 invoke:
 
@@ -722,8 +746,9 @@ Listen to `harry-potter-1.m4b` again, now the chapters should be at the correct 
 
 If none of the chapters are detected correctly, this can have different reasons:
 
-- The silence parts of this audiobook are too short for detection. To adjust the minimum silence length, use `--silence-min-length 1000` setting the silence length to 1 second. 
-  - Caution: To low values can lead to misplaced chapters and increased detection time.
+- The silence parts of this audiobook are too short for detection. To adjust the minimum silence length,
+  use `--silence-min-length 1000` setting the silence length to 1 second.
+    - Caution: To low values can lead to misplaced chapters and increased detection time.
 - You provided the wrong MBID
 - There is too much background noise in this specific audiobook, so that silences cannot be detected
 
@@ -781,17 +806,22 @@ Help:
 
 # Latest release
 
-`m4b-tool` is a one-man-project, so sometimes it evolves quickly and often nothing happens. If you have reported an issue and it is marked as fixed, there might be no **stable** release for a long time. That's why now there is a `latest` tag in combination with a **Pre-Release** for testing purposes. 
-These releases always contain the most recent builds with all available fixes and new features. Mostly untested, there may be new bugs, non-functional features or - pretty unlikely - critical issues with the risk of data loss. Feedback is always welcome, but don't expect that these are fixed quickly.
+`m4b-tool` is a one-man-project, so sometimes it evolves quickly and often nothing happens. If you have reported an
+issue and it is marked as fixed, there might be no **stable** release for a long time. That's why now there is
+a `latest` tag in combination with a **Pre-Release** for testing purposes. These releases always contain the most recent
+builds with all available fixes and new features. Mostly untested, there may be new bugs, non-functional features or -
+pretty unlikely - critical issues with the risk of data loss. Feedback is always welcome, but don't expect that these
+are fixed quickly.
 
-To get the Pre-Release, go to https://github.com/sandreas/m4b-tool/releases/tag/latest and download the `m4b-tool.tar.gz` or if using docker rebuild the image with:
+To get the Pre-Release, go to https://github.com/sandreas/m4b-tool/releases/tag/latest and download
+the `m4b-tool.tar.gz` or if using docker rebuild the image with:
 ```
 docker build . --build-arg M4B_TOOL_DOWNLOAD_LINK=<link-to-pre-release> -t m4b-tool
 ```
 
 # Building from source
 
-`m4b-tool` contains a `build` script, which will create an executable m4b-tool.phar in the dist folder. Composer for PHP 
+`m4b-tool` contains a `build` script, which will create an executable m4b-tool.phar in the dist folder. Composer for PHP
 is required, so after installing composer, run following commands in project root folder:
 
 ## Linux / Unix
@@ -826,7 +856,7 @@ composer install
 ./build
 ```
 
-## Windows 
+## Windows
 ```
 composer install
 build
@@ -846,7 +876,6 @@ This is for a feature to automatically add chapter names by speech recognition. 
 
 To do that and improve the german speech recognition, I would really appreciate *YOUR* help on:
 
- 
 **https://voice.mozilla.org/de (german)**
 
 > No account is needed to help
