@@ -79,7 +79,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         if ($version === 0) {
             $process = $this->ffmpeg(["-version"]);
             $output = $this->getAllProcessOutput($process);
-            preg_match("/^.*([0-9]\.[0-9]\.[0-9]).*$/sU", $output, $matches);
+            preg_match("/^.*([0-9]\.[0-9]\.[0-9]|[0-9]\.[0-9]).*$/sU", $output, $matches);
             $version = $matches[1] ?? null;
         }
         return $version;
