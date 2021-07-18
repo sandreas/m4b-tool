@@ -4,7 +4,7 @@
 #   alias m4b-tool='docker run -it --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool'
 #   alias m4b-tool='docker run -it --entrypoint=m4b-tool-pre --rm -u $(id -u):$(id -g) -v "$(pwd)":/mnt m4b-tool'
 ##############################
-FROM alpine:3.9.2 as builder
+FROM alpine:3.14 as builder
 
 ARG FDK_AAC_VERSION=2.0.1
 ARG FDK_AAC_URL="https://github.com/mstorsjo/fdk-aac/archive/v$FDK_AAC_VERSION.tar.gz"
@@ -48,7 +48,7 @@ RUN echo "---- INSTALL BUILD DEPENDENCIES ----" \
 #   m4b-tool development image
 #
 ##############################
-FROM alpine:3.9.2
+FROM alpine:3.14
 ENV WORKDIR /mnt/
 ENV M4BTOOL_TMP_DIR /tmp/m4b-tool/
 
@@ -72,7 +72,7 @@ RUN echo "---- INSTALL RUNTIME PACKAGES ----" && \
 
 
 # copy ffmpeg static with libfdk from mwader docker image
-COPY --from=mwader/static-ffmpeg:4.2.2 /ffmpeg /usr/local/bin/
+COPY --from=mwader/static-ffmpeg:4.4.0 /ffmpeg /usr/local/bin/
 
 # copy compiled mp4v2 binaries, libs and fdkaac encoder to runtime image
 COPY --from=builder /usr/local/bin/mp4* /usr/local/bin/fdkaac /usr/local/bin/
