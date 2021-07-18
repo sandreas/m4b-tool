@@ -796,7 +796,14 @@ class MergeCommand extends AbstractConversionCommand
 
         $maxChapterLength = new TimeUnit((int)$maxChapterLengthSeconds, TimeUnit::SECOND);
         $desiredChapterLength = new TimeUnit((int)$desiredChapterLengthSeconds, TimeUnit::SECOND);
-        $silenceLength = new TimeUnit((int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH));
+
+        $optSilenceMinLength = $this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH);
+        if (!is_numeric($optSilenceMinLength)) {
+            throw new Exception("%s must be a positive integer value, but it is: %s", static::OPTION_SILENCE_MIN_LENGTH, $optSilenceMinLength);
+        }
+        $silenceLength = new TimeUnit((int)$optSilenceMinLength);
+
+
         $detectSilenceFunction = function () use ($silenceLength, $outputTmpFile) {
             $cacheKey = "m4b-tool.silence-cache." . $silenceLength->milliseconds() . "-" . hash("sha256", $outputTmpFile);
             return $this->cacheAdapterGet($cacheKey, function () use ($silenceLength, $outputTmpFile) {

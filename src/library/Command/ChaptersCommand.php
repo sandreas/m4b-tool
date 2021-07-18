@@ -125,9 +125,14 @@ class ChaptersCommand extends AbstractCommand
 
         $this->loadFileToProcess();
 
+        $optSilenceMinLength = $this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH);
+        if (!is_numeric($optSilenceMinLength)) {
+            throw new Exception("%s must be a positive integer value, but it is: %s", static::OPTION_SILENCE_MIN_LENGTH, $optSilenceMinLength);
+        }
+
         $this->optSilenceMinLength = new TimeUnit((int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH));
         if ($this->optSilenceMinLength->milliseconds() < 1) {
-            throw new Exception("%s must be a positive integer value", static::OPTION_SILENCE_MIN_LENGTH);
+            throw new Exception("%s must be a positive integer value, but it is: %s", static::OPTION_SILENCE_MIN_LENGTH, $this->optSilenceMinLength->milliseconds());
         }
 
         if ($optEpub !== false || $optEpubRestore) {
