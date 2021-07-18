@@ -538,6 +538,12 @@ class MergeCommand extends AbstractConversionCommand
         $this->deleteTemporaryFiles();
 
         $this->notice(sprintf("successfully merged %d files to %s", count($this->filesToMerge), $this->outputFile));
+        if ($this->optDebug) {
+            $dumpLines = $this->dumpTagAsLines($this->metaHandler->readTag($this->outputFile));
+            array_unshift($dumpLines, "Final metadata:");
+            $dumpLines[] = sprintf("total estimated duration: %s", $this->metaHandler->estimateDuration($this->outputFile));
+            $this->debug(implode(PHP_EOL, $dumpLines));
+        }
     }
 
     /**
@@ -957,6 +963,11 @@ class MergeCommand extends AbstractConversionCommand
         $this->deleteFilesAndParentDir($this->filesToDelete);
 
         if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
+            try {
+                @rmdir($this->createOutputTempDir());
+            } catch (Exception $e) {
+                // ignore
+            }
             return;
         }
 
