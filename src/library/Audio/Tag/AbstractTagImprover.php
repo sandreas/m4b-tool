@@ -11,6 +11,7 @@ use SplFileInfo;
 abstract class AbstractTagImprover implements TagImproverInterface
 {
     use LogTrait;
+    const BOM = "\xEF\xBB\xBF";
 
     const DUMP_MAX_LEN = 50;
     const DUMP_TRUNCATE_SUFFIX = "...";
@@ -24,6 +25,14 @@ abstract class AbstractTagImprover implements TagImproverInterface
             }
         }
         return null;
+    }
+
+    protected static function stripBOM($contents)
+    {
+        if (substr($contents, 0, 3) === static::BOM) {
+            return substr($contents, 3);
+        }
+        return $contents;
     }
 
     public static function buildExportMetaFile(SplFileInfo $reference, $defaultFileName, $fileName = null)

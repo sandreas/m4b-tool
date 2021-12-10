@@ -4,49 +4,27 @@
 namespace M4bTool\Audio\Tag;
 
 
+use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Common\ReleaseDate;
-use SplFileInfo;
 
-class AudibleJson extends AbstractTagImprover
+class AudibleJson extends AbstractJsonTagImprover
 {
-    const DEFAULT_FILENAME = "audible.json";
-    protected $fileContent;
-
-    public function __construct($fileContents = "")
-    {
-        $this->fileContent = $fileContents;
-    }
-
-    /**
-     * Cover constructor.
-     * @param SplFileInfo $reference
-     * @param null $fileName
-     * @return AudibleJson
-     */
-    public static function fromFile(SplFileInfo $reference, $fileName = null)
-    {
-        $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
-        return $fileToLoad ? new static(file_get_contents($fileToLoad)) : new static();
-    }
-
+    protected static $defaultFileName = "audible.json";
 
     /**
      * @param Tag $tag
      * @return Tag
+     * @throws Exception
      */
     public function improve(Tag $tag): Tag
     {
-        if (trim($this->fileContent) === "") {
-            $this->info(sprintf("no %s found - tags not improved", static::DEFAULT_FILENAME));
+        $decoded = $this->decodeJson($this->fileContent);
+        if ($decoded === null) {
             return $tag;
         }
-        $decoded = @json_decode($this->fileContent, true);
-        if ($decoded === false) {
-            $this->warning(sprintf("could not decode %s", static::DEFAULT_FILENAME));
-            return $tag;
-        }
-        $this->notice(sprintf("%s loaded for tagging", static::DEFAULT_FILENAME));
+
+        $this->notice(sprintf("%s loaded for tagging", self::$defaultFileName));
         $product = $decoded["product"] ?? null;
 
 
@@ -73,18 +51,14 @@ class AudibleJson extends AbstractTagImprover
             $mergeTag->cover = $product["product_images"][$maxKey];
         }
 
-        $mergeTag->performer = $mergeTag->writer;
-
         $mergeTag->album = $product["title"] ?? null;
-        $mergeTag->title = $mergeTag->album;
         $mergeTag->year = ReleaseDate::createFromValidString($product["release_date"] ?? null);
         $mergeTag->language = $product["language"] ?? null;
         $mergeTag->copyright = $product["publisher_name"] ?? null;
-        $mergeTag->publisher = $mergeTag->copyright;
+
 
         $htmlDescription = $product["publisher_summary"] ?? null;
-        $mergeTag->description = $htmlDescription ? strip_tags($htmlDescription) : null;
-        $mergeTag->longDescription = $mergeTag->description;
+        $mergeTag->description = $htmlDescription ? $this->stripHtml($htmlDescription) : null;
 
         $mergeTag->series = $product["series"][0]["title"] ?? null;
         $mergeTag->seriesPart = $product["series"][0]["sequence"] ?? null;
@@ -100,6 +74,7 @@ class AudibleJson extends AbstractTagImprover
             }
         }
 
+        $this->copyDefaultProperties($mergeTag);
 
         // $tag->albumArtist = $this->getProperty("album_artist");
         // $tag->performer = $this->getProperty("performer");
@@ -114,12 +89,4 @@ class AudibleJson extends AbstractTagImprover
     }
 
 
-    private function implodeArrayOrNull($arrayValue)
-    {
-        if (!isset($arrayValue) || !is_array($arrayValue)) {
-            return null;
-        }
-
-        return implode(", ", $arrayValue);
-    }
 }
