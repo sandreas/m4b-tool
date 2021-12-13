@@ -162,7 +162,6 @@ class Tag implements ArrayAccess, JsonSerializable
             $this->$propertyName = $tag->$propertyName;
         }
         return $changedProperties;
-
     }
 
     public function hasCoverFile()
