@@ -12,7 +12,6 @@ use SplFileInfo;
 
 class ContentMetadataJson extends AbstractTagImprover
 {
-    const BOM = "\xEF\xBB\xBF";
 
     public $overloadChapters = [];
 
@@ -58,14 +57,6 @@ class ContentMetadataJson extends AbstractTagImprover
             return static::stripBOM(file_get_contents($fileToLoad));
         }
         return "";
-    }
-
-    protected static function stripBOM($contents)
-    {
-        if (substr($contents, 0, 3) === static::BOM) {
-            return substr($contents, 3);
-        }
-        return $contents;
     }
 
 
