@@ -361,7 +361,7 @@ class ChaptersCommand extends AbstractCommand
      */
     private function buildChapters(array $mbChapters, TimeUnit $duration)
     {
-        $this->notice(sprintf("found %s musicbrainz chapters and %s silences within length %s", count($mbChapters), count($this->silences), $duration->format()));
+        $this->notice(sprintf("found %s chapters and %s silences within length %s", count($mbChapters), count($this->silences), $duration->format()));
         $this->chapters = $this->chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $duration);
     }
 
