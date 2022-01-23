@@ -1,10 +1,13 @@
 #!/usr/bin/env php
 <?php
 
+
 register_shutdown_function(function () {
     if (!is_null($e = error_get_last())) {
-        echo "an error occured, that has not been caught:\n";
-        print_r($e);
+        if($e["type"] != E_DEPRECATED){
+            echo "an error occured, that has not been caught:\n";
+            print_r($e);     
+        }
     }
 });
 if (!ini_get('date.timezone')) {
