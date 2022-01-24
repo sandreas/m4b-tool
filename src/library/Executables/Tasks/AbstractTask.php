@@ -4,10 +4,14 @@
 namespace M4bTool\Executables\Tasks;
 
 
+use M4bTool\Audio\Traits\LogTrait;
+use Psr\Log\LoggerInterface;
 use Throwable;
 
-abstract class AbstractTask implements RunnableInterface
+abstract class AbstractTask  implements  RunnableInterface, LoggerInterface
 {
+    use LogTrait;
+
     /** @var Throwable */
     protected $lastException;
 

@@ -6,6 +6,7 @@ namespace M4bTool\Executables\Tasks;
 
 use M4bTool\Audio\BinaryWrapper;
 use M4bTool\Executables\FileConverterOptions;
+use Psr\Log\LoggerInterface;
 use SplFileInfo;
 use Symfony\Component\Process\Process;
 use Throwable;
@@ -13,7 +14,6 @@ use Throwable;
 
 class ConversionTask extends AbstractTask
 {
-
     const CONVERTING_SUFFIX = "-converting";
     const FINISHED_SUFFIX = "-finished";
     /**
@@ -37,12 +37,13 @@ class ConversionTask extends AbstractTask
      */
     protected $finishedOutputFile;
 
-    public function __construct(BinaryWrapper $metaDataHandler, FileConverterOptions $options)
+    public function __construct(BinaryWrapper $metaDataHandler, FileConverterOptions $options, LoggerInterface $logger=null)
     {
         $this->metaDataHandler = $metaDataHandler;
         $this->options = $options;
 
         $this->finishedOutputFile = new SplFileInfo(str_replace(static::CONVERTING_SUFFIX, static::FINISHED_SUFFIX, $options->destination));
+        $this->setLogger($logger);
     }
 
     public function run()
@@ -58,6 +59,9 @@ class ConversionTask extends AbstractTask
 
         } catch (Throwable $e) {
             $this->lastException = $e;
+            if($e->getMessage() != $this->lastException->getMessage()) {
+                $this->error(sprintf("Conversion error: %s", $e->getMessage()));
+            }
         }
 
     }

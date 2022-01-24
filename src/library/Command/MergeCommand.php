@@ -758,7 +758,7 @@ class MergeCommand extends AbstractConversionCommand
                 break;
         }
 
-        $taskPool->submit(new ConversionTask($this->metaHandler, $options)/*, $taskWeight*/);
+        $taskPool->submit(new ConversionTask($this->metaHandler, $options, $this)/*, $taskWeight*/);
         return $finishedOutputFile;
     }
 
@@ -858,6 +858,8 @@ class MergeCommand extends AbstractConversionCommand
 
 
         // tag property loaders
+        $tagImprover->add(Tag\BuchhandelJson::fromFile($this->argInputFile));
+        $tagImprover->add(Tag\BookBeatJson::fromFile($this->argInputFile));
         $tagImprover->add(OpenPackagingFormat::fromFile($this->argInputFile));
         $tagImprover->add(Tag\AudibleTxt::fromFile($this->argInputFile));
         $tagImprover->add(Tag\AudibleJson::fromFile($this->argInputFile));
@@ -865,6 +867,7 @@ class MergeCommand extends AbstractConversionCommand
         $tagImprover->add(Tag\Description::fromFile($this->argInputFile));
         $tagImprover->add(Tag\ContentMetadataJson::fromFile($this->argInputFile));
         $tagImprover->add(Tag\AudibleChaptersJson::fromFile($this->argInputFile, null, null, $lengthCalc));
+
         switch ($this->input->getOption(static::OPTION_CHAPTER_ALGORITHM)) {
             case static::CHAPTER_ALGORITHM_GROUPING:
                 $tagImprover->add(new Tag\AdjustChaptersByGroupLogic($this->metaHandler, $lengthCalc, $outputTmpFile));
