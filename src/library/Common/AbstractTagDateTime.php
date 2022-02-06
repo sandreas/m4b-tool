@@ -6,9 +6,10 @@ namespace M4bTool\Common;
 
 use DateTime;
 use Exception;
+use JsonSerializable;
 use Throwable;
 
-abstract class AbstractTagDateTime extends DateTime
+abstract class AbstractTagDateTime extends DateTime implements JsonSerializable
 {
     const ONLY_YEAR_LENGTH = 4;
     protected static $defaultFormatString = "Y/m/d";
@@ -45,5 +46,10 @@ abstract class AbstractTagDateTime extends DateTime
     public function __toString()
     {
         return $this->format($this->formatString ?? static::$defaultFormatString);
+    }
+
+    public function jsonSerialize()
+    {
+        return $this->__toString();
     }
 }
