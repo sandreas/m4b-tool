@@ -4,6 +4,7 @@
 namespace M4bTool\Audio\Tag;
 
 
+use M4bTool\Audio\Tag;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Tags\StringBuffer;
 use SplFileInfo;
@@ -11,6 +12,7 @@ use SplFileInfo;
 abstract class AbstractTagImprover implements TagImproverInterface
 {
     use LogTrait;
+
     const BOM = "\xEF\xBB\xBF";
 
     const DUMP_MAX_LEN = 50;
@@ -68,6 +70,53 @@ abstract class AbstractTagImprover implements TagImproverInterface
             $after = (new StringBuffer($diff["after"] ?? ""))->softTruncateBytesSuffix(static::DUMP_MAX_LEN, static::DUMP_TRUNCATE_SUFFIX);
             $this->info(sprintf("%15s: %s => %s", $property, $before, $after));
         }
+    }
+
+    protected function implodeArrayOrNull($arrayValue)
+    {
+        if (!isset($arrayValue) || !is_array($arrayValue)) {
+            return null;
+        }
+
+        return implode(", ", $arrayValue);
+    }
+
+    protected function stripHtml($string)
+    {
+        return strip_tags($this->br2nl($string));
+    }
+
+    private function br2nl($string)
+    {
+        return preg_replace('/<br(\s*)?\/?>/i', "\n", $string);
+    }
+
+    protected function copyDefaultProperties(Tag $mergeTag)
+    {
+        $mergeTag->title = $mergeTag->album;
+        $mergeTag->performer = $mergeTag->writer;
+        $mergeTag->publisher = $mergeTag->copyright;
+        $mergeTag->longDescription = $mergeTag->description;
+    }
+
+    protected function coverToSplFileOrNull($cover)
+    {
+        if (empty($cover)) {
+            return null;
+        }
+        return new SplFileInfo($cover);
+    }
+
+    /**
+     * Cover constructor.
+     * @param SplFileInfo $reference
+     * @param null $fileName
+     * @return static
+     */
+    public static function fromFile(SplFileInfo $reference, $fileName = null)
+    {
+        $fileToLoad = static::searchExistingMetaFile($reference, static::$defaultFileName, $fileName);
+        return $fileToLoad ? new static(file_get_contents($fileToLoad)) : new static();
     }
 
 }

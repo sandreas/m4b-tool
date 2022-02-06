@@ -58,17 +58,17 @@ RUN echo "---- INSTALL RUNTIME PACKAGES ----" && \
   # mp4v2: required libraries
   libstdc++ \
   # m4b-tool: php cli, required extensions and php settings
-  php7-cli \
-  php7-dom \
-  php7-json \
-  php7-xml \
-  php7-mbstring \
-  php7-phar \
-  php7-tokenizer \
-  php7-xmlwriter \
-  php7-openssl \
-  && echo "date.timezone = UTC" >> /etc/php7/php.ini
-
+  php8-cli \
+  php8-dom \
+  php8-json \
+  php8-xml \
+  php8-mbstring \
+  php8-phar \
+  php8-tokenizer \
+  php8-xmlwriter \
+  php8-openssl \
+  && echo "date.timezone = UTC" >> /etc/php8/php.ini \
+  && ln -s /usr/bin/php8 /bin/php
 
 
 # copy ffmpeg static with libfdk from mwader docker image

@@ -77,12 +77,5 @@ class AudibleTxt extends AbstractTagImprover
         return $tag;
     }
 
-    private function implodeArrayOrNull($arrayValue)
-    {
-        if (!isset($arrayValue) || !is_array($arrayValue)) {
-            return null;
-        }
 
-        return implode(", ", $arrayValue);
-    }
 }
