@@ -858,6 +858,7 @@ class MergeCommand extends AbstractConversionCommand
 
 
         // tag property loaders
+        $tagImprover->add(Tag\MetadataJson::fromFile($this->argInputFile));
         $tagImprover->add(Tag\BuchhandelJson::fromFile($this->argInputFile));
         $tagImprover->add(Tag\BookBeatJson::fromFile($this->argInputFile));
         $tagImprover->add(OpenPackagingFormat::fromFile($this->argInputFile));

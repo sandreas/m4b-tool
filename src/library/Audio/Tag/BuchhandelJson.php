@@ -19,7 +19,7 @@ class BuchhandelJson extends AbstractJsonTagImprover
 
     public function improve(Tag $tag): Tag
     {
-        $decoded = $this->decodeJson($this->fileContent, static::$defaultFileName);
+        $decoded = $this->decodeJson($this->fileContent);
         if ($decoded === null) {
             return $tag;
         }
