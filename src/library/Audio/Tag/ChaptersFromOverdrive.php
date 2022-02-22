@@ -66,7 +66,11 @@ class ChaptersFromOverdrive extends AbstractTagImprover
             if ($offsetMs > $mediaMarkerChapters[$index]->getEnd()->milliseconds()) {
                 $mediaMarkerChapters[$index]->setEnd(new TimeUnit($offsetMs));
             }
-            $tag->chapters = $mediaMarkerChapters;
+
+            // filter out continued chapters
+            $tag->chapters = array_filter($mediaMarkerChapters, function (Chapter $chapter) {
+                return mb_substr($chapter->getName(), -7) !== "(00:00)";
+            });
         } else {
             $this->info("no overdrive chapters found - tags not improved");
         }
