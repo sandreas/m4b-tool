@@ -836,11 +836,7 @@ class MergeCommand extends AbstractConversionCommand
         $tagImprover->add(Ffmetadata::fromFile($this->argInputFile, Ffmetadata::DEFAULT_FILENAME));
         $tagImprover->add(ChaptersTxt::fromFile($this->argInputFile, ChaptersTxt::DEFAULT_FILENAME));
 
-        if ($mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID)) {
-            $mbChapterParser = new MusicBrainzChapterParser($mbId);
-            $mbChapterParser->setCacheAdapter($this->cacheAdapter);
-            $tagImprover->add(new ChaptersFromMusicBrainz($this->chapterMarker, $this->chapterHandler, $mbChapterParser));
-        }
+
         if ($this->silenceBetweenFile instanceof SplFileInfo) {
             $this->chapterHandler->setSilenceBetweenFile($this->silenceBetweenFile);
         }
@@ -848,12 +844,17 @@ class MergeCommand extends AbstractConversionCommand
         $tagImprover->add(new ChaptersFromOverdrive($this->metaHandler, $this->filesToConvert));
 
         $chaptersFromFileTags = new ChaptersFromFileTracks($this->chapterHandler, $this->filesToMerge, $this->filesToConvert);
+        if ($this->input->getOption(static::OPTION_CHAPTER_ALGORITHM) !== static::CHAPTER_ALGORITHM_LEGACY) {
+            $chaptersFromFileTags->disableAdjustments();
+        }
 
         $tagImprover->add($chaptersFromFileTags);
 
+        if ($mbId = $this->input->getOption(static::OPTION_MUSICBRAINZ_ID)) {
+            $mbChapterParser = new MusicBrainzChapterParser($mbId);
+            $mbChapterParser->setCacheAdapter($this->cacheAdapter);
 
-        if ($this->input->getOption(static::OPTION_CHAPTER_ALGORITHM) !== static::CHAPTER_ALGORITHM_LEGACY) {
-            $chaptersFromFileTags->disableAdjustments();
+            $tagImprover->add(new ChaptersFromMusicBrainz($this->chapterMarker, $this->chapterHandler, $mbChapterParser, $this->metaHandler->estimateDuration($this->outputFile)));
         }
 
 
