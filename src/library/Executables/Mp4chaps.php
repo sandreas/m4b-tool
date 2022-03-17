@@ -18,7 +18,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
 {
 
+    // kept for backwards compatibility, when chapters.txt format was unspecified this was a custom m4b-tool extension
     const COMMENT_TAG_TOTAL_LENGTH = "total-length";
+
+    // real comment tags, like specified in https://github.com/enzo1982/mp4v2/issues/3
+    const COMMENT_TAG_TOTAL_DURATION = "total-duration:";
 
     public function __construct($pathToBinary = "mp4chaps", ProcessHelper $processHelper = null, OutputInterface $output = null)
     {
@@ -92,7 +96,7 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
         }
 
         if ($chapter !== null && $chapter->getLength()->milliseconds() > 0) {
-            array_unshift($chaptersAsLines, sprintf("# %s %s", static::COMMENT_TAG_TOTAL_LENGTH, $chapter->getEnd()->format()));
+            array_unshift($chaptersAsLines, sprintf("## %s: %s", static::COMMENT_TAG_TOTAL_DURATION, $chapter->getEnd()->format()));
         }
 
         return implode(PHP_EOL, $chaptersAsLines);
@@ -176,15 +180,24 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
     {
         $commentTags = [];
         $line = ltrim(ltrim($commentLine, '#'));
-        if (Strings::hasPrefix($line, static::COMMENT_TAG_TOTAL_LENGTH)) {
-            try {
-                $timeString = Strings::trimPrefix($line, static::COMMENT_TAG_TOTAL_LENGTH);
-                $time = TimeUnit::fromFormat(trim($timeString));
-                $commentTags[static::COMMENT_TAG_TOTAL_LENGTH] = $time;
-            } catch (Exception $e) {
-                // ignore
-            }
+        $time = $this->parseTotalDuration($line, static::COMMENT_TAG_TOTAL_DURATION) ?? $this->parseTotalDuration($line, static::COMMENT_TAG_TOTAL_LENGTH);
+        if ($time !== null) {
+            $commentTags[static::COMMENT_TAG_TOTAL_LENGTH] = $time;
         }
         return $commentTags;
+    }
+
+    private function parseTotalDuration($line, $prefix)
+    {
+        if (!Strings::hasPrefix($line, $prefix)) {
+            return null;
+        }
+        try {
+            $timeString = Strings::trimPrefix($line, $prefix);
+            return TimeUnit::fromFormat(trim($timeString));
+        } catch (Exception $e) {
+            // ignore
+        }
+        return null;
     }
 }

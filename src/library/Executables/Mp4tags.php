@@ -33,21 +33,26 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
         "encoder" => "E", // "encoder",
         "lyrics" => "L", // "lyrics",
         "type" => "i", // "type",
-        "sortTitle" => "f", // "sortname",
-        "sortAlbum" => "k", // "sortalbum",
-        "sortArtist" => "F", //"sortartist",
         "grouping" => "G",
-        "purchaseDate" => "U",
+        // extra features, enabled in newer versions or custom sandreas branch
+        "sortTitle" => "sortname", // "sortname", "f"
+        "sortAlbum" => "sortalbum", // "sortalbum", "k"
+        "sortArtist" => "sortartist", //"sortartist", "F"
+        "purchaseDate" => "purchasedate",//"purchasedate", "U"
     ];
 
-    const SORT_PARAMETERS = [
-        "f", // sortname
-        "F", // sortartist
-        "k", // sortalbum
+    // these parameters are not enabled in every mp4v2 version
+    // backwards compatibility: long params are mapped to short ones, if version is the custom sandreas variant
+    const EXTRA_FEATURE_PARAMETER_MAPPING = [
+        "sortname" => "f",
+        "sortalbum" => "k",
+        "sortartist" => "F",
+        "purchasedate" => "U"
     ];
 
-    protected $sortingSupported;
+    protected $extraFeatureParameters = null;
 
+    protected $exceptionDetails = [];
 
     public function __construct($pathToBinary = "mp4tags", ProcessHelper $processHelper = null, OutputInterface $output = null)
     {
@@ -56,12 +61,13 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
 
     /**
      * @param SplFileInfo $file
-     * @param $tag
+     * @param Tag $tag
      * @param Flags|null $flags
      * @throws Exception
      */
     public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
+        $this->exceptionDetails = [];
         $this->storeTagsToFile($file, $tag);
         if (count($tag->removeProperties) > 0) {
             $this->removeTagsFromFile($file, $tag);
@@ -75,20 +81,20 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
      */
     private function storeTagsToFile(SplFileInfo $file, Tag $tag)
     {
+        $this->detectExtraFeatures();
+
         $command = [];
         foreach (static::PROPERTY_PARAMETER_MAPPING as $tagPropertyName => $parameterName) {
-            // extra handling for sort params (support required)
-            if (in_array($parameterName, static::SORT_PARAMETERS, true)) {
+            // handling all for default properties
+            if (!isset(static::EXTRA_FEATURE_PARAMETER_MAPPING[$parameterName])) {
+                $this->appendParameterToCommand($command, "-" . $parameterName, $tag->$tagPropertyName);
                 continue;
             }
 
-            $this->appendParameterToCommand($command, "-" . $parameterName, $tag->$tagPropertyName);
-        }
-
-        if ($this->doesMp4tagsSupportSorting()) {
-            $this->appendParameterToCommand($command, "-sortname", $tag->sortTitle);
-            $this->appendParameterToCommand($command, "-sortalbum", $tag->sortAlbum);
-            $this->appendParameterToCommand($command, "-sortartist", $tag->sortArtist);
+            // handling for extra features (sortname, purchasedate, etc.)
+            if (isset($this->extraFeatureParameters[$parameterName]) && trim($tag->$tagPropertyName) !== "") {
+                $this->appendParameterToCommand($command, "-" . $this->extraFeatureParameters[$parameterName], $tag->$tagPropertyName);
+            }
         }
 
         if (count($command) === 0) {
@@ -97,31 +103,50 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
 
         $command[] = $file;
         $process = $this->runProcess($command);
+        $this->handleExitCode($process, $command, $file);
+    }
+
+    private function handleExitCode(\Symfony\Component\Process\Process $process, array $command, SplFileInfo $file)
+    {
         if ($process->getExitCode() !== 0) {
-            throw new Exception(sprintf("Could not tag file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
+            $this->exceptionDetails[] = "command: " . $this->buildDebugCommand($command);
+            $this->exceptionDetails[] = "output:";
+            $this->exceptionDetails[] = $process->getOutput() . $process->getErrorOutput();
+            throw new Exception(sprintf("Could not tag file:\nfile: %s\nexit-code:%d\n%s", $file, $process->getExitCode(), implode(PHP_EOL, $this->exceptionDetails)));
         }
     }
 
     /**
-     * @return bool
      * @throws Exception
      */
-    private function doesMp4tagsSupportSorting()
+    private function detectExtraFeatures()
     {
-        if ($this->sortingSupported !== null) {
-            return $this->sortingSupported;
+        if ($this->extraFeatureParameters !== null) {
+            return;
         }
+        $this->extraFeatureParameters = [];
+
         $command = ["-help"];
         $process = $this->runProcess($command);
         $result = $process->getOutput() . $process->getErrorOutput();
-        $this->sortingSupported = true;
-        foreach (static::SORT_PARAMETERS as $searchString) {
-            if (strpos($result, "-" . $searchString) === false) {
-                $this->sortingSupported = false;
-                break;
+
+        foreach (static::EXTRA_FEATURE_PARAMETER_MAPPING as $longParam => $shortParam) {
+            // e.g. "-U, -purchasedate"
+            $firstSearchString = sprintf("-%s, -%s", $shortParam, $longParam);
+
+            // e.g. "    -purchasedate"
+            $secondSearchString = sprintf("-%s", $longParam);
+
+            if (strpos($result, $firstSearchString) !== false) {
+                $this->exceptionDetails[] = "sandreas custom extra features: " . $firstSearchString;
+                $this->extraFeatureParameters[$longParam] = $shortParam;
+            } else if (strpos($result, $secondSearchString) !== false) {
+                $this->exceptionDetails[] = "new maintainer extra features: " . $firstSearchString;
+                $this->extraFeatureParameters[$longParam] = $longParam;
+            } else {
+                $this->exceptionDetails[] = "no extra features";
             }
         }
-        return $this->sortingSupported;
     }
 
     /**
@@ -133,25 +158,38 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
     {
         $removeParameters = [];
         foreach (static::PROPERTY_PARAMETER_MAPPING as $propertyName => $parameterName) {
-            if (in_array($propertyName, $tag->removeProperties, true)) {
-                $removeParameters[] = $parameterName;
+            if (!in_array($propertyName, $tag->removeProperties, true)) {
+                continue;
             }
-        }
 
-        // remove unsupported parameters
-        if (!$this->doesMp4tagsSupportSorting()) {
-            $removeParameters = array_diff($removeParameters, static::SORT_PARAMETERS);
+            // skip extraFeatureParameters, if not available (e.g. sortname, etc.)
+            if (isset(static::EXTRA_FEATURE_PARAMETER_MAPPING[$parameterName]) && !isset($this->extraFeatureParameters[$parameterName])) {
+                continue;
+            }
+
+            // prefer extraFeatureParameter, if available (e.g. sortname, etc.)
+            $removeParameters[] = $this->extraFeatureParameters[$parameterName] ?? $parameterName;
         }
 
         if (count($removeParameters) === 0) {
             return;
         }
 
-        $command = ["-r", implode("", $removeParameters), $file];
+        $separator = $this->detectRemoveParameterSeparator($removeParameters);
+        $command = ["-r", implode($separator, $removeParameters), $file];
 
         $process = $this->runProcess($command);
-        if ($process->getExitCode() !== 0) {
-            throw new Exception(sprintf("Could not tag file: %s, %s, %d", $file, $process->getOutput() . $process->getErrorOutput(), $process->getExitCode()));
+        $this->handleExitCode($process, $command, $file);
+
+    }
+
+    private function detectRemoveParameterSeparator($removeParameters)
+    {
+        foreach ($removeParameters as $removeParameter) {
+            if (strlen($removeParameter) > 1) {
+                return ",";
+            }
         }
+        return "";
     }
 }

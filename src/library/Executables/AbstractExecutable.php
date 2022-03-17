@@ -132,10 +132,21 @@ abstract class AbstractExecutable
         return '"' . str_replace(['"', '^', '%', '!', "\n"], ['""', '"^^"', '"^%"', '"^!"', '!LF!'], $argument) . '"';
     }
 
-    protected function debugCommand($command)
+    /**
+     * @param array $command
+     * @return string
+     */
+    protected function buildDebugCommand(array $command)
     {
-        $escapedArguments = array_map([$this, "escapeNonePipeArgument"], $command);
-        $this->debug(implode(" ", $escapedArguments));
+        $escapedArguments = array_map(function ($parameter) {
+            return $this->escapeNonePipeArgument($parameter);
+        }, $command);
+        return implode(" ", $escapedArguments);
+    }
+
+    protected function debugCommand(array $command)
+    {
+        $this->debug($this->buildDebugCommand($command));
     }
 
     protected static function normalizeDirectorySeparator($outputFile)
