@@ -29,6 +29,7 @@ interface FileConverterInterface
     const EXTENSION_RIF = "rif";
     const EXTENSION_OGA = "oga";
     const EXTENSION_OGG = "ogg";
+    const EXTENSION_OPUS = "opus";
     const EXTENSION_WAV = "wav";
     const EXTENSION_WMA = "wma";
 
@@ -64,6 +65,7 @@ interface FileConverterInterface
         self::EXTENSION_RIF => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_OGA => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_OGG => self::FORMAT_UNSPECIFIED,
+        self::EXTENSION_OPUS => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_WAV => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_WMA => self::FORMAT_UNSPECIFIED,
     ];

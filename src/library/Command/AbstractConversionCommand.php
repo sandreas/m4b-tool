@@ -61,6 +61,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         BinaryWrapper::EXTENSION_RIF,
         BinaryWrapper::EXTENSION_OGA,
         BinaryWrapper::EXTENSION_OGG,
+        BinaryWrapper::EXTENSION_OPUS,
         BinaryWrapper::EXTENSION_WAV,
         BinaryWrapper::EXTENSION_WMA,
     ];
