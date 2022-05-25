@@ -1,6 +1,16 @@
 # m4b-tool
 `m4b-tool` is a is a wrapper for `ffmpeg` and `mp4v2` to merge, split or and manipulate audiobook files with chapters. Although `m4b-tool` is designed to handle m4b files, nearly all audio formats should be supported, e.g. mp3, aac, ogg, alac and flac.
 
+## Announcement
+
+A few months ago I noticed, that using `PHP` as programming language is a limiting factor for `m4b-tool` and its further development. Multiple dependencies (`php`, `ffmpeg`, `mp4v2`, `fdkaac` and others) make it quite hard to improve the user experience. So I started an experiment, that now has reached an early alpha level and can be tried out. The command line tool is written in `C#`, fully open source and is called `tone`. It already has a pretty decent feature set, so if you would like to try it, here it is:
+
+https://github.com/sandreas/tone
+
+This announcement does NOT mean, that `m4b-tool` is deprecated or will be soon. The development of `m4b-tool` will go on (at least until tone has a feature-set similar to `m4b-tool`). It's just to have an alternative tool for features, that may have limitations.
+
+Have fun, can't wait to get your feedback.
+
 ## ❗❗❗Important Note❗❗❗
 Unfortunately I am pretty busy at the moment, so `m4b-tool 0.4.2` is very old. Since it is not planned to release a
 newer version without having complete documentation, there is

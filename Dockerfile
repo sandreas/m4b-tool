@@ -1,4 +1,4 @@
-ARG FFMPEG_IMAGE="mwader/static-ffmpeg:4.4.0"
+ARG FFMPEG_IMAGE="mwader/static-ffmpeg:5.0.1-3"
 ARG FFMPEG_PATH="/ffmpeg"
 
 FROM ${FFMPEG_IMAGE} as ffmpeg_binary
