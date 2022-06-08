@@ -1,6 +1,11 @@
 ARG FFMPEG_IMAGE="mwader/static-ffmpeg:5.0.1-3"
 ARG FFMPEG_PATH="/ffmpeg"
 
+# this may work for arm32 and other more exotic platforms
+# see https://hub.docker.com/r/collelog/ffmpeg/tags
+# ARG FFMPEG_IMAGE=collelog/ffmpeg
+# ARG FFMPEG_PATH=/usr/local/bin/ffmpeg
+
 FROM ${FFMPEG_IMAGE} as ffmpeg_binary
 
 ##############################
@@ -11,7 +16,7 @@ FROM ${FFMPEG_IMAGE} as ffmpeg_binary
 ##############################
 FROM alpine:3.14 as builder
 
-ARG MP4V2_URL="https://github.com/enzo1982/mp4v2/archive/55d6018.zip"
+ARG MP4V2_URL="https://github.com/enzo1982/mp4v2/archive/refs/tags/v2.1.1.zip"
 ARG FDK_AAC_VERSION=2.0.1
 ARG FDK_AAC_URL="https://github.com/mstorsjo/fdk-aac/archive/v$FDK_AAC_VERSION.tar.gz"
 ARG FDK_AAC_SHA256="a4142815d8d52d0e798212a5adea54ecf42bcd4eec8092b37a8cb615ace91dc6"
@@ -27,7 +32,7 @@ RUN echo "---- INSTALL BUILD DEPENDENCIES ----" \
     git \
     tar \
     wget \
-&& echo "---- COMPILE SANDREAS MP4V2 (for sort-title, sort-album and sort-author) ----" \
+&& echo "---- COMPILE MP4V2 ----" \
   && cd /tmp/ \
   && wget "${MP4V2_URL}" -O mp4v2.zip \
   && unzip mp4v2.zip \
