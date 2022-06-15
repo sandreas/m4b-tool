@@ -1,6 +1,7 @@
 {
     "minimum-stability": "dev",
     "prefer-stable": true,
+    "platform":{"php":"7.4"},
     "require": {
         "monolog/monolog": "^1.22",
         "symfony/console": "^4.0",
