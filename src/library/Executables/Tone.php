@@ -169,17 +169,17 @@ class Tone extends AbstractFfmpegBasedExecutable implements TagReaderInterface, 
             $this->appendParameterToCommand($command, "--" . $parameterName, $tag->$tagPropertyName);
         }
 
+        $flags = $flags ?? new Flags();
+        $chaptersFile = AbstractMp4v2Executable::buildConventionalFileName($file, AbstractMp4v2Executable::SUFFIX_CHAPTERS, "txt");
+        $chaptersFileAlreadyExisted = $chaptersFile->isFile();
+
         // chapters
         if (count($tag->chapters) > 0) {
-            $flags = $flags ?? new Flags();
-            $chaptersFile = AbstractMp4v2Executable::buildConventionalFileName($file, AbstractMp4v2Executable::SUFFIX_CHAPTERS, "txt");
-            $chaptersFileAlreadyExisted = $chaptersFile->isFile();
             if (!$chaptersFileAlreadyExisted || $flags->contains(static::FLAG_FORCE)) {
                 file_put_contents($chaptersFile, $this->buildChaptersTxt($tag->chapters));
             } elseif (!$flags->contains(static::FLAG_USE_EXISTING_FILES)) {
                 throw new Exception(sprintf("Chapters file %s already exists", $chaptersFile));
             }
-
             $this->appendParameterToCommand($command, "--meta-chapters-file", $chaptersFile);
         }
 
@@ -193,6 +193,11 @@ class Tone extends AbstractFfmpegBasedExecutable implements TagReaderInterface, 
 
         $command[] = $file;
         $process = $this->runProcess($command);
+
+        $keepChapterFile = $flags->contains(static::FLAG_NO_CLEANUP);
+        if (!$chaptersFileAlreadyExisted && !$keepChapterFile && $chaptersFile->isFile()) {
+            unlink($chaptersFile);
+        }
         $this->handleExitCode($process, $command, $file);
     }
 
