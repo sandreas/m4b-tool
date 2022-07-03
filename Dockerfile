@@ -7,6 +7,7 @@ ARG FFMPEG_PATH="/ffmpeg"
 # ARG FFMPEG_PATH=/usr/local/bin/ffmpeg
 
 FROM ${FFMPEG_IMAGE} as ffmpeg_binary
+FROM sandreas/tone:v0.0.5 as tone_005
 
 ##############################
 #
@@ -86,6 +87,7 @@ RUN echo "---- INSTALL RUNTIME PACKAGES ----" && \
 
 # copy ffmpeg static with libfdk from configured docker image
 COPY --from=ffmpeg_binary "$FFMPEG_PATH" /usr/local/bin/
+COPY --from=tone_005 "/usr/local/bin/tone" /usr/local/bin/
 
 # copy compiled mp4v2 binaries, libs and fdkaac encoder to runtime image
 COPY --from=builder /usr/local/bin/mp4* /usr/local/bin/fdkaac /usr/local/bin/

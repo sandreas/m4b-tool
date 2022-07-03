@@ -20,6 +20,7 @@ use M4bTool\Executables\Mp4chaps;
 use M4bTool\Executables\Mp4info;
 use M4bTool\Executables\Mp4tags;
 use M4bTool\Executables\Mp4v2Wrapper;
+use M4bTool\Executables\Tone;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
 use Psr\Log\LogLevel;
@@ -150,6 +151,9 @@ class AbstractCommand extends Command implements LoggerInterface
     protected $ffmpeg;
     /** @var Mp4v2Wrapper */
     protected $mp4v2;
+    /** @var Tone */
+    protected $tone;
+
     /** @var ChapterMarker */
     protected $chapterMarker;
     /** @var ChapterHandler */
@@ -178,7 +182,12 @@ class AbstractCommand extends Command implements LoggerInterface
 
         $fdkaac = new Fdkaac();
         $fdkaac->setLogger($this);
-        $this->metaHandler = new BinaryWrapper($this->ffmpeg, $this->mp4v2, $fdkaac);
+
+        $this->tone = new Tone();
+
+        $this->metaHandler = new BinaryWrapper($this->ffmpeg, $this->mp4v2, $fdkaac, $this->tone);
+
+
 
         // todo: merge these two classes?
         $this->chapterHandler = new ChapterHandler($this->metaHandler);

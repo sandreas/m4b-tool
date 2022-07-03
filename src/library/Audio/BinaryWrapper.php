@@ -14,6 +14,7 @@ use M4bTool\Executables\Ffmpeg;
 use M4bTool\Executables\FileConverterInterface;
 use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Executables\Mp4v2Wrapper;
+use M4bTool\Executables\Tone;
 use M4bTool\Tags\StringBuffer;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
@@ -35,12 +36,15 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
     protected $mp4v2;
     /** @var Fdkaac */
     protected $fdkaac;
+    /** @var Tone */
+    protected $tone;
 
-    public function __construct(Ffmpeg $ffmpeg, Mp4v2Wrapper $mp4v2, Fdkaac $fdkaac)
+    public function __construct(Ffmpeg $ffmpeg, Mp4v2Wrapper $mp4v2, Fdkaac $fdkaac, Tone $tone)
     {
         $this->ffmpeg = $ffmpeg;
         $this->mp4v2 = $mp4v2;
         $this->fdkaac = $fdkaac;
+        $this->tone = $tone;
     }
 
     /**
@@ -240,7 +244,11 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
     {
         if ($this->detectFormat($file) === static::FORMAT_MP4) {
             $this->adjustTagDescriptionForMp4($tag);
-            $this->mp4v2->writeTag($file, $tag, $flags);
+            if($this->tone->isInstalled()) {
+                $this->tone->writeTag($file, $tag, $flags);
+            } else  {
+                $this->mp4v2->writeTag($file, $tag, $flags);
+            }
             return;
         }
         $this->ffmpeg->writeTag($file, $tag, $flags);

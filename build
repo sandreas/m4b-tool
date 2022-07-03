@@ -21,6 +21,6 @@ if [ "$COMPOSER" = "" ]; then
     exit 1;
 fi
 
-$COMPOSER install --no-dev
+$COMPOSER install --no-dev --ignore-platform-reqs
 php -d phar.readonly=off tools/box.phar build && php -d phar.readonly=off -r "${PHP_CODE}" && chmod +x dist/*.phar && tar -C dist -czf dist/m4b-tool.tar.gz m4b-tool.phar && cd dist && zip m4b-tool.zip m4b-tool.phar && cd -
 $COMPOSER install

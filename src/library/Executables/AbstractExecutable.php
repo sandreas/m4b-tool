@@ -18,6 +18,12 @@ abstract class AbstractExecutable
     use LogTrait;
     const PIPE = "|";
 
+    // kept for backwards compatibility, when chapters.txt format was unspecified this was a custom m4b-tool extension
+    const COMMENT_TAG_TOTAL_LENGTH = "total-length";
+
+    // real comment tags, like specified in https://github.com/enzo1982/mp4v2/issues/3
+    const COMMENT_TAG_TOTAL_DURATION = "total-duration:";
+
     /** @var string */
     protected $pathToBinary;
 
@@ -155,6 +161,21 @@ abstract class AbstractExecutable
             return $outputFile;
         }
         return new SplFileInfo((string)str_replace("/", DIRECTORY_SEPARATOR, $outputFile));
+    }
+
+    public function buildChaptersTxt(array $chapters)
+    {
+        $chaptersAsLines = [];
+        $chapter = null;
+        foreach ($chapters as $chapter) {
+            $chaptersAsLines[] = $chapter->getStart()->format() . " " . $chapter->getName();
+        }
+
+        if ($chapter !== null && $chapter->getLength()->milliseconds() > 0) {
+            array_unshift($chaptersAsLines, sprintf("## %s: %s", static::COMMENT_TAG_TOTAL_DURATION, $chapter->getEnd()->format()));
+        }
+
+        return implode(PHP_EOL, $chaptersAsLines);
     }
 
 }

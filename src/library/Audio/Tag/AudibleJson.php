@@ -55,6 +55,7 @@ class AudibleJson extends AbstractJsonTagImprover
         $mergeTag->year = ReleaseDate::createFromValidString($product["release_date"] ?? null);
         $mergeTag->language = $product["language"] ?? null;
         $mergeTag->copyright = $product["publisher_name"] ?? null;
+        $mergeTag->publisher = $product["publisher_name"] ?? null;
 
 
         $htmlDescription = $product["publisher_summary"] ?? null;

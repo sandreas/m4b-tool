@@ -83,46 +83,45 @@ class Tag implements ArrayAccess, JsonSerializable
         "seriesPart"
     ];
 
-    public $encoder;
-    public $title;
-    public $sortTitle; // -sortname on mp4tags (means sort chapter title in itunes)
-    public $artist;
-    public $sortArtist; // -sortartist on mp4tags (means sort author in itunes)
-    public $genre;
-    public $writer;
-    public $sortWriter;
     public $album;
-    public $sortAlbum; // -sortalbum on mp4tags (means sort title in itunes)
-    public $disk;
-    public $disks;
-    public $grouping;
-    /** @var PurchaseDateTime */
-    public $purchaseDate;
     public $albumArtist;
-    public $sortAlbumArtist;
-    public $year;
-    public $track;
-    public $tracks;
-    public $cover;
-    public $description;
-    public $longDescription;
+    public $artist;
     public $comment;
     public $copyright;
+    public $cover;
+    public $description;
+    public $disk;
+    public $disks;
     public $encodedBy;
+    public $encoder;
+    public $genre;
+    public $grouping;
+    public $longDescription;
+
+    /** @var PurchaseDateTime */
+    public $purchaseDate;
+    public $series;
+    public $seriesPart;
+    public $sortAlbum; // -sortalbum on mp4tags (means sort title in itunes)
+    public $sortAlbumArtist;
+    public $sortArtist; // -sortartist on mp4tags (means sort author in itunes)
+    public $sortTitle; // -sortname on mp4tags (means sort chapter title in itunes)
+    public $sortWriter;
+    public $title;
+    public $track;
+    public $tracks;
     public $type = self::MEDIA_TYPE_AUDIO_BOOK;
+    public $writer;
+    public $year;
+    public $publisher; // TPUB
 
     // MP3 Specific
     public $performer; // TPE3
     public $language; // TLAN
-    public $publisher; // TPUB
     public $lyrics; // TSLT
 
     /** @var Chapter[] */
     public $chapters = [];
-
-    // pseudo tags that are used to auto generate sort properties, if not present
-    public $series;
-    public $seriesPart;
 
     public $extraProperties = [];
     public $removeProperties = [];
