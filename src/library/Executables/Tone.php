@@ -94,7 +94,7 @@ class Tone extends AbstractFfmpegBasedExecutable implements TagReaderInterface, 
         "tracks" => "meta-track-total",
         "type" => "meta-itunes-media-type",
         "writer" => "meta-composer",
-        "year" => "meta-publishing-date",
+        // "year" => "meta-recording-date", // NOT meta-publishing-date, due to bug mapping is disabled
     ];
 
     protected $exceptionDetails = [];
