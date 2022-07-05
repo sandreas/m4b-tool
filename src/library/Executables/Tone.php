@@ -166,7 +166,11 @@ class Tone extends AbstractFfmpegBasedExecutable implements TagReaderInterface, 
         $command = ["tag"];
         // tag fields (including cover)
         foreach (static::PROPERTY_PARAMETER_MAPPING as $tagPropertyName => $parameterName) {
-            $this->appendParameterToCommand($command, "--" . $parameterName, $tag->$tagPropertyName);
+            $value = $tag->$tagPropertyName;
+            if(substr($value, 0, 1) === '"') {
+                $value = "...".$value;
+            }
+            $this->appendParameterToCommand($command, "--" . $parameterName, $value);
         }
 
         $flags = $flags ?? new Flags();
