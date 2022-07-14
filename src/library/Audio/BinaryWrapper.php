@@ -246,11 +246,12 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
             $this->adjustTagDescriptionForMp4($tag);
             if($this->tone->isInstalled()) {
                 $this->tone->writeTag($file, $tag, $flags);
-                // write only recording date with mp4v2 because tone / atldotnet has a bug (https://github.com/Zeugma440/atldotnet/issues/155)
-                if($tag->year != null) {
-                    $yearTag = new Tag();
-                    $yearTag->year = $tag->year;
-                    $this->mp4v2->writeTag($file, $yearTag, $flags);
+                // write only description and recording date with mp4v2 because tone / atldotnet has a bug (https://github.com/Zeugma440/atldotnet/issues/155)
+                if($tag->year != null || $tag->description != null) {
+                    $workaroundTag = new Tag();
+                    $workaroundTag->year = $tag->year;
+                    $workaroundTag->description = $tag->description;
+                    $this->mp4v2->writeTag($file, $workaroundTag, $flags);
                 }
             } else  {
                 $this->mp4v2->writeTag($file, $tag, $flags);

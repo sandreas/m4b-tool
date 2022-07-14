@@ -4,6 +4,8 @@
 namespace M4bTool\Executables;
 
 
+use DateTime;
+use DateTimeInterface;
 use Exception;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagReaderInterface;
@@ -15,7 +17,7 @@ use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
 
-class Tone extends AbstractFfmpegBasedExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface
+class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface
 {
     /*
 --meta-artist
@@ -65,36 +67,36 @@ class Tone extends AbstractFfmpegBasedExecutable implements TagReaderInterface, 
         --meta-remove-additional-field
      */
     const PROPERTY_PARAMETER_MAPPING = [
-        "album" => "meta-album",
-        "albumArtist" => "meta-album-artist",
-        "artist" => "meta-artist",
-        "comment" => "meta-comment",
-        "copyright" => "meta-copyright",
-        "cover" => "meta-cover-file",
-        "description" => "meta-description",
-        "disk" => "meta-disc-number",
-        "disks" => "meta-disc-total",
-        "encodedBy" => "meta-encoded-by",
-        "encoder" => "meta-encoding-tool",
-        "genre" => "meta-genre",
-        "grouping" => "meta-group",
-        "longDescription" => "meta-long-description",
+        "album" => "album",
+        "albumArtist" => "albumArtist",
+        "artist" => "artist",
+        "comment" => "comment",
+        "copyright" => "copyright",
+        // "cover" => "coverFile",
+        "description" => "description",
+        "disk" => "discNumber",
+        "disks" => "discTotal",
+        "encodedBy" => "encodedBy",
+        "encoder" => "encodingTool",
+        "genre" => "genre",
+        "grouping" => "group",
+        "longDescription" => "longDescription",
         // "lyrics" => "L", // "lyrics",
-        "publisher" => "meta-publisher",
-        "purchaseDate" => "meta-purchase-date",
-        "series" => "meta-movement-name",
-        "seriesPart" => "meta-part",
-        "sortAlbum" => "meta-sort-album",
-        "sortAlbumArtist" => "meta-sort-album-artist",
-        "sortArtist" => "meta-sort-artist",
-        "sortTitle" => "meta-sort-title",
-        "sortWriter" => "meta-sort-composer",
-        "title" => "meta-title",
-        "track" => "meta-track-number",
-        "tracks" => "meta-track-total",
-        "type" => "meta-itunes-media-type",
-        "writer" => "meta-composer",
-        // "year" => "meta-recording-date", // NOT meta-publishing-date, due to bug mapping is disabled
+        "publisher" => "publisher",
+        "purchaseDate" => "purchaseDate",
+        "series" => "movementName",
+        "seriesPart" => "part",
+        "sortAlbum" => "sortAlbum",
+        "sortAlbumArtist" => "sortAlbumArtist",
+        "sortArtist" => "sortArtist",
+        "sortTitle" => "sortTitle",
+        "sortWriter" => "sortComposer",
+        "title" => "title",
+        "track" => "trackNumber",
+        "tracks" => "trackTotal",
+        "type" => "itunesMediaType",
+        "writer" => "composer",
+        // "year" => "metaRecordingDate", // NOT meta-publishing-date, due to bug mapping is disabled
     ];
 
     protected $exceptionDetails = [];
@@ -163,44 +165,74 @@ class Tone extends AbstractFfmpegBasedExecutable implements TagReaderInterface, 
      */
     public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
+
         $command = ["tag"];
+
+        $jsonMeta = [];
         // tag fields (including cover)
         foreach (static::PROPERTY_PARAMETER_MAPPING as $tagPropertyName => $parameterName) {
             $value = $tag->$tagPropertyName;
-            if(substr($value, 0, 1) === '"') {
-                $value = "...".$value;
+            if($value === null) {
+                continue;
             }
-            $this->appendParameterToCommand($command, "--" . $parameterName, $value);
-        }
 
-        $flags = $flags ?? new Flags();
-        $chaptersFile = AbstractMp4v2Executable::buildConventionalFileName($file, AbstractMp4v2Executable::SUFFIX_CHAPTERS, "txt");
-        $chaptersFileAlreadyExisted = $chaptersFile->isFile();
+            if($value instanceof DateTime) {
+                $value = $value->format(DateTimeInterface::ATOM);
+            }
+            $jsonMeta[$parameterName] = $value;
+        }
 
         // chapters
         if (count($tag->chapters) > 0) {
-            if (!$chaptersFileAlreadyExisted || $flags->contains(static::FLAG_FORCE)) {
-                file_put_contents($chaptersFile, $this->buildChaptersTxt($tag->chapters));
-            } elseif (!$flags->contains(static::FLAG_USE_EXISTING_FILES)) {
-                throw new Exception(sprintf("Chapters file %s already exists", $chaptersFile));
+            $chapters = [];
+            foreach ($tag->chapters as $chapter) {
+                $chapters[] = [
+                    "start" => $chapter->getStart()->milliseconds(),
+                    "length" => $chapter->getLength()->milliseconds(),
+                    "title" => $chapter->getName(),
+                ];
             }
-            $this->appendParameterToCommand($command, "--meta-chapters-file", $chaptersFile);
+            $jsonMeta["chapters"] = $chapters;
         }
 
-        if(isset($tag->extraProperties["audibleAsin"])){
-            $command[] = "--meta-additional-field=".sprintf("----:com.pilabor.tone:AUDIBLE_ASIN=%s", $tag->extraProperties["audibleAsin"]);
+        if (isset($tag->extraProperties["audibleAsin"])) {
+            $jsonMeta["additionalFields"] = ["----:com.pilabor.tone:AUDIBLE_ASIN" => $tag->extraProperties["audibleAsin"]];
         }
 
-        if (count($command) === 0) {
+        if ($tag->hasCoverFile()) {
+            $this->appendParameterToCommand($command, "--meta-cover-file", $tag->cover);
+        }
+
+        $jsonContainer = [
+            "meta" => $jsonMeta
+        ];
+        //$jsonContainerFile = "/home/mediacenter/projects/m4b-tool/data/audiobooks/toconvert/Fantasy/A. L. Knorr/Der Ursprung der Elemente/9 - Tochter der Welt/tone.json";
+        $jsonContainerFile = tempnam(sys_get_temp_dir(), "tone");
+        if (!$jsonContainerFile) {
+            throw new Exception(sprintf("Could not create tempnam tone.json file: %s", $jsonContainerFile));
+        }
+
+        if (count($jsonMeta) > 0) {
+            $this->appendParameterToCommand($command, "--meta-tone-json-file", $jsonContainerFile);
+        }
+
+        if (count($command) < 2) {
             return;
+        }
+        $jsonContent = json_encode($jsonContainer, JSON_PRETTY_PRINT);
+        $this->debug("=== tone.json ===");
+        $this->debug($jsonContent);
+
+        if (!file_put_contents($jsonContainerFile, $jsonContent)) {
+            throw new Exception(sprintf("Could not write tone.json file: %s", $jsonContainerFile));
         }
 
         $command[] = $file;
+
         $process = $this->runProcess($command);
 
-        $keepChapterFile = $flags->contains(static::FLAG_NO_CLEANUP);
-        if (!$chaptersFileAlreadyExisted && !$keepChapterFile && $chaptersFile->isFile()) {
-            unlink($chaptersFile);
+        if (file_exists($jsonContainerFile)) {
+            unlink($jsonContainerFile);
         }
         $this->handleExitCode($process, $command, $file);
     }
@@ -214,6 +246,7 @@ class Tone extends AbstractFfmpegBasedExecutable implements TagReaderInterface, 
             throw new Exception(sprintf("Could not tag file:\nfile: %s\nexit-code:%d\n%s", $file, $process->getExitCode(), implode(PHP_EOL, $this->exceptionDetails)));
         }
     }
+
     /**
      * @throws Exception
      */

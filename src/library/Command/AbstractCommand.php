@@ -184,6 +184,7 @@ class AbstractCommand extends Command implements LoggerInterface
         $fdkaac->setLogger($this);
 
         $this->tone = new Tone();
+        $this->tone->setLogger($this);
 
         $this->metaHandler = new BinaryWrapper($this->ffmpeg, $this->mp4v2, $fdkaac, $this->tone);
 
