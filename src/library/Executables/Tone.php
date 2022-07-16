@@ -96,7 +96,7 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
         "tracks" => "trackTotal",
         "type" => "itunesMediaType",
         "writer" => "composer",
-        "year" => "metaRecordingDate", // NOT meta-publishing-date, due to bug mapping is disabled
+        "year" => "recordingDate", // NOT meta-publishing-date, due to bug mapping is disabled
     ];
 
     protected $exceptionDetails = [];
