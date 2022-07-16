@@ -96,7 +96,7 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
         "tracks" => "trackTotal",
         "type" => "itunesMediaType",
         "writer" => "composer",
-        // "year" => "metaRecordingDate", // NOT meta-publishing-date, due to bug mapping is disabled
+        "year" => "metaRecordingDate", // NOT meta-publishing-date, due to bug mapping is disabled
     ];
 
     protected $exceptionDetails = [];
@@ -160,12 +160,10 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
      * @param SplFileInfo $file
      * @param Tag $tag
      * @param ?Flags $flags
-     * @return mixed
      * @throws Exception
      */
     public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
-
         $command = ["tag"];
 
         $jsonMeta = [];
@@ -197,6 +195,13 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
 
         if (isset($tag->extraProperties["audibleAsin"])) {
             $jsonMeta["additionalFields"] = ["----:com.pilabor.tone:AUDIBLE_ASIN" => $tag->extraProperties["audibleAsin"]];
+        }
+
+        if(trim($tag->lyrics) != "") {
+            $jsonMeta["lyrics"] = [
+                "language" => "XXX",
+                "unsynchronized" => $tag->lyrics
+            ];
         }
 
         if ($tag->hasCoverFile()) {
