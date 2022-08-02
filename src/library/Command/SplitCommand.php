@@ -224,7 +224,7 @@ class SplitCommand extends AbstractConversionCommand
         }
         $chaptersFile = $this->input->getOption(static::OPTION_CHAPTERS_FILENAME);
         if ($chaptersFile === "") {
-            if ($this->input->hasOption(static::OPTION_BY_SILENCE)) {
+            if ($this->input->getOption(static::OPTION_BY_SILENCE)) {
                 $bySilence = (int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH);
                 if ($bySilence < 1) {
                     $this->error("split by silence value cannot be less than 1");
