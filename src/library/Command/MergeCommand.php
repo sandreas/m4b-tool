@@ -905,6 +905,9 @@ class MergeCommand extends AbstractConversionCommand
         if (!$this->input->getOption(static::OPTION_IGNORE_SOURCE_TAGS)) {
             $sourceFilesTag = $this->loadTagFromFirstSourceFile();
             if ($sourceFilesTag instanceof Tag) {
+                // reset track and tracks, since this is not valid for a merge of ONE file
+                $tag->track = null;
+                $tag->tracks = null;
                 $tag->mergeMissing($sourceFilesTag);
             }
         }

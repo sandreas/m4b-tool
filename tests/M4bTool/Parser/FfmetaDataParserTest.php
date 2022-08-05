@@ -76,6 +76,7 @@ with "multiple lines" \
 >> and special chars like €€€ and äöüß in it
 genre=Hörbuch
 encoder=Lavf58.25.100
+track=1
 [CHAPTER]
 TIMEBASE=1/1000
 START=0
@@ -208,7 +209,7 @@ genre=Hörbuch
 TLEN=22080
 publisher=Der Hörverlag
 title=Jingle und Ansage
-track=1
+track=1/5
 ASIN=3895847038
 artist-sort=Rowling, J.K. gelesen von Beck, Rufus
 date=2001
@@ -425,6 +426,7 @@ EOT;
         $this->assertEquals("this is a description \nwith \"multiple lines\" \n>> and special chars like €€€ and äöüß in it", $this->subject->getProperty("description"));
         $this->assertEquals("A comment", $this->subject->getProperty("comment"));
         $this->assertEquals("Lavf58.25.100", $this->subject->getProperty("encoder"));
+        $this->assertEquals("1", $this->subject->getProperty("track"));
 
         $this->assertCount(5, $this->subject->getChapters());
     }
@@ -444,12 +446,16 @@ EOT;
         $this->assertEquals("22080", $this->subject->getProperty("tlen"));
         $this->assertEquals("Der Hörverlag", $this->subject->getProperty("publisher"));
         $this->assertEquals("Jingle und Ansage", $this->subject->getProperty("title"));
-        $this->assertEquals("1", $this->subject->getProperty("track"));
+        $this->assertEquals("1/5", $this->subject->getProperty("track"));
         $this->assertEquals("3895847038", $this->subject->getProperty("asin"));
         $this->assertEquals("Rowling, J.K. gelesen von Beck, Rufus", $this->subject->getProperty("artist-sort"));
         $this->assertEquals("2001", $this->subject->getProperty("date"));
         $this->assertEquals("Lavf58.20.100", $this->subject->getProperty("encoder"));
         $this->assertCount(0, $this->subject->getChapters());
+
+        $tag = $this->subject->toTag();
+        $this->assertEquals(1, $tag->track);
+        $this->assertEquals(5, $tag->tracks);
     }
 
     /**

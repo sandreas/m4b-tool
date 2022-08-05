@@ -401,7 +401,8 @@ class FfmetaDataParser
         $tag->performer = $this->getProperty("performer");
         $tag->disk = $this->getProperty("disc");
         $tag->publisher = $this->getProperty("publisher");
-        $tag->track = $this->getProperty("track");
+
+        $this->parseTrackProperty($tag, $this->getProperty("track"));
         $tag->encoder = $this->getProperty("encoder");
         $tag->lyrics = $this->getProperty("lyrics");
         $tag->comment = $this->getProperty("comment");
@@ -433,5 +434,19 @@ class FfmetaDataParser
             return null;
         }
         return $this->metaDataProperties[$propertyName];
+    }
+
+    private function parseTrackProperty(Tag $tag, $track)
+    {
+        $parts = array_filter(explode("/", $track), function($value) {
+            return trim($value) !== "";
+        });
+
+        if(count($parts) > 0){
+            $tag->track = (int)$parts[0];
+        }
+        if(count($parts) > 1){
+            $tag->tracks = (int)$parts[1];
+        }
     }
 }
