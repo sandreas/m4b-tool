@@ -7,10 +7,13 @@ namespace M4bTool\Executables;
 use DateTime;
 use DateTimeInterface;
 use Exception;
+use M4bTool\Audio\ItunesMediaType;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\TagReaderInterface;
 use M4bTool\Audio\Tag\TagWriterInterface;
 use M4bTool\Common\Flags;
+use M4bTool\Common\PurchaseDateTime;
+use M4bTool\Common\ReleaseDate;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
@@ -66,6 +69,15 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
         --meta-equate
         --meta-remove-additional-field
      */
+    const CASTABLE_PROPERTY_NAMES = [
+        "disk" => "int",
+        "disks" => "int",
+        "purchaseDate" => DateTime::class,
+        "track" => "int",
+        "tracks" => "int",
+        "type" => ITunesMediaType::class,
+        "year" => DateTime::class
+    ];
     const PROPERTY_PARAMETER_MAPPING = [
         "album" => "album",
         "albumArtist" => "albumArtist",
@@ -174,9 +186,14 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
                 continue;
             }
 
+            if(isset(static::CASTABLE_PROPERTY_NAMES[$tagPropertyName] )){
+                $value = $this->castValue($value, static::CASTABLE_PROPERTY_NAMES[$tagPropertyName], $tagPropertyName);
+            }
+
             if($value instanceof DateTime) {
                 $value = $value->format(DateTimeInterface::ATOM);
             }
+
             $jsonMeta[$parameterName] = $value;
         }
 
@@ -260,6 +277,32 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
         if (!$this->toneInstalled) {
             throw new Exception('You need tone to be installed for using audio profiles');
         }
+    }
+
+    private function castValue($value, string $targetType, string $propertyName)
+    {
+        if($value === null || $value === "") {
+            return null;
+        }
+
+        if($targetType === "int"){
+            return (int)$value;
+        }
+        if($targetType === DateTime::class){
+            if($value instanceof DateTime){
+                return $value;
+            }
+            if($propertyName === "year"){
+                return ReleaseDate::createFromValidString($value);
+            }
+            return PurchaseDateTime::createFromValidString($value);
+        }
+
+        if($targetType === ItunesMediaType::class){
+            return ITunesMediaType::parseInt($value);
+        }
+
+        return $value;
     }
 
 }

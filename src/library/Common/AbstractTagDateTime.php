@@ -18,7 +18,6 @@ abstract class AbstractTagDateTime extends DateTime implements JsonSerializable
     /**
      * @param $string
      * @return static|null
-     * @throws Exception
      */
     public static function createFromValidString($string)
     {
