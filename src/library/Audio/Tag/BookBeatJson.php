@@ -11,13 +11,22 @@ class BookBeatJson extends AbstractJsonTagImprover
 
     public function improve(Tag $tag): Tag
     {
-        $decoded = $this->decodeJson($this->fileContent, static::$defaultFileName);
+        $decoded = $this->decodeJson($this->fileContent);
         if ($decoded === null) {
             return $tag;
         }
         $this->notice(sprintf("%s loaded for tagging", static::$defaultFileName));
-        $product = $decoded["data"] ?? null;
+        $product = [];
+        if(isset($decoded["id"])){
+            $product = $decoded;
+        }
+        if(isset($decoded["data"])){
+            $product = $decoded["data"];
+        }
 
+        if(!is_array($product) || count($product) === 0){
+            return $tag;
+        }
 
         $mergeTag = new Tag();
 
