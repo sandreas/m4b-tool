@@ -4,6 +4,7 @@
 namespace M4bTool\Executables;
 
 
+use Exception;
 use M4bTool\Audio\Traits\LogTrait;
 use SplFileInfo;
 use Symfony\Component\Console\Helper\DebugFormatterHelper;
@@ -11,6 +12,7 @@ use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Process as SymfonyProcess;
 
 abstract class AbstractExecutable
@@ -23,6 +25,7 @@ abstract class AbstractExecutable
 
     // real comment tags, like specified in https://github.com/enzo1982/mp4v2/issues/3
     const COMMENT_TAG_TOTAL_DURATION = "total-duration:";
+    public static ?float $globalTimeout;
 
     /** @var string */
     protected $pathToBinary;
@@ -76,7 +79,16 @@ abstract class AbstractExecutable
     {
         array_unshift($arguments, $this->pathToBinary);
         $this->debugCommand($arguments);
-        return new Process($arguments, null, null, null, $timeout);
+        if(static::$globalTimeout !== null) {
+            $timeout = static::$globalTimeout;
+           $this->debug(sprintf("global timeout override: %s", $timeout));
+
+        }
+        $process = new Process($arguments, null, null, null, $timeout);
+        if($timeout !== null) {
+            $process->setIdleTimeout($timeout);
+        }
+        return $process;
     }
 
     /**
@@ -176,6 +188,21 @@ abstract class AbstractExecutable
         }
 
         return implode(PHP_EOL, $chaptersAsLines);
+    }
+
+    /**
+     * @throws Exception
+     */
+    protected function handleExitCode(Process $process, array $command, SplFileInfo $file, $exceptionDetails = [])
+    {
+        // protected $exceptionDetails = [];
+
+        if ($process->getExitCode() !== 0) {
+            $exceptionDetails[] = "command: " . $this->buildDebugCommand($command);
+            $exceptionDetails[] = "output:";
+            $exceptionDetails[] = $process->getOutput() . $process->getErrorOutput();
+            throw new Exception(sprintf("Could not tag file:\nfile: %s\nexit-code:%d\n%s", $file, $process->getExitCode(), implode(PHP_EOL, $exceptionDetails)));
+        }
     }
 
 }

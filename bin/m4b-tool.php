@@ -6,7 +6,7 @@ register_shutdown_function(function () {
     if (!is_null($e = error_get_last())) {
         if($e["type"] != E_DEPRECATED){
             echo "an error occured, that has not been caught:\n";
-            print_r($e);     
+            print_r($e);
         }
     }
 });
@@ -22,6 +22,8 @@ if (!ini_get('date.timezone')) {
 require __DIR__ . '/../vendor/autoload.php';
 
 use M4bTool\Command;
+use M4bTool\Executables\AbstractExecutable;
+use M4bTool\Executables\Tone;
 use Symfony\Component\Console\Application;
 
 try {
@@ -42,6 +44,9 @@ try {
             $commands[] = new $pluginClassName();
         }
     }
+
+    AbstractExecutable::$globalTimeout = getenv("M4B_TOOL_PROCESS_TIMEOUT") ? (float)getenv("M4B_TOOL_PROCESS_TIMEOUT") : null;
+    Tone::$disabled = getenv("M4B_TOOL_DISABLE_TONE") !== false;
 
     $application->addCommands($commands);
 

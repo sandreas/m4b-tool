@@ -36,12 +36,20 @@ class ChaptersFromOverdrive extends AbstractTagImprover
         if (count($tag->chapters) > 0) {
             return $tag;
         }
+
         $mediaMarkerChapters = [];
         $offsetMs = 0;
+        $noOverdriveInfoCounter = 0;
         foreach ($this->originalFiles as $file) {
             try {
                 $fileTag = $this->binaryWrapper->readTag($file);
                 if (!isset($fileTag->extraProperties[Tag::EXTRA_PROPERTY_OVERDRIVE_MEDIA_MARKERS])) {
+                    $noOverdriveInfoCounter++;
+                    // if we do not find overdrive information in the first 5 of the audio files, skip the rest
+                    // this is a "guess what's right" hack but should improve performance a lot when having many files!
+                    if($noOverdriveInfoCounter >= 5) {
+                        break;
+                    }
                     continue;
                 }
                 $mediaMarkerChapters = array_merge($mediaMarkerChapters, $this->parseMediaMarkers($fileTag, $offsetMs));

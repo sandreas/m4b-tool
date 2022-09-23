@@ -103,17 +103,7 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
 
         $command[] = $file;
         $process = $this->runProcess($command);
-        $this->handleExitCode($process, $command, $file);
-    }
-
-    private function handleExitCode(\Symfony\Component\Process\Process $process, array $command, SplFileInfo $file)
-    {
-        if ($process->getExitCode() !== 0) {
-            $this->exceptionDetails[] = "command: " . $this->buildDebugCommand($command);
-            $this->exceptionDetails[] = "output:";
-            $this->exceptionDetails[] = $process->getOutput() . $process->getErrorOutput();
-            throw new Exception(sprintf("Could not tag file:\nfile: %s\nexit-code:%d\n%s", $file, $process->getExitCode(), implode(PHP_EOL, $this->exceptionDetails)));
-        }
+        $this->handleExitCode($process, $command, $file, $this->exceptionDetails);
     }
 
     /**
@@ -179,7 +169,7 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
         $command = ["-r", implode($separator, $removeParameters), $file];
 
         $process = $this->runProcess($command);
-        $this->handleExitCode($process, $command, $file);
+        $this->handleExitCode($process, $command, $file, $this->exceptionDetails);
 
     }
 

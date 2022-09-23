@@ -54,6 +54,13 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
      */
     public function estimateDuration(SplFileInfo $file): ?TimeUnit
     {
+        if ($this->tone->isActive()) {
+            $duration = $this->tone->estimateDuration($file);
+            if ($duration !== null) {
+                return $duration;
+            }
+        }
+
         if ($this->detectFormat($file) === static::FORMAT_MP4 && $estimatedDuration = $this->mp4v2->estimateDuration($file)) {
             return $estimatedDuration;
         }
@@ -107,6 +114,13 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
      */
     public function inspectExactDuration(SplFileInfo $file): ?TimeUnit
     {
+        if ($this->tone->isActive()) {
+            $duration = $this->tone->inspectExactDuration($file);
+            if ($duration !== null) {
+                return $duration;
+            }
+        }
+
         if ($this->detectFormat($file) === static::FORMAT_MP4) {
             return $this->mp4v2->inspectExactDuration($file);
         }
@@ -242,13 +256,18 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
      */
     public function writeTag(SplFileInfo $file, Tag $tag, Flags $flags = null)
     {
-        if ($this->detectFormat($file) === static::FORMAT_MP4) {
+        $isMp4 = $this->detectFormat($file) === static::FORMAT_MP4;
+        if ($isMp4) {
             $this->adjustTagDescriptionForMp4($tag);
-            if($this->tone->isInstalled()) {
-                $this->tone->writeTag($file, $tag, $flags);
-            } else  {
-                $this->mp4v2->writeTag($file, $tag, $flags);
-            }
+        }
+
+        if ($this->tone->isActive()) {
+            $this->tone->writeTag($file, $tag, $flags);
+            return;
+        }
+
+        if ($isMp4) {
+            $this->mp4v2->writeTag($file, $tag, $flags);
             return;
         }
         $this->ffmpeg->writeTag($file, $tag, $flags);

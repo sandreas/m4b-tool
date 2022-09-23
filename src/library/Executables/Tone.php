@@ -110,8 +110,12 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
         "writer" => "composer",
         "year" => "recordingDate", // NOT meta-publishing-date, due to bug mapping is disabled
     ];
+    const TONE_PROCESS_TIMEOUT_SECONDS = 180; // tone may take pretty long for tagging (see https://github.com/sandreas/m4b-tool/issues/196)
+    /**
+     * @var array|bool|string
+     */
+    public static $disabled;
 
-    protected $exceptionDetails = [];
 
 
     /**
@@ -130,12 +134,21 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
     {
         parent::__construct($pathToBinary, $processHelper, $output);
         $process = $this->runProcess(["-v"]);
-        $this->toneInstalled = (version_compare(trim($process->getOutput()), '0.0.5') >= 0);
+        $this->toneInstalled = (version_compare(trim($process->getOutput()), '0.0.9') >= 0);
     }
 
     public function isInstalled()
     {
         return $this->toneInstalled;
+    }
+
+    public function isDisabled()
+    {
+        return static::$disabled;
+    }
+
+    public function isActive() {
+        return $this->isInstalled() && !$this->isDisabled();
     }
 
     /**
@@ -145,7 +158,7 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
      */
     public function estimateDuration(SplFileInfo $file): ?TimeUnit
     {
-        throw new Exception("not implemented");
+        return $this->inspectExactDuration($file);
     }
 
     /**
@@ -155,7 +168,19 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
      */
     public function inspectExactDuration(SplFileInfo $file): ?TimeUnit
     {
-        throw new Exception("not implemented");
+        try {
+            $millisecondsAsString = trim($this->getAllProcessOutput($this->runProcessWithTimeout(["dump", $file, "--format", "json", "--query", "\$.audio.duration"], null, static::TONE_PROCESS_TIMEOUT_SECONDS)));
+            if($millisecondsAsString === "") {
+                return null;
+            }
+            $milliseconds = (int)$millisecondsAsString;
+            if($milliseconds <= 0) {
+                return null;
+            }
+            return new TimeUnit($milliseconds);
+        } catch(\Throwable $t) {
+            return null;
+        }
     }
 
     /**
@@ -251,7 +276,10 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
 
         $command[] = $file;
 
-        $process = $this->runProcess($command);
+        if($flags->contains(self::FLAG_PREPEND_SERIES_TO_LONGDESC)) {
+            $command[] = "--meta-prepend-movement-to-description";
+        }
+        $process = $this->runProcessWithTimeout($command, null, static::TONE_PROCESS_TIMEOUT_SECONDS);
 
         if (file_exists($jsonContainerFile)) {
             unlink($jsonContainerFile);
@@ -259,15 +287,7 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
         $this->handleExitCode($process, $command, $file);
     }
 
-    private function handleExitCode(Process $process, array $command, SplFileInfo $file)
-    {
-        if ($process->getExitCode() !== 0) {
-            $this->exceptionDetails[] = "command: " . $this->buildDebugCommand($command);
-            $this->exceptionDetails[] = "output:";
-            $this->exceptionDetails[] = $process->getOutput() . $process->getErrorOutput();
-            throw new Exception(sprintf("Could not tag file:\nfile: %s\nexit-code:%d\n%s", $file, $process->getExitCode(), implode(PHP_EOL, $this->exceptionDetails)));
-        }
-    }
+
 
     /**
      * @throws Exception

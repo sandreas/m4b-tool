@@ -16,6 +16,7 @@ use M4bTool\Audio\Tag\Ffmetadata;
 use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Audio\Tag\OpenPackagingFormat;
 use M4bTool\Audio\Tag\TagImproverComposite;
+use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Chapter\ChapterGroup\ChapterLengthCalculator;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Common\ConditionalFlags;
@@ -1017,5 +1018,11 @@ class MergeCommand extends AbstractConversionCommand
         return true;
     }
 
+    protected function buildTagFlags()
+    {
+        $flags = parent::buildTagFlags();
+        $flags->insertIf(TagInterface::FLAG_PREPEND_SERIES_TO_LONGDESC, $this->input->getOption(static::OPTION_PREPEND_SERIES_TO_LONGDESC));
+        return $flags;
+    }
 
 }
