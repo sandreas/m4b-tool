@@ -277,7 +277,7 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
         $command[] = $file;
 
         if($flags->contains(self::FLAG_PREPEND_SERIES_TO_LONGDESC)) {
-            $command[] = "--meta-prepend-movement-to-description";
+            $command[] = "--prepend-movement-to-description";
         }
         $process = $this->runProcessWithTimeout($command, null, static::TONE_PROCESS_TIMEOUT_SECONDS);
 
