@@ -163,6 +163,10 @@ To use docker with `m4b-tool`, you first have to
 - or `build` the `Dockerfile` in the main directory
 
 
+#### Official image
+
+The *official* docker images are available on [DockerHub](https://hub.docker.com/repository/docker/sandreas/m4b-tool/tags?page=1&ordering=name). They are somewhat experimental, but have proven to work well. The `latest` tag is considered as *way to go* with the bleeding edge features and fixes. Every now and then a dated tag is published (e.g. `sandreas/m4b-tool:2022-09-25`), that is considered as *pretty* stable, to ensure a broken `latest` image will not break your whole setup.
+
 ```
 # pull the image
 docker pull sandreas/m4b-tool:latest
