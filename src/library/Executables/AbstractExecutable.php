@@ -192,7 +192,7 @@ abstract class AbstractExecutable
     /**
      * @throws Exception
      */
-    protected function handleExitCode(Process $process, array $command, SplFileInfo $file, $exceptionDetails = [])
+    protected function handleExitCode(SymfonyProcess $process, array $command, SplFileInfo $file, $exceptionDetails = [])
     {
         // protected $exceptionDetails = [];
 
