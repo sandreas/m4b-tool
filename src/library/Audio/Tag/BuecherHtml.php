@@ -41,6 +41,7 @@ class BuecherHtml extends AbstractTagImprover
     {
         $mergeTag = new Tag();
         $this->parseTitle($mergeTag);
+        $this->parseSubtitle($mergeTag);
         $this->parseAuthor($mergeTag);
         $this->parsePersonRoles($mergeTag);
         $this->parseDescription($mergeTag);
@@ -189,12 +190,29 @@ class BuecherHtml extends AbstractTagImprover
 
     private function parseDescription(Tag $tag)
     {
-        $tag->description = trim($this->queryFirstElement("//p[contains(@class,'description')]", "hallo"));
+        $tag->description = trim($this->queryFirstElement("//p[contains(@class,'description')]", ""));
         $more = "…mehr";
         if ($this->endsWith($tag->description, $more)) {
             $tag->description = substr($tag->description, 0, -strlen($more));
         }
     }
+
+    private function parseSubtitle(Tag $tag)
+    {
+        $subtitle = preg_replace("/\s+/", " ", trim($this->queryFirstElement("//p[contains(@class,'subtitle')]", "")));
+
+        preg_match("/(.*) - Teil ([0-9.]+).*/isU", $subtitle, $matches);
+
+        if(is_array($matches) && count($matches) > 0 ){
+            if(isset($matches[1])) {
+                $tag->series = trim($matches[1]);
+            }
+            if(isset($matches[2])) {
+                $tag->seriesPart = trim($matches[2]);
+            }
+        }
+    }
+
 
     private function parseCover(Tag $tag)
     {

@@ -146,7 +146,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         }
 
         if ($process->getExitCode() > 0) {
-            throw new Exception(sprintf("Could not write tag for file %s: %s (%s)", $file, $process->getErrorOutput(), $process->getExitCode()));
+            throw new Exception(sprintf("Could not write tag for file %s: %s (%s)", $file, ltrim($process->getOutput().PHP_EOL.$process->getErrorOutput()), $process->getExitCode()));
         }
 
         if (!$outputFile->isFile()) {
