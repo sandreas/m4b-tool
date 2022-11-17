@@ -141,6 +141,8 @@ class MergeCommand extends AbstractConversionCommand
         $this->addOption(static::OPTION_PREPEND_SERIES_TO_LONGDESC, null, InputOption::VALUE_NONE, "Prepend series and part to description, if available (e.g. Thrawn 1: Thrawn and the Philosopher's Stone is a...) - this option is mainly meant for iPods not showing the series or part in the listing");
 
         $this->addOption(static::OPTION_EQUATE, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, sprintf("Forces the same value for specific tag fields (e.g. --%s=artist,albumartist,sortArtist takes value of artist and forces albumartist and sortartist to contain the same value)", static::OPTION_EQUATE), []);
+        $this->addOption(static::OPTION_FILENAME_TEMPLATE, "p", InputOption::VALUE_OPTIONAL, "filename twig-template for output file naming");
+
     }
 
     /**
@@ -284,6 +286,7 @@ class MergeCommand extends AbstractConversionCommand
             $trimmedBatchPattern = $formatParser->trimSeparatorPrefix($batchPattern);
 
             $fileNamePart = rtrim($formatParser->format($trimmedBatchPattern), "\\/");
+            $filenameTemplate = $this->input->getOption(static::OPTION_FILENAME_TEMPLATE);
 
             // add a folder for name, if it is not a series
             $title = $formatParser->format("%n");
@@ -529,14 +532,23 @@ class MergeCommand extends AbstractConversionCommand
 
         $outputTempFile = $this->mergeFiles();
 
+        $outputTag = $this->tagMergedFile($outputTempFile);
+        $originalOutputFile = $this->outputFile;
+        if($this->optFilenameTemplate !== null) {
+            $parameters = (array)$outputTag;
+            $parameters["outputPath"] = rtrim($this->outputFile->getPath(), DIRECTORY_SEPARATOR."/").DIRECTORY_SEPARATOR;
+            $parameters["outputFile"] = (string)$this->outputFile;
+            $parameters["outputExtension"] = $this->outputFile->getExtension();
 
-        $this->tagMergedFile($outputTempFile);
-
+            // original outputFile has to be overwritten with Template generated one
+            $this->outputFile = new SplFileInfo($this->buildFileName($this->optFilenameTemplate, $this->optAudioExtension, $parameters));
+        }
         $this->moveFinishedOutputFile($outputTempFile, $this->outputFile);
 
         $this->storeOutputFileToResumeFile($this->outputFile);
 
-        $this->deleteTemporaryFiles();
+
+        $this->deleteTemporaryFiles($originalOutputFile);
 
         $this->notice(sprintf("successfully merged %d files to %s", count($this->filesToMerge), $this->outputFile));
         if ($this->optDebug) {
@@ -711,15 +723,16 @@ class MergeCommand extends AbstractConversionCommand
      * @return string
      * @throws Exception
      */
-    private function createOutputTempDir()
+    private function createOutputTempDir($outputFile=null)
     {
+        $outputFile ??= $this->outputFile;
         if ($this->optTmpDir) {
             $dir = $this->normalizeDirectory($this->optTmpDir);
         } else {
-            $basename = $this->outputFile->getBasename("." . $this->outputFile->getExtension());
+            $basename = $outputFile->getBasename("." . $outputFile->getExtension());
             $basename = $basename === "" ? "m4b-tool" : $basename;
 
-            $dir = $this->outputFile->getPath() ? $this->outputFile->getPath() . DIRECTORY_SEPARATOR : "";
+            $dir = $outputFile->getPath() ? $outputFile->getPath() . DIRECTORY_SEPARATOR : "";
             $dir .= $basename . "-tmpfiles" . DIRECTORY_SEPARATOR;
         }
 
@@ -769,8 +782,12 @@ class MergeCommand extends AbstractConversionCommand
      */
     private function mergeFiles()
     {
+        if($this->outputFile->getExtension() === "") {
+            $this->warning(sprintf("!!! output file %s has no specified file extension, this may lead to problems during conversion !!!", $this->outputFile));
+        }
         $outputTempFile = new SplFileInfo($this->createOutputTempDir() . "tmp_" . $this->outputFile->getBasename());
-        if ($this->optAudioExtension !== $outputTempFile->getExtension()) {
+
+        if (trim($this->optAudioExtension) !== $outputTempFile->getExtension()) {
             $outputTempFile = new SplFileInfo($this->createOutputTempDir() . "tmp_" . $this->outputFile->getBasename($this->outputFile->getExtension()) . $this->optAudioExtension);
         }
 
@@ -785,6 +802,7 @@ class MergeCommand extends AbstractConversionCommand
 
     /**
      * @param SplFileInfo $outputTmpFile
+     * @return Tag
      * @throws Exception
      */
     private function tagMergedFile(SplFileInfo $outputTmpFile)
@@ -916,6 +934,7 @@ class MergeCommand extends AbstractConversionCommand
 
         $this->tagFile($outputTmpFile, $tag, $flags);
         $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputTmpFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
+        return $tag;
     }
 
     /**
@@ -970,7 +989,7 @@ class MergeCommand extends AbstractConversionCommand
         file_put_contents($this->resumeFile, $outputFile . PHP_EOL, FILE_APPEND);
     }
 
-    private function deleteTemporaryFiles()
+    private function deleteTemporaryFiles($originalOutputFile)
     {
         if ($this->optDebug) {
             return;
@@ -980,7 +999,7 @@ class MergeCommand extends AbstractConversionCommand
 
         if ($this->input->getOption(static::OPTION_NO_CONVERSION)) {
             try {
-                @rmdir($this->createOutputTempDir());
+                @rmdir($this->createOutputTempDir($originalOutputFile));
             } catch (Exception $e) {
                 // ignore
             }

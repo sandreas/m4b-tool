@@ -35,7 +35,6 @@ class SplitCommand extends AbstractConversionCommand
     const OPTION_USE_EXISTING_CHAPTERS_FILE = "use-existing-chapters-file";
     const OPTION_CHAPTERS_FILENAME = "chapters-filename";
     const OPTION_OUTPUT_DIRECTORY = "output-dir";
-    const OPTION_FILENAME_TEMPLATE = "filename-template";
     const OPTION_FIXED_LENGTH = "fixed-length";
     const OPTION_REINDEX_CHAPTERS = "reindex-chapters";
     const OPTION_BY_SILENCE = "by-silence";
@@ -46,7 +45,6 @@ class SplitCommand extends AbstractConversionCommand
     protected $chaptersFile;
 
 
-    protected $optFilenameTemplate;
 
     /**
      * @var Chapter[]
@@ -334,7 +332,7 @@ class SplitCommand extends AbstractConversionCommand
             $tag->track = $index + 1;
             $tag->tracks = count($this->chapters);
             $tag->chapters = []; // after splitting the chapters must not be restored into the extracted file part
-            $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($tag));
+            $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($this->optFilenameTemplate, $this->optAudioExtension, (array)$tag));
 
             if (!is_dir($outputFile->getPath()) && !mkdir($outputFile->getPath(), 0777, true)) {
                 throw new Exception("Could not create output directory: " . $outputFile->getPath());
@@ -373,22 +371,6 @@ class SplitCommand extends AbstractConversionCommand
         }
     }
 
-    /**
-     * @param Tag $tag
-     * @return string|string[]|null
-     * @throws LoaderError
-     * @throws SyntaxError
-     */
-    protected function buildFileName(Tag $tag)
-    {
-        $env = new Twig_Environment(new Twig_Loader_Array([]));
-        $template = $env->createTemplate($this->optFilenameTemplate);
-        $fileNameTemplate = $template->render((array)$tag);
-        $replacedFileName = preg_replace("/[\r\n]/", "", $fileNameTemplate);
-        $replacedFileName = preg_replace('/[<>:\"|?*]/', "", $replacedFileName);
-        $replacedFileName = preg_replace('/[\x00-\x1F\x7F]/u', '', $replacedFileName);
-        return $replacedFileName . "." . $this->optAudioExtension;
-    }
 
     /**
      * @param Chapter $chapter

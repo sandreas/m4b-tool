@@ -32,6 +32,10 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Twig\Environment as Twig_Environment;
+use Twig\Error\LoaderError;
+use Twig\Error\SyntaxError;
+use Twig\Loader\ArrayLoader as Twig_Loader_Array;
 
 class AbstractCommand extends Command implements LoggerInterface
 {
@@ -70,6 +74,7 @@ class AbstractCommand extends Command implements LoggerInterface
     const OPTION_DEBUG = "debug";
     const OPTION_LOG_FILE = "logfile";
     const OPTION_FORCE = "force";
+    const OPTION_FILENAME_TEMPLATE = "filename-template";
     const OPTION_TMP_DIR = "tmp-dir";
     const OPTION_NO_CLEANUP = "no-cleanup";
     const OPTION_NO_CACHE = "no-cache";
@@ -137,6 +142,9 @@ class AbstractCommand extends Command implements LoggerInterface
      * @var bool
      */
     protected $optDebug = false;
+
+    /** @var string */
+    protected $optFilenameTemplate;
 
     /**
      * @var SplFileInfo
@@ -365,6 +373,7 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->optForce = $this->input->getOption(static::OPTION_FORCE);
         $this->optNoCache = $this->input->getOption(static::OPTION_NO_CACHE);
         $this->optTmpDir = $this->input->getOption(static::OPTION_TMP_DIR) ?? $this->getEnvironmentVariable(static::ENV_TMP_DIR);
+        $this->optFilenameTemplate = $this->input->getOption(static::OPTION_FILENAME_TEMPLATE);
     }
 
     protected function getEnvironmentVariable($name)
@@ -463,5 +472,25 @@ class AbstractCommand extends Command implements LoggerInterface
         }
 
         return $output;
+    }
+
+
+    /**
+     * @param string $template
+     * @param string $extension
+     * @param array $templateParameters
+     * @return string
+     * @throws LoaderError
+     * @throws SyntaxError
+     */
+    protected function buildFileName(string $template, string $extension, array $templateParameters=[])
+    {
+        $env = new Twig_Environment(new Twig_Loader_Array([]));
+        $template = $env->createTemplate($template);
+        $fileNameTemplate = $template->render($templateParameters);
+        $replacedFileName = preg_replace("/[\r\n]/", "", $fileNameTemplate);
+        $replacedFileName = preg_replace('/[<>:\"|?*]/', "", $replacedFileName);
+        $replacedFileName = preg_replace('/[\x00-\x1F\x7F]/u', '', $replacedFileName);
+        return $replacedFileName . "." . $extension;
     }
 }
