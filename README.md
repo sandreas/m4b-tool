@@ -888,7 +888,7 @@ build
 ```
 
 
-## ![#f03c15](https://placehold.it/15/f03c15/000000?text=+) Request for help - especially german users
+## ![#f03c15](https://via.placeholder.com/15/f03c15/000000?text=+) Request for help - especially german users
 Right now, I'm experimenting with speech recognition and *speech to text* using [this project](https://github.com/gooofy/zamia-speech)
 
 This is for a feature to automatically add chapter names by speech recognition. I'm not sure this will be ever working as expected, but right now I'm pretty confident, it is possible to do the following, if there are enough speech samples in a specific language:
