@@ -5,7 +5,7 @@
 
 If you are using any of my projects and find them helpful, please consider [donating to support me](https://github.com/sponsors/sandreas). I plan to use the money to support other open source projects or charitable purposes. Thank you!
 
-[![sponsor me](./assets/help.svg | width=300)](https://github.com/sponsors/sandreas)
+[![sponsor me](./assets/help.svg)](https://github.com/sponsors/sandreas)
 
 
 ## Announcement
