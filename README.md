@@ -3,9 +3,11 @@
 
 ## Support me via GitHub sponsors
 
-If you are using any of my projects and find them helpful, please consider donating to support me. I plan to use the money to support other open source projects or charitable purposes. Thank you!
+If you are using any of my projects and find them helpful, please consider [donating to support me](https://github.com/sponsors/sandreas). I plan to use the money to support other open source projects or charitable purposes. Thank you!
 
-<iframe src="https://github.com/sponsors/sandreas/card" title="Sponsor sandreas" height="225" width="600" style="border: 0;"></iframe>
+<p align="center">
+<a href="https://github.com/sponsors/sandreas"><img src="./assets/help.svg" width="300" alt="sponsor me and donate" style="margin:auto;"></a>
+</p>
 
 ## Announcement
 
