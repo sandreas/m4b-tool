@@ -623,6 +623,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
                 $command[] = "-map";
                 $command[] = "a";
             }
+            $command[] = "-map_chapters";
+            $command[] = "-1";
             $command[] = "-acodec";
             $command[] = "copy";
 
