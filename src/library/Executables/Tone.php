@@ -227,8 +227,8 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
             $chapters = [];
             foreach ($tag->chapters as $chapter) {
                 $chapters[] = [
-                    "start" => $chapter->getStart()->milliseconds(),
-                    "length" => $chapter->getLength()->milliseconds(),
+                    "start" => (int)$chapter->getStart()->milliseconds(),
+                    "length" => (int)$chapter->getLength()->milliseconds(),
                     "title" => $chapter->getName(),
                 ];
             }
@@ -276,7 +276,7 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
 
         $command[] = $file;
 
-        if($flags->contains(self::FLAG_PREPEND_SERIES_TO_LONGDESC)) {
+        if($flags != null && $flags->contains(self::FLAG_PREPEND_SERIES_TO_LONGDESC)) {
             $command[] = "--prepend-movement-to-description";
         }
         $process = $this->runProcessWithTimeout($command, null, static::TONE_PROCESS_TIMEOUT_SECONDS);
