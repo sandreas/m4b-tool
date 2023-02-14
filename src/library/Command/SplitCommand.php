@@ -70,7 +70,6 @@ class SplitCommand extends AbstractConversionCommand
         $this->setDescription('Splits an m4b file into parts');
         $this->setHelp('Split an m4b into multiple m4b or mp3 files by chapter');
         $this->addOption(static::OPTION_OUTPUT_DIRECTORY, "o", InputOption::VALUE_OPTIONAL, "output directory", "");
-        $this->addOption(static::OPTION_FILENAME_TEMPLATE, "p", InputOption::VALUE_OPTIONAL, "filename twig-template for output file naming", "{{\"%03d\"|format(track)}}-{{title|raw}}");
 
         $this->addOption(static::OPTION_USE_EXISTING_CHAPTERS_FILE, null, InputOption::VALUE_NONE, "use an existing manually edited chapters file <audiobook-name>.chapters.txt instead of embedded chapters for splitting");
         $this->addOption(static::OPTION_REINDEX_CHAPTERS, null, InputOption::VALUE_NONE, "use a numeric index instead of the real chapter name for splitting");
@@ -332,7 +331,9 @@ class SplitCommand extends AbstractConversionCommand
             $tag->track = $index + 1;
             $tag->tracks = count($this->chapters);
             $tag->chapters = []; // after splitting the chapters must not be restored into the extracted file part
-            $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($this->optFilenameTemplate, $this->optAudioExtension, (array)$tag));
+
+            $filenameTemplate = $this->optFilenameTemplate ?? static::DEFAULT_SPLIT_FILENAME_TEMPLATE;
+            $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($filenameTemplate, $this->optAudioExtension, (array)$tag));
 
             if (!is_dir($outputFile->getPath()) && !mkdir($outputFile->getPath(), 0777, true)) {
                 throw new Exception("Could not create output directory: " . $outputFile->getPath());
@@ -363,7 +364,6 @@ class SplitCommand extends AbstractConversionCommand
                     }
                 }
 
-                // TODO atm this is only necessary for mp4-files, because ffmpeg does not support embedding covers
                 $this->tagFile($outputFile, $tag);
                 $this->notice(sprintf("tagged file %s (artist: %s, name: %s, chapters: %d)", $outputFile->getBasename(), $tag->artist, $tag->title, count($tag->chapters)));
             }

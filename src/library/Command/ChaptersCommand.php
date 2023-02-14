@@ -13,7 +13,9 @@ use M4bTool\Audio\Tag\AdjustTooLongChapters;
 use M4bTool\Audio\Tag\ChaptersFromEpub;
 use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
+use M4bTool\Chapter\ChapterShifter;
 use M4bTool\Common\ConditionalFlags;
+use M4bTool\Parser\IndexStringParser;
 use M4bTool\Parser\MusicBrainzChapterParser;
 use Psr\Cache\InvalidArgumentException;
 use Sandreas\Time\TimeUnit;
@@ -45,6 +47,8 @@ class ChaptersCommand extends AbstractCommand
     const OPTION_EPUB_IGNORE_CHAPTERS = "epub-ignore-chapters";
     const OPTION_EPUB_APPEND_INTRODUCTION = "epub-append-introduction";
     const OPTION_EPUB_DUMP = "epub-dump";
+    const OPTION_NORMALIZE = "normalize";
+    const OPTION_SHIFT = "shift";
 
     /**
      * @var MusicBrainzChapterParser
@@ -86,6 +90,8 @@ class ChaptersCommand extends AbstractCommand
         $this->addOption(static::OPTION_MERGE_SIMILAR, "s", InputOption::VALUE_NONE, "merge similar chapter names");
         $this->addOption(static::OPTION_OUTPUT_FILE, static::OPTION_OUTPUT_FILE_SHORTCUT, InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
         $this->addOption(static::OPTION_ADJUST_BY_SILENCE, null, InputOption::VALUE_NONE, "will try to adjust chapters of a file by silence detection and existing chapter marks");
+        $this->addOption(static::OPTION_NORMALIZE, null, InputOption::VALUE_NONE, "normalizes chapters (remove unwanted chars and numbering, tries to optimize chapter representation)");
+        $this->addOption(static::OPTION_SHIFT, null, InputOption::VALUE_OPTIONAL, "shifts chapters by milliseconds (e.g. 3000 or 3000:0,1,4,5)");
 
         $this->addOption(static::OPTION_FIND_MISPLACED_CHAPTERS, null, InputOption::VALUE_OPTIONAL, "mark silence around chapter numbers that where not detected correctly, e.g. 8,15,18", "");
         $this->addOption(static::OPTION_FIND_MISPLACED_OFFSET, null, InputOption::VALUE_OPTIONAL, "mark silence around chapter numbers with this offset seconds maximum", 120);
@@ -140,8 +146,6 @@ class ChaptersCommand extends AbstractCommand
             return 0;
         }
 
-        $this->silences = $this->metaHandler->detectSilences($this->filesToProcess, $this->optSilenceMinLength);
-
         $parsedChapters = [];
 
         if ($this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
@@ -164,9 +168,30 @@ class ChaptersCommand extends AbstractCommand
             throw new Exception(sprintf("Could not detect duration for file %s", $this->filesToProcess));
         }
         $flags = $this->buildTagFlags();
-        $this->buildChapters($parsedChapters, $duration);
-        if (!$this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
+
+        if ($this->input->getOption(static::OPTION_ADJUST_BY_SILENCE)) {
+            $this->silences = $this->metaHandler->detectSilences($this->filesToProcess, $this->optSilenceMinLength);
+            $this->notice(sprintf("found %s chapters and %s silences within length %s", count($parsedChapters), count($this->silences), $duration->format()));
+            $this->chapters = $this->chapterMarker->guessChaptersBySilences($parsedChapters, $this->silences, $duration);
+        }
+
+        if ($this->input->getOption(static::OPTION_NORMALIZE)) {
             $this->normalizeChapters($duration);
+        }
+
+        $optShiftChapters = $this->input->getOption(static::OPTION_SHIFT);
+        if ($optShiftChapters) {
+            if(count($this->chapters) === 0) {
+                $tag = $this->metaHandler->readTag($this->filesToProcess);
+                $this->chapters = $tag->chapters;
+            }
+            if(count($this->chapters) === 0) {
+                $this->warning("Cannot shift, 0 chapters found");
+            } else {
+                [$shiftMs, $chapterIndexes] = $this->parseShiftOption($optShiftChapters, $this->chapters);
+                $chapterShifter = new ChapterShifter();
+                $chapterShifter->shiftChapters($this->chapters, $shiftMs, $chapterIndexes);
+            }
         }
 
         if (!$this->input->getOption(static::OPTION_NO_CHAPTER_IMPORT) && $this->filesToProcess) {
@@ -354,16 +379,6 @@ class ChaptersCommand extends AbstractCommand
         }
     }
 
-    /**
-     * @param array $mbChapters
-     * @param TimeUnit $duration
-     * @throws Exception
-     */
-    private function buildChapters(array $mbChapters, TimeUnit $duration)
-    {
-        $this->notice(sprintf("found %s chapters and %s silences within length %s", count($mbChapters), count($this->silences), $duration->format()));
-        $this->chapters = $this->chapterMarker->guessChaptersBySilences($mbChapters, $this->silences, $duration);
-    }
 
     /**
      * @param TimeUnit $duration
@@ -464,6 +479,33 @@ class ChaptersCommand extends AbstractCommand
             }
         }
         return $specialOffsetChapters;
+    }
+
+    private function parseShiftOption($optShiftChapters, $chapters)
+    {
+        $parts = explode(":", $optShiftChapters);
+        $shiftMs = 0;
+        $chapterIndexes = [];
+
+        if (count($parts) == 0) {
+            return [$shiftMs, $chapterIndexes];
+        }
+
+        $shiftMs = (int)$parts[0];
+        if (count($parts) == 1) {
+            $chapterIndexes = array_keys(array_values($chapters));
+            return [$shiftMs, $chapterIndexes];
+        }
+
+        if (count($parts) > 2) {
+            throw new Exception(sprintf("--%s option has invalid format", static::OPTION_SHIFT));
+        }
+
+        $parser = new IndexStringParser();
+        $chapterIndexes = $parser->parse($parts[1]);
+
+        return [$shiftMs, $chapterIndexes];
+
     }
 
 

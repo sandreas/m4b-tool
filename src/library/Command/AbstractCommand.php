@@ -94,6 +94,8 @@ class AbstractCommand extends Command implements LoggerInterface
 
     const ENV_TMP_DIR = "M4BTOOL_TMP_DIR";
 
+    const DEFAULT_SPLIT_FILENAME_TEMPLATE = "{{\"%03d\"|format(track)}}-{{title|raw}}";
+
     const LOG_LEVEL_TO_VERBOSITY = [
         LogLevel::DEBUG => OutputInterface::VERBOSITY_DEBUG,
         LogLevel::NOTICE => OutputInterface::VERBOSITY_VERBOSE,
@@ -310,7 +312,7 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "a", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", static::SILENCE_DEFAULT_LENGTH);
         $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "b", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
         $this->addOption(static::OPTION_MAX_CHAPTER_LENGTH, null, InputOption::VALUE_OPTIONAL, "maximum chapter length in seconds - its also possible to provide a desired chapter length in form of 300,900 where 300 is desired and 900 is max - if the max chapter length is exceeded, the chapter is placed on the first silence between desired and max chapter length", "0");
-
+        $this->addOption(static::OPTION_FILENAME_TEMPLATE, "p", InputOption::VALUE_OPTIONAL, "filename twig-template for output file naming");
     }
 
     function dasherize($string)
