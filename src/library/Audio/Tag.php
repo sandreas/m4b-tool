@@ -127,6 +127,43 @@ class Tag implements ArrayAccess, JsonSerializable
     public $removeProperties = [];
 
 
+    const PROPERTY_ALBUM = "album";
+    const PROPERTY_ALBUM_ARTIST = "albumArtist";
+    const PROPERTY_ARTIST = "artist";
+    const PROPERTY_COMMENT = "comment";
+    const PROPERTY_COPYRIGHT = "copyright";
+    const PROPERTY_COVER = "cover";
+    const PROPERTY_DESCRIPTION = "description";
+    const PROPERTY_DISK = "disk";
+    const PROPERTY_DISKS = "disks";
+    const PROPERTY_ENCODED_BY = "encodedBy";
+    const PROPERTY_ENCODER = "encoder";
+    const PROPERTY_GENRE = "genre";
+    const PROPERTY_GROUPING = "grouping";
+    const PROPERTY_LONG_DESCRIPTION = "longDescription";
+    const PROPERTY_PURCHASE_DATE = "purchaseDate";
+    const PROPERTY_SERIES = "series";
+    const PROPERTY_SERIES_PART = "seriesPart";
+    const PROPERTY_SORT_ALBUM = "sortAlbum";
+    const PROPERTY_SORT_ALBUM_ARTIST = "sortAlbumArtist";
+    const PROPERTY_SORT_ARTIST = "sortArtist";
+    const PROPERTY_SORT_TITLE = "sortTitle";
+    const PROPERTY_SORT_WRITER = "sortWriter";
+
+    const PROPERTY_TITLE = "title";
+    const PROPERTY_TRACK = "track";
+    const PROPERTY_TRACKS = "tracks";
+    const PROPERTY_TYPE = "type";
+
+    const PROPERTY_WRITER = "writer";
+    const PROPERTY_YEAR = "year";
+    const PROPERTY_PUBLISHER = "publisher";
+    const PROPERTY_PERFORMER = "performer";
+    const PROPERTY_LANGUAGE = "language";
+    const PROPERTY_LYRICS = "lyrics";
+
+
+
     public function mergeMissing(Tag $tag)
     {
         $changedProperties = [];

@@ -82,7 +82,6 @@ class MergeCommand extends AbstractConversionCommand
         self::OPTION_TAG_PURCHASE_DATE => "U",
         self::OPTION_TAG_SERIES => "s",
         self::OPTION_TAG_SERIES_PART => "p",
-
         // "c" => self::OPTION_TAG_COVER, // cover cannot be string
     ];
 
@@ -255,13 +254,13 @@ class MergeCommand extends AbstractConversionCommand
             static::DEFAULT_SUPPORTED_IMAGE_EXTENSIONS,
             static::DEFAULT_SUPPORTED_DATA_EXTENSIONS
         )), $this->alreadyProcessedBatchDirs);
-        $normalizedBatchPattern = $this->normalizeDirectory($batchPattern, "");
+        $normalizedBatchPattern = static::normalizeDirectory($batchPattern, "");
 
         $verifiedDirectories = [];
         foreach ($currentBatchDirs as $baseDir) {
             $placeHolders = static::createPlaceHoldersForOptions();
             $formatParser = new FormatParser(...$placeHolders);
-            $patternDir = $this->normalizeDirectory($baseDir, "");
+            $patternDir = static::normalizeDirectory($baseDir, "");
             if ($formatParser->parseFormat($normalizedBatchPattern, $patternDir)) {
                 $verifiedDirectories[$baseDir] = $formatParser;
                 $this->alreadyProcessedBatchDirs[] = $baseDir;
@@ -330,17 +329,6 @@ class MergeCommand extends AbstractConversionCommand
                 $extraExtensions
             )
         );
-    }
-
-    protected function normalizeDirectory($directory, $suffix = "/")
-    {
-        $normalized = rtrim(strtr($directory, [
-            "\\" => "/",
-        ]), "/");
-        if ($normalized !== "") {
-            $normalized .= $suffix;
-        }
-        return $normalized;
     }
 
     /**
@@ -723,7 +711,7 @@ class MergeCommand extends AbstractConversionCommand
     {
         $outputFile ??= $this->outputFile;
         if ($this->optTmpDir) {
-            $dir = $this->normalizeDirectory($this->optTmpDir);
+            $dir = static::normalizeDirectory($this->optTmpDir);
         } else {
             $basename = $outputFile->getBasename("." . $outputFile->getExtension());
             $basename = $basename === "" ? "m4b-tool" : $basename;

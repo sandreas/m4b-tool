@@ -4,6 +4,7 @@
 namespace M4bTool\Command;
 
 
+use M4bTool\Audio\Tag;
 use Symfony\Component\Console\Input\InputOption;
 
 class AbstractMetadataCommand extends AbstractCommand
@@ -40,6 +41,41 @@ class AbstractMetadataCommand extends AbstractCommand
     const OPTION_IGNORE_SOURCE_TAGS = "ignore-source-tags";
     const OPTION_PREFER_METADATA_TAGS = "prefer-metadata-tags";
 
+
+    const TAG_PROPERTY_PLACEHOLDER_MAPPING = [
+        Tag::PROPERTY_ALBUM => "m",
+        Tag::PROPERTY_ALBUM_ARTIST => "t",
+        Tag::PROPERTY_ARTIST => "a",
+        Tag::PROPERTY_COMMENT => "c",
+        Tag::PROPERTY_COPYRIGHT => "C",
+        Tag::PROPERTY_COVER => "",
+        Tag::PROPERTY_DESCRIPTION => "d",
+        Tag::PROPERTY_DISK => "",
+        Tag::PROPERTY_DISKS => "",
+        Tag::PROPERTY_ENCODED_BY => "e",
+        Tag::PROPERTY_ENCODER => "",
+        Tag::PROPERTY_GENRE => "g",
+        Tag::PROPERTY_GROUPING => "G",
+        Tag::PROPERTY_LONG_DESCRIPTION => "D",
+        Tag::PROPERTY_PURCHASE_DATE => "U",
+        Tag::PROPERTY_SERIES => "s",
+        Tag::PROPERTY_SERIES_PART => "p",
+        Tag::PROPERTY_SORT_ALBUM => "M",
+        Tag::PROPERTY_SORT_ALBUM_ARTIST => "",
+        Tag::PROPERTY_SORT_ARTIST => "A",
+        Tag::PROPERTY_SORT_TITLE => "N",
+        Tag::PROPERTY_SORT_WRITER => "",
+        Tag::PROPERTY_TITLE => "n",
+        Tag::PROPERTY_TRACK => "",
+        Tag::PROPERTY_TRACKS => "",
+        Tag::PROPERTY_TYPE => "",
+        Tag::PROPERTY_WRITER => "w",
+        Tag::PROPERTY_YEAR => "y",
+        Tag::PROPERTY_PUBLISHER => "",
+        Tag::PROPERTY_PERFORMER => "",
+        Tag::PROPERTY_LANGUAGE => "",
+        Tag::PROPERTY_LYRICS => "",
+    ];
 
     const ALL_TAG_OPTIONS = [
         self::OPTION_TAG_NAME,

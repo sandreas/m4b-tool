@@ -495,4 +495,20 @@ class AbstractCommand extends Command implements LoggerInterface
         $replacedFileName = preg_replace('/[\x00-\x1F\x7F]/u', '', $replacedFileName);
         return $replacedFileName . "." . $extension;
     }
+
+    /**
+     * @param $directory
+     * @param $suffix
+     * @return string
+     */
+    protected static function normalizeDirectory($directory, $suffix = "/")
+    {
+        $normalized = rtrim(strtr($directory, [
+            "\\" => "/",
+        ]), "/");
+        if ($normalized !== "") {
+            $normalized .= $suffix;
+        }
+        return $normalized;
+    }
 }

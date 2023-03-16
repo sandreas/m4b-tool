@@ -11,6 +11,8 @@ use M4bTool\Common\ReleaseDate;
 class AudibleJson extends AbstractJsonTagImprover
 {
     protected static $defaultFileName = "audible.json";
+    public $shouldUseSeriesFromSubtitle = false;
+    public array $genreMapping = [];
 
     /**
      * @param Tag $tag
@@ -64,10 +66,21 @@ class AudibleJson extends AbstractJsonTagImprover
         $mergeTag->series = $product["series"][0]["title"] ?? null;
         $mergeTag->seriesPart = $product["series"][0]["sequence"] ?? null;
 
+        $subtitle = $product["subtitle"] ?? "";
+        if($this->shouldUseSeriesFromSubtitle
+            && $mergeTag->series == null
+            && preg_match("/^(.*)\s+([0-9]+)$/isU", $subtitle, $matches)
+            && isset($matches[2])) {
+            $mergeTag->series = $matches[1];
+            $mergeTag->seriesPart = (int)$matches[2];
+        }
+
+        // todo: add mappingGenres and map Fantasy if in $ladders
         if (isset($product["category_ladders"]) && is_array($product["category_ladders"])) {
             foreach ($product["category_ladders"] as $ladder) {
                 if ($ladder["root"] === "Genres") {
                     foreach ($ladder["ladder"] as $genre) {
+                        // todo: genreMapping
                         $mergeTag->genre = $genre["name"] ?? null;
                         break;
                     }

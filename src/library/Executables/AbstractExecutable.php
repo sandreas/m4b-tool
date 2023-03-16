@@ -176,6 +176,11 @@ abstract class AbstractExecutable
 
     public function buildChaptersTxt(array $chapters)
     {
+        return static::toChaptersTxt($chapters);
+    }
+
+
+    public static function toChaptersTxt(array $chapters) {
         $chaptersAsLines = [];
         $chapter = null;
         foreach ($chapters as $chapter) {
