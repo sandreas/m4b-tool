@@ -57,7 +57,7 @@ class BuchhandelJson extends AbstractJsonTagImprover
         }
 
         foreach ($contributorGroups as $property => $contributorNames) {
-            $mergeTag->$property = $this->implodeArrayOrNull($contributorNames);
+            $mergeTag->$property = static::implodeSortedArrayOrNull($contributorNames);
         }
         $this->copyDefaultProperties($mergeTag);
 

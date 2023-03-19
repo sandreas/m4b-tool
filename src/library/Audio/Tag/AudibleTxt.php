@@ -59,7 +59,7 @@ class AudibleTxt extends AbstractTagImprover
         $mergeTag->copyright = $decoded["audibleMeta"]["publisher"] ?? null;
         $mergeTag->title = $decoded["name"] ?? null;
         $mergeTag->language = $decoded["audibleMeta"]["inLanguage"] ?? null;
-        $mergeTag->artist = $this->implodeArrayOrNull($decoded["authors"]);
+        $mergeTag->artist = static::implodeSortedArrayOrNull($decoded["authors"]);
 
         // $tag->albumArtist = $this->getProperty("album_artist");
         // $tag->performer = $this->getProperty("performer");

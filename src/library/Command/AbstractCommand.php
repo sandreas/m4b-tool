@@ -69,6 +69,18 @@ class AbstractCommand extends Command implements LoggerInterface
         self::AUDIO_EXTENSION_MP3 => self::AUDIO_FORMAT_MP3,
     ];
 
+    const DIRECTORY_SPECIAL_CHAR_REPLACEMENTS = [
+        "<" => "{",
+        ">" => "}",
+        ":" => "-",
+        '"' => '',
+        '\\' => '-',
+        '|' => '-',
+        '?' => '',
+        '*' => '',
+        '/' => '-',
+    ];
+
     const ARGUMENT_INPUT = "input";
 
     const OPTION_DEBUG = "debug";
@@ -510,5 +522,9 @@ class AbstractCommand extends Command implements LoggerInterface
             $normalized .= $suffix;
         }
         return $normalized;
+    }
+
+    public static function replaceDirReservedChars($name) {
+        return strtr($name, static::DIRECTORY_SPECIAL_CHAR_REPLACEMENTS);
     }
 }

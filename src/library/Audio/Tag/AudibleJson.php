@@ -37,13 +37,13 @@ class AudibleJson extends AbstractJsonTagImprover
         }
 
         if (isset($product["authors"])) {
-            $mergeTag->artist = $this->implodeArrayOrNull(array_map(function ($author) {
+            $mergeTag->artist = static::implodeSortedArrayOrNull(array_map(function ($author) {
                 return $author["name"];
             }, $product["authors"]));
         }
 
         if (isset($product["narrators"])) {
-            $mergeTag->writer = $this->implodeArrayOrNull(array_map(function ($narrator) {
+            $mergeTag->writer = static::implodeSortedArrayOrNull(array_map(function ($narrator) {
                 return $narrator["name"];
             }, $product["narrators"]));
         }

@@ -72,12 +72,14 @@ abstract class AbstractTagImprover implements TagImproverInterface
         }
     }
 
-    protected function implodeArrayOrNull($arrayValue)
+    public static function implodeSortedArrayOrNull($arrayValue)
     {
         if (!isset($arrayValue) || !is_array($arrayValue)) {
             return null;
         }
-
+        usort($arrayValue, function($a, $b) {
+            return strnatcasecmp($a, $b);
+        });
         return implode(", ", $arrayValue);
     }
 

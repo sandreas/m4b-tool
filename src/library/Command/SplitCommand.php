@@ -333,7 +333,12 @@ class SplitCommand extends AbstractConversionCommand
             $tag->chapters = []; // after splitting the chapters must not be restored into the extracted file part
 
             $filenameTemplate = $this->optFilenameTemplate ?? static::DEFAULT_SPLIT_FILENAME_TEMPLATE;
-            $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($filenameTemplate, $this->optAudioExtension, (array)$tag));
+            $templateParameters = (array)$tag;
+            // strip reserved chars from parameters for filename generation (fix #228)
+            foreach($templateParameters as $key => $value) {
+                $templateParameters[$key] = static::replaceDirReservedChars($value);
+            }
+            $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($filenameTemplate, $this->optAudioExtension, $templateParameters));
 
             if (!is_dir($outputFile->getPath()) && !mkdir($outputFile->getPath(), 0777, true)) {
                 throw new Exception("Could not create output directory: " . $outputFile->getPath());
