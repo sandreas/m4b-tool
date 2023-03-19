@@ -28,6 +28,7 @@ use M4bTool\Parser\MusicBrainzChapterParser;
 use RecursiveDirectoryIterator;
 use Sandreas\Strings\Format\FormatParser;
 use Sandreas\Strings\Format\PlaceHolder;
+use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 use Symfony\Component\Console\Input\InputArgument;
@@ -42,6 +43,7 @@ class MergeCommand extends AbstractConversionCommand
     const ARGUMENT_MORE_INPUT_FILES = "more-input-files";
     const OPTION_INCLUDE_EXTENSIONS = "include-extensions";
     const OPTION_BATCH_PATTERN = "batch-pattern";
+    const OPTION_BATCH_PATTERN_PATH = "batch-pattern-path";
     const OPTION_BATCH_FILTER = "batch-filter";
     const OPTION_BATCH_RESUME_FILE = "batch-resume-file";
     const OPTION_DRY_RUN = "dry-run";
@@ -125,6 +127,7 @@ class MergeCommand extends AbstractConversionCommand
         $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id so load chapters from");
 
         $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title) - parameter --output-file must be a directory", []);
+        $this->addOption(static::OPTION_BATCH_PATTERN_PATH, null, InputOption::VALUE_OPTIONAL, "optional base path for batch pattern, that is used to trim output paths instead of auto trimming");
         $this->addOption(static::OPTION_BATCH_FILTER, null, InputOption::VALUE_OPTIONAL, "Skip files that do not contain this string", "");
         $this->addOption(static::OPTION_BATCH_RESUME_FILE, null, InputOption::VALUE_OPTIONAL, "Enables you to resume a interrupted batch encoding process by skipping all items in this file and appending currently processed output files", "");
         $this->addOption(static::OPTION_DRY_RUN, null, InputOption::VALUE_NONE, "perform a dry run without converting all the files in batch mode (requires --" . static::OPTION_BATCH_PATTERN . ")");
@@ -274,12 +277,26 @@ class MergeCommand extends AbstractConversionCommand
             $this->notice("================================");
         }
 
+        $batchPatternBasePath = $input->getOption(static::OPTION_BATCH_PATTERN_PATH);
+
 
         $batchJobs = [];
         foreach ($verifiedDirectories as $baseDir => $formatParser) {
             // clone input to work with current directory instead of existing data from an old directory
             $clonedInput = clone $input;
-            $trimmedBatchPattern = $formatParser->trimSeparatorPrefix($batchPattern);
+
+            if($batchPatternBasePath !== null) {
+                if(!Strings::hasPrefix($batchPattern, $batchPatternBasePath)) {
+                    $this->warning(sprintf("batch-pattern %s does NOT start with %s - this may result in unexpected results", $batchPattern, $batchPatternBasePath));
+                }
+                $trimmedBatchPattern = Strings::trimPrefix($batchPattern, $batchPatternBasePath);
+            } else {
+                $trimmedBatchPattern = $formatParser->trimSeparatorPrefix($batchPattern);
+
+            }
+
+            $this->notice(sprintf("basePath: %s, trimmed batch-pattern: %s", $batchPatternBasePath ?? "<null>", $trimmedBatchPattern));
+
 
             $fileNamePart = rtrim($formatParser->format($trimmedBatchPattern), "\\/");
 
@@ -287,8 +304,9 @@ class MergeCommand extends AbstractConversionCommand
             $title = $formatParser->format("%n");
             $album = $formatParser->format("%m");
             $m4bFileName = $title ? $title : $album;
-            if ($m4bFileName && !$formatParser->getPlaceHolderValue(static::MAPPING_OPTIONS_PLACEHOLDERS[static::OPTION_TAG_SERIES])) {
+            if ($m4bFileName && !$formatParser->getPlaceHolderValue(static::MAPPING_OPTIONS_PLACEHOLDERS[static::OPTION_TAG_SERIES_PART])) {
                 $fileNamePart .= "/" . $m4bFileName;
+                $this->notice(sprintf("series-part is empty, using containing directory: %s", $fileNamePart));
             }
 
             $batchOutputFile = $outputFile . "/" . $fileNamePart . "." . $this->optAudioExtension;
