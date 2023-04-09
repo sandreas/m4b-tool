@@ -9,9 +9,13 @@ If you are using any of my projects and find them helpful, please consider [dona
 <a href="https://github.com/sponsors/sandreas"><img src="./assets/help.svg" width="300" alt="sponsor me and donate" style="margin:auto;"></a>
 </p>
 
+## Usage
+
+`nix run`
+
 ## Announcement
 
-A few months ago I noticed, that using `PHP` as programming language is a limiting factor for `m4b-tool` and its further development. Multiple dependencies (`php`, `ffmpeg`, `mp4v2`, `fdkaac` and others) make it quite hard to improve the user experience. So I started an experiment, that now has reached an early alpha level and can be tried out. The command line tool is written in `C#`, fully open source and is called `tone`. It already has a pretty decent feature set, so if you would like to try it, here it is:
+I started an experiment, that now has reached an early alpha level and can be tried out. The command line tool is written in `C#`, fully open source and is called `tone`. It already has a pretty decent feature set, so if you would like to try it, here it is:
 
 https://github.com/sandreas/tone
 
