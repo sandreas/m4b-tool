@@ -1,5 +1,5 @@
 {
-  description = "A very basic flake";
+  description = "A wrapper for ffmpeg and mp4v2 to merge, split, and manipulate audiobooks";
 
   inputs = {
     nixpkgs.url = github:NixOS/nixpkgs/nixos-unstable;
