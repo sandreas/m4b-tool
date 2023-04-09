@@ -34,6 +34,9 @@
       rec {
         packages = rec {
           m4b-tool = pkgs.m4b-tool;
+          m4b-tool-libfdk = m4b-tool.override {
+            useLibfdkFfmpeg = true;
+          };
           default = m4b-tool;
         };
 

@@ -598,7 +598,7 @@ let
 in
 composerEnv.buildPackage {
   inherit packages devPackages noDev;
-  name = "m4b-tool";
+  name = "sandreas-m4b-tool";
   src = composerEnv.filterSrc ./.;
   executable = true;
   symlinkDependencies = false;

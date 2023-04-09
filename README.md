@@ -11,11 +11,12 @@ If you are using any of my projects and find them helpful, please consider [dona
 
 ## Usage
 
-- Running: `nix run`
-- Building: `nix build`
+- Running: `nix run` or `nix run .#m4b-tool-libfdk`
+    - The latter will build FFMpeg using libfdk_aac, which will take longer.
+- Building: `nix build` or `nix build .#m4b-tool-libfdk`
     - Wrapper script is located at `./result/bin/m4b-tool`
 - Developing: `nix develop`
-    - When done updating dependencies, run `composer2nix` to update the .nix files
+    - When done updating dependencies, run `composer2nix --executable --composition=composer.nix` to update the .nix files
 
 ## Announcement
 

@@ -2,6 +2,7 @@
 , makeWrapper
 , php82, php82Packages
 , ffmpeg_5-headless, mp4v2, fdk_aac, fdk-aac-encoder
+, useLibfdkFfmpeg ? false
 }:
 
 let
@@ -23,7 +24,7 @@ let
     phpPackages = m4bToolPhpPackages;
   };
 
-  m4bToolFfmpeg = ffmpeg_5-headless.overrideAttrs (prev: rec {
+  m4bToolFfmpeg = if useLibfdkFfmpeg then ffmpeg_5-headless.overrideAttrs (prev: rec {
     configureFlags = prev.configureFlags ++ [
       "--enable-libfdk-aac"
       "--enable-nonfree"
@@ -31,9 +32,10 @@ let
     buildInputs = prev.buildInputs ++ [
       fdk_aac
     ];
-  });
+  }) else ffmpeg_5-headless;
 in
 m4bToolComposer.overrideAttrs (prev: rec {
+  pname = "m4b-tool";
   version = "0.5";
 
   buildInputs = [
@@ -55,7 +57,7 @@ m4bToolComposer.overrideAttrs (prev: rec {
     mkdir -p $out/bin
 
     makeWrapper \
-      $out/share/php/m4b-tool/bin/m4b-tool.php \
+      $out/share/php/sandreas-m4b-tool/bin/m4b-tool.php \
       $out/bin/m4b-tool \
       --set PATH ${lib.makeBinPath buildInputs} \
       --set M4B_TOOL_DISABLE_TONE true
