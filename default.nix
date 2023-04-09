@@ -1,7 +1,7 @@
-{ pkgs, lib, stdenv, fetchFromGitHub
+{ pkgs, lib, stdenv, fetchFromGitHub, fetchurl
 , makeWrapper
 , php82, php82Packages
-, ffmpeg-headless, mp4v2, fdk-aac-encoder
+, ffmpeg_5-headless, mp4v2, fdk_aac, fdk-aac-encoder
 }:
 
 let
@@ -22,12 +22,22 @@ let
     php = m4bToolPhp;
     phpPackages = m4bToolPhpPackages;
   };
+
+  m4bToolFfmpeg = ffmpeg_5-headless.overrideAttrs (prev: rec {
+    configureFlags = prev.configureFlags ++ [
+      "--enable-libfdk-aac"
+      "--enable-nonfree"
+    ];
+    buildInputs = prev.buildInputs ++ [
+      fdk_aac
+    ];
+  });
 in
 m4bToolComposer.overrideAttrs (prev: rec {
   version = "0.5";
 
   buildInputs = [
-    m4bToolPhp ffmpeg-headless mp4v2 fdk-aac-encoder
+    m4bToolPhp m4bToolFfmpeg mp4v2 fdk-aac-encoder
   ];
 
   nativeBuildInputs = [
@@ -53,8 +63,31 @@ m4bToolComposer.overrideAttrs (prev: rec {
 
   doInstallCheck = true;
 
-  installCheckPhase = ''
+  installCheckPhase = let
+    exampleAudiobook = fetchurl {
+      name = "audiobook";
+      url = "https://archive.org/download/M4bCollectionOfLibrivoxAudiobooks/ArtOfWar-64kb.m4b";
+      sha256 = "00cvbk2a4iyswfmsblx2h9fcww2mvb4vnlf22gqgi1ldkw67b5w7";
+    };
+  in ''
+    # Run the unit test suite
     php vendor/bin/phpunit tests
+
+    # Check that the audiobook split actually works
+    (
+      cd /tmp
+
+      cp ${exampleAudiobook} audiobook.m4b
+      $out/bin/m4b-tool split -vvv -o . audiobook.m4b
+
+      if ! grep -q 'The Nine Situations' audiobook.chapters.txt; then
+        exit 1
+      fi
+
+      if [ ! -f '006-11 The Nine Situations.m4b' ]; then
+        exit 1
+      fi
+    )
   '';
 
   passthru = {

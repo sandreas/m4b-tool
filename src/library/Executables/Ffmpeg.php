@@ -637,7 +637,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
             $process = $this->ffmpegQuiet($command);
             if ($process->getExitCode() > 0) {
-                throw new Exception(sprintf("Could not extract part of file %: %s (%s)", $inputFile, $process->getErrorOutput(), $process->getExitCode()));
+                throw new Exception(sprintf("Could not extract part of file %s: %s (%s)", $inputFile, $process->getErrorOutput(), $process->getExitCode()));
             }
             if ($options->noConversion) {
                 if (!rename($tmpOutputFileConverting, $outputFile)) {
