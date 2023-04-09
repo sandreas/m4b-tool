@@ -41,7 +41,7 @@ frame=    1 fps=1.0 q=-0.0 size=N/A time=00:07:18.71 bitrate=N/A
         $silences = $this->subject->parse($chapterString);
         $this->assertCount(4, $silences);
         $this->assertEquals(15716, key($silences));
-        $this->assertEquals(4275.56, current($silences)->getLength()->milliseconds());
+        $this->assertEqualsWithDelta(4275.56, current($silences)->getLength()->milliseconds(), 0.01);
         $this->assertInstanceOf(TimeUnit::class, $this->subject->getDuration());
         $this->assertEquals(48902340, $this->subject->getDuration()->milliseconds());
 
