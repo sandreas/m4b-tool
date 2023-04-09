@@ -9,7 +9,9 @@ If you are using any of my projects and find them helpful, please consider [dona
 <a href="https://github.com/sponsors/sandreas"><img src="./assets/help.svg" width="300" alt="sponsor me and donate" style="margin:auto;"></a>
 </p>
 
-## Usage
+## Usage with Nix
+
+Get [Nix](https://nixos.org/download.html) and ensure that [Flakes](https://nixos.wiki/wiki/Flakes#Permanent) are enabled.
 
 - Running: `nix run` or `nix run .#m4b-tool-libfdk`
     - The latter will build FFMpeg using libfdk_aac, which will take longer.
