@@ -61,7 +61,7 @@ m4bToolComposer.overrideAttrs (prev: rec {
     #!${runtimeShell}
     export PATH=${lib.makeBinPath buildInputs}
     export M4B_TOOL_DISABLE_TONE=true
-    $out/share/php/sandreas-m4b-tool/bin/m4b-tool.php "\$@"
+    exec ${m4bToolPhp}/bin/php $out/share/php/sandreas-m4b-tool/bin/m4b-tool.php "\$@"
     EOF
     chmod +x $out/bin/m4b-tool
   '';
