@@ -1,5 +1,5 @@
 { pkgs, lib, stdenv, fetchFromGitHub, fetchurl
-, makeWrapper
+, runtimeShell
 , php82, php82Packages
 , ffmpeg_5-headless, mp4v2, fdk_aac, fdk-aac-encoder
 , useLibfdkFfmpeg ? false
@@ -43,7 +43,7 @@ m4bToolComposer.overrideAttrs (prev: rec {
   ];
 
   nativeBuildInputs = [
-    m4bToolPhp m4bToolPhpPackages.composer makeWrapper
+    m4bToolPhp m4bToolPhpPackages.composer
   ];
 
   postInstall = ''
@@ -56,11 +56,14 @@ m4bToolComposer.overrideAttrs (prev: rec {
     rm -rf $out/bin
     mkdir -p $out/bin
 
-    makeWrapper \
-      $out/share/php/sandreas-m4b-tool/bin/m4b-tool.php \
-      $out/bin/m4b-tool \
-      --set PATH ${lib.makeBinPath buildInputs} \
-      --set M4B_TOOL_DISABLE_TONE true
+    # makeWrapper fails for this on macOS
+    cat >$out/bin/m4b-tool <<EOF
+    #!${runtimeShell}
+    export PATH=${lib.makeBinPath buildInputs}
+    export M4B_TOOL_DISABLE_TONE=true
+    $out/share/php/sandreas-m4b-tool/bin/m4b-tool.php "\$@"
+    EOF
+    chmod +x $out/bin/m4b-tool
   '';
 
   doInstallCheck = true;
