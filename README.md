@@ -11,7 +11,11 @@ If you are using any of my projects and find them helpful, please consider [dona
 
 ## Usage
 
-`nix run`
+- Running: `nix run`
+- Building: `nix build`
+    - Wrapper script is located at `./result/bin/m4b-tool`
+- Developing: `nix develop`
+    - When done updating dependencies, run `composer2nix` to update the .nix files
 
 ## Announcement
 
