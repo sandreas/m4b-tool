@@ -77,7 +77,8 @@ m4bToolComposer.overrideAttrs (prev: rec {
 
     # Check that the audiobook split actually works
     (
-      cd /tmp
+      mkdir -p audiobook
+      cd audiobook
 
       cp ${exampleAudiobook} audiobook.m4b
       $out/bin/m4b-tool split -vvv -o . audiobook.m4b
@@ -90,6 +91,7 @@ m4bToolComposer.overrideAttrs (prev: rec {
         exit 1
       fi
     )
+    rm -rf audiobook
   '';
 
   passthru = {
