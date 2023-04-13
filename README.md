@@ -9,9 +9,9 @@ If you are using any of my projects and find them helpful, please consider [dona
 
 Special thanks to all sponsors donating a monthly amount of `>= 25.00$`.
 
-| Name                                  | Value |
-|---------------------------------------|-------|
-| [numinit](https://github.com/numinit) | 25$   |
+| Name                                  | Amount |
+|---------------------------------------|--------|
+| [numinit](https://github.com/numinit) | 25.00$ |
 
 ### Become a sponsor
 <p>
