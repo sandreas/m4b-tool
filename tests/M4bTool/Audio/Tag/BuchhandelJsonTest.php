@@ -17,7 +17,7 @@ EOT;
         $actual = $subject->improve(new Tag);
 
         $this->assertEquals("Strange the Dreamer - Der Junge, der träumte", $actual->title);
-        $this->assertEquals("Laini Taylor, James Franko", $actual->artist);
+        $this->assertEquals("James Franko, Laini Taylor", $actual->artist);
         $this->assertEquals("Moritz Pliquet", $actual->writer);
         $this->assertEquals("Strange the Dreamer - Der Junge, der träumte", $actual->album);
         $this->assertEquals("https://www.buchhandel.de/cover/9783838792330/9783838792330-cover-m.jpg", (string)$actual->cover);

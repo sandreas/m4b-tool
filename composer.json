@@ -1,4 +1,5 @@
 {
+    "name": "sandreas/m4b-tool",
     "minimum-stability": "dev",
     "prefer-stable": true,
     "platform":{"php":"7.4"},
