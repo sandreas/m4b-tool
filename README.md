@@ -60,7 +60,7 @@ https://pilabor.com
 ## TL;DR - examples for the most common tasks
 
 ### Merge multiple files
-`merge` all audio files in directory `data/my-audio-book` into file `data/merged.m4b` (tags are retained and `data/my-audio-book/cover.jpg`  and `data/my-audio-book/description.txt` are embedded, if available)
+`merge` all audio files in directory `data/my-audio-book` into file `data/merged.m4b` (tags are retained and `data/my-audio-book/cover.jpg` and `data/my-audio-book/description.txt` are embedded, if available)
 ```
 m4b-tool merge "data/my-audio-book/" --output-file="data/merged.m4b"
 ```
@@ -104,7 +104,7 @@ input/Fantasy/J.K. Rowling/Harry Potter/1 - Harry Potter and the Philosopher's S
 ### Step 2 - add cover and a description
 Now, because you almost always want a cover and a description for your audiobook, you should add the following files in the main directory:
 
-- `cover.jpg`
+- `cover.jpg` (or `cover.jpeg` or `cover.png`)
 - `description.txt` (Be sure to use `UTF-8` text file encoding for the contents)
 
 Examples:
@@ -176,7 +176,7 @@ If you performed the above steps with the docker image or installed and compiled
 
 - Top quality audio by using `libfdk_aac` encoder
 - Series and single audiobooks have valid tags for `genre`, `author`, `title`, `sorttitle`, etc. from `--batch-pattern` usage
-- If the files `cover.jpg` and `description.txt` exist in the main directories, a `cover`, a `description` and a `longdesc` are embedded
+- If the files `cover.jpg` (or `cover.jpeg` or `cover.png`) and `description.txt` exist in the main directories, a `cover`, a `description` and a `longdesc` are embedded
 - If you tagged the input files, real chapter names should appear in your player
 - No more chapters longer than 15 minutes
 - Working iPod versions for audiobooks longer than 27 hours
@@ -480,7 +480,7 @@ m4b-tool merge "data/my-audio-book" --output-file="data/my-audio-book.m4b"
 This merges all Audio-Files in folder `data/my-audio-book` into `my-audio-book.m4b`, using the tag-title of every file
 for generating chapters.
 
-If there is a file `data/my-audio-book/cover.jpg`, it will be used as cover for the resulting m4b file.
+If there is a file `data/my-audio-book/cover.jpg` (or `cover.jpeg` or `cover.png`), it will be used as cover for the resulting m4b file.
 
 > Note: If you use untagged audio files, you could provide a musicbrainz id to get the correct chapter names, see command [chapter](#chapters) for more info.
 
