@@ -7,6 +7,7 @@ use Exception;
 use FilesystemIterator;
 use InvalidArgumentException;
 use IteratorIterator;
+use M4bTool\Audio\CueSheet;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\ChaptersFromFileTracks;
 use M4bTool\Audio\Tag\ChaptersFromMusicBrainz;
@@ -854,6 +855,7 @@ class MergeCommand extends AbstractConversionCommand
         });
         $tagImprover->setLogger($this);
         // chapter loaders
+        $tagImprover->add(CueSheet::fromFile($this->argInputFile, CueSheet::DEFAULT_FILENAME));
         $tagImprover->add(Ffmetadata::fromFile($this->argInputFile, Ffmetadata::DEFAULT_FILENAME));
         $tagImprover->add(ChaptersTxt::fromFile($this->argInputFile, ChaptersTxt::DEFAULT_FILENAME));
 
