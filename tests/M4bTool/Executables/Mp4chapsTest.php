@@ -9,7 +9,7 @@ use Sandreas\Time\TimeUnit;
 
 class Mp4chapsTest extends TestCase
 {
-    const CHAPTER_STRING = '# total-length 00:00:01.500
+    const CHAPTER_STRING = '## total-duration:: 00:00:01.500
 00:00:00.000 chapter 1
 00:00:00.500 chapter 2
 00:00:01.000 chapter 3';

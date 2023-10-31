@@ -18,9 +18,20 @@ Special thanks to all sponsors donating a monthly amount of `>= 25.00$`.
 <a href="https://github.com/sponsors/sandreas"><img src="./assets/help.svg" width="200" alt="sponsor me and donate" style="margin:auto;"></a>
 </p>
 
+## Usage with Nix
+
+Get [Nix](https://nixos.org/download.html) and ensure that [Flakes](https://nixos.wiki/wiki/Flakes#Permanent) are enabled.
+
+- Running: `nix run github:sandreas/m4b-tool` or `nix run github:sandreas/m4b-tool#m4b-tool-libfdk`
+    - The latter will build FFMpeg using libfdk_aac, which will take longer.
+- Building: `nix build github:sandreas/m4b-tool` or `nix build github:sandreas/m4b-tool#m4b-tool-libfdk`
+    - Wrapper script is located at `./result/bin/m4b-tool`
+- Developing: Clone and `nix develop`
+    - When done updating dependencies, run `composer2nix --executable --composition=composer.nix` to update the .nix files
+
 ## Announcement
 
-A few months ago I noticed, that using `PHP` as programming language is a limiting factor for `m4b-tool` and its further development. Multiple dependencies (`php`, `ffmpeg`, `mp4v2`, `fdkaac` and others) make it quite hard to improve the user experience. So I started an experiment, that now has reached an early alpha level and can be tried out. The command line tool is written in `C#`, fully open source and is called `tone`. It already has a pretty decent feature set, so if you would like to try it, here it is:
+I started an experiment, that now has reached an early alpha level and can be tried out. The command line tool is written in `C#`, fully open source and is called `tone`. It already has a pretty decent feature set, so if you would like to try it, here it is:
 
 https://github.com/sandreas/tone
 

@@ -336,7 +336,9 @@ class SplitCommand extends AbstractConversionCommand
             $templateParameters = (array)$tag;
             // strip reserved chars from parameters for filename generation (fix #228)
             foreach($templateParameters as $key => $value) {
-                $templateParameters[$key] = static::replaceDirReservedChars($value);
+                if (is_string($value)) {
+                    $templateParameters[$key] = static::replaceDirReservedChars($value);
+                }
             }
             $outputFile = new SplFileInfo($this->outputDirectory . "/" . $this->buildFileName($filenameTemplate, $this->optAudioExtension, $templateParameters));
 
