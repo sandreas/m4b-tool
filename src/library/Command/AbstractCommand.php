@@ -525,6 +525,9 @@ class AbstractCommand extends Command implements LoggerInterface
     }
 
     public static function replaceDirReservedChars($name) {
+        if(!is_string($name))  {
+            return $name;
+        }
         return strtr($name, static::DIRECTORY_SPECIAL_CHAR_REPLACEMENTS);
     }
 }
