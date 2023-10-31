@@ -164,7 +164,7 @@ class Tag implements ArrayAccess, JsonSerializable
 
 
 
-    public function mergeMissing(Tag $tag)
+    public function mergeMissing(Tag $tag): array
     {
         $changedProperties = [];
         foreach ($this as $propertyName => $propertyValue) {
@@ -200,12 +200,12 @@ class Tag implements ArrayAccess, JsonSerializable
         return $changedProperties;
     }
 
-    public function hasCoverFile()
+    public function hasCoverFile(): bool
     {
         return $this->cover && !($this->cover instanceof EmbeddedCover);
     }
 
-    public function isTransientProperty($propertyName)
+    public function isTransientProperty($propertyName): bool
     {
         return in_array($propertyName, static::TRANSIENT_PROPERTIES, true);
     }
@@ -267,9 +267,11 @@ class Tag implements ArrayAccess, JsonSerializable
      * @return void
      * @since 5.0.0
      */
-    public function offsetUnset($offset)
+    public function offsetUnset($offset): void
     {
-        $this->$offset = null;
+        if ($this->offsetExists($offset) && isset($this->$offset)) {
+            unset($this->$offset);
+        }
     }
 
     /**
