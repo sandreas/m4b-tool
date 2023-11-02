@@ -27,6 +27,13 @@ class TagImproverComposite implements TagImproverInterface
     /** @var callable|null */
     private $dumpTagCallback;
 
+    /** @var string[] */
+    public $whitelist = [];
+
+    /** @var string[] */
+    public $blacklist = [];
+
+
     public function __construct(SplFileInfo $debugFile = null, callable $debugDetectSilences = null)
     {
         $this->debugFile = $debugFile;
@@ -53,6 +60,19 @@ class TagImproverComposite implements TagImproverInterface
             }
             $classNameParts = explode("\\", get_class($changer));
             $name = array_pop($classNameParts);
+
+            $lcname = strtolower($name);
+
+            if(count($this->whitelist) > 0 && !in_array($lcname, $this->whitelist, true)) {
+                $this->info(sprintf("==> skipped improver %s (not whitelisted)", $name));
+                continue;
+            }
+
+            if(count($this->blacklist) > 0 && in_array($lcname, $this->blacklist, true)) {
+                $this->info(sprintf("==> skipped improver %s (blacklisted)", $name));
+                continue;
+            }
+
             $this->info(sprintf("==> trying improver %s", $name));
             $chaptersBeforeCount = count($tag->chapters);
             $tag = $changer->improve($tag);

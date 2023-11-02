@@ -285,6 +285,8 @@ class ChaptersCommand extends AbstractCommand
 
         $inputFileDuration = $this->metaHandler->inspectExactDuration($this->filesToProcess);
         $tagImprover = new TagImproverComposite();
+        $tagImprover->whitelist = $this->optEnableImprovers;
+        $tagImprover->blacklist = $this->optDisableImprovers;
         $tagImprover->setDumpTagCallback(function (Tag $tag) {
             return $this->dumpTagAsLines($tag);
         });

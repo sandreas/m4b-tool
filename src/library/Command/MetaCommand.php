@@ -162,6 +162,8 @@ class MetaCommand extends AbstractMetadataCommand
     {
         $tag = $this->metaHandler->readTag($this->argInputFile);
         $tagImprover = new TagImproverComposite();
+        $tagImprover->whitelist = $this->optEnableImprovers;
+        $tagImprover->blacklist = $this->optDisableImprovers;
         $tagImprover->setDumpTagCallback(function (Tag $tag) {
             return $this->dumpTagAsLines($tag);
         });

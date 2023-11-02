@@ -98,6 +98,9 @@ class AbstractCommand extends Command implements LoggerInterface
     const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
     const OPTION_MAX_CHAPTER_LENGTH = "max-chapter-length";
 
+    const OPTION_ENABLE_IMPROVERS = "enable-improvers";
+    const OPTION_DISABLE_IMPROVERS = "disable-improvers";
+
 
     const OPTION_PLATFORM_CHARSET = "platform-charset";
 
@@ -165,6 +168,9 @@ class AbstractCommand extends Command implements LoggerInterface
      */
     protected $optLogFile;
 
+
+    protected $optEnableImprovers = [];
+    protected $optDisableImprovers = [];
 
     /** @var BinaryWrapper */
     protected $metaHandler;
@@ -324,6 +330,8 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "a", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", static::SILENCE_DEFAULT_LENGTH);
         $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "b", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
         $this->addOption(static::OPTION_MAX_CHAPTER_LENGTH, null, InputOption::VALUE_OPTIONAL, "maximum chapter length in seconds - its also possible to provide a desired chapter length in form of 300,900 where 300 is desired and 900 is max - if the max chapter length is exceeded, the chapter is placed on the first silence between desired and max chapter length", "0");
+        $this->addOption(static::OPTION_ENABLE_IMPROVERS, null, InputOption::VALUE_OPTIONAL, "Enable ONLY the provided improvers / metadata loaders (whitelist, e.g. --enable-improvers=ChaptersFromTxt to ONLY load chapters from txt)", "");
+        $this->addOption(static::OPTION_DISABLE_IMPROVERS, null, InputOption::VALUE_OPTIONAL, "Disable the provided improvers / metadata loaders (blacklist, e.g. --disable-improvers=ChaptersFromTxt to not load chapters from txt)", "");
         $this->addOption(static::OPTION_FILENAME_TEMPLATE, "p", InputOption::VALUE_OPTIONAL, "filename twig-template for output file naming");
     }
 
@@ -354,6 +362,8 @@ class AbstractCommand extends Command implements LoggerInterface
         if ($this->input->getOption(static::OPTION_NO_CACHE)) {
             $this->cacheAdapter->clear();
         }
+
+
 
         $platformCharset = strtolower($this->input->getOption(static::OPTION_PLATFORM_CHARSET));
         if ($platformCharset === "" && $this->isWindows()) {
@@ -388,6 +398,24 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->optNoCache = $this->input->getOption(static::OPTION_NO_CACHE);
         $this->optTmpDir = $this->input->getOption(static::OPTION_TMP_DIR) ?? $this->getEnvironmentVariable(static::ENV_TMP_DIR);
         $this->optFilenameTemplate = $this->input->getOption(static::OPTION_FILENAME_TEMPLATE);
+
+        $this->optEnableImprovers = $this->loadImprovers($this->input->getOption(static::OPTION_ENABLE_IMPROVERS));
+        $this->optDisableImprovers = $this->loadImprovers($this->input->getOption(static::OPTION_DISABLE_IMPROVERS));
+    }
+
+
+    private function loadImprovers($getOption)
+    {
+        if($getOption == null || !is_string($getOption))    {
+            return [];
+        }
+
+        return array_filter(array_map(function($element)  {
+            return strtolower(trim($element));
+        }, explode(",", $getOption)), function($element) {
+            return $element !== "";
+        });
+
     }
 
     protected function getEnvironmentVariable($name)
@@ -530,4 +558,5 @@ class AbstractCommand extends Command implements LoggerInterface
         }
         return strtr($name, static::DIRECTORY_SPECIAL_CHAR_REPLACEMENTS);
     }
+
 }

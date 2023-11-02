@@ -850,6 +850,10 @@ class MergeCommand extends AbstractConversionCommand
 
         $tag = new Tag();
         $tagImprover = new TagImproverComposite($tagDebugFile, $detectSilenceFunction);
+
+        $tagImprover->whitelist = $this->optEnableImprovers;
+        $tagImprover->blacklist = $this->optDisableImprovers;
+
         $tagImprover->setDumpTagCallback(function (Tag $tag) {
             return $this->dumpTagAsLines($tag);
         });
