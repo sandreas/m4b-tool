@@ -905,6 +905,23 @@ class MergeCommand extends AbstractConversionCommand
                 $tagImprover->add(new Tag\AdjustTooLongChapters($this->metaHandler, $this->chapterHandler, $outputTmpFile, $maxChapterLength, $silenceLength));
                 break;
         }
+        $optMinChapterLength = trim($this->input->getOption(static::OPTION_MIN_CHAPTER_LENGTH));
+
+        $parts = explode("[", $optMinChapterLength);
+        $optMinChapterLength = isset($parts[0]) ? (float)$parts[0] : 2;
+        $optKeepIndexes = null;
+        if(isset($parts[1])) {
+            try {
+                $keepIndexes = json_decode("[".$parts[1]);
+                if (is_array($keepIndexes)) {
+                    $optKeepIndexes = $keepIndexes;
+                }
+            } catch(Throwable $t) {
+                // ignore
+            }
+        }
+
+        $tagImprover->add(new Tag\AdjustTooShortChapters(new TimeUnit($optMinChapterLength, TimeUnit::SECOND), $optKeepIndexes));
 
 
         $equateInstructions = $this->input->getOption(static::OPTION_EQUATE);

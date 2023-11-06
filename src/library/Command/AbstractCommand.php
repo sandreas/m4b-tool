@@ -96,6 +96,7 @@ class AbstractCommand extends Command implements LoggerInterface
     const OPTION_MUSICBRAINZ_ID = "musicbrainz-id";
     const OPTION_SILENCE_MIN_LENGTH = "silence-min-length";
     const OPTION_SILENCE_MAX_LENGTH = "silence-max-length";
+    const OPTION_MIN_CHAPTER_LENGTH = "min-chapter-length";
     const OPTION_MAX_CHAPTER_LENGTH = "max-chapter-length";
 
     const OPTION_ENABLE_IMPROVERS = "enable-improvers";
@@ -329,6 +330,7 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->addOption(static::OPTION_FFMPEG_PARAM, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "Add argument to every ffmpeg call, append after all other ffmpeg parameters (e.g. --" . static::OPTION_FFMPEG_PARAM . '="-max_muxing_queue_size" ' . '--' . static::OPTION_FFMPEG_PARAM . '="1000" for ffmpeg [...] -max_muxing_queue_size 1000)', []);
         $this->addOption(static::OPTION_SILENCE_MIN_LENGTH, "a", InputOption::VALUE_OPTIONAL, "silence minimum length in milliseconds", static::SILENCE_DEFAULT_LENGTH);
         $this->addOption(static::OPTION_SILENCE_MAX_LENGTH, "b", InputOption::VALUE_OPTIONAL, "silence maximum length in milliseconds", 0);
+        $this->addOption(static::OPTION_MIN_CHAPTER_LENGTH, null, InputOption::VALUE_OPTIONAL, "minimum chapter length in seconds - its also possible to provide chapter indexes to keep although they are shorter, e.g. --min-chapter-length=2.5[0,1,-1] to limit chapter length to 2.5 seconds and keep first, second and last chapter, even when shorter", "1");
         $this->addOption(static::OPTION_MAX_CHAPTER_LENGTH, null, InputOption::VALUE_OPTIONAL, "maximum chapter length in seconds - its also possible to provide a desired chapter length in form of 300,900 where 300 is desired and 900 is max - if the max chapter length is exceeded, the chapter is placed on the first silence between desired and max chapter length", "0");
         $this->addOption(static::OPTION_ENABLE_IMPROVERS, null, InputOption::VALUE_OPTIONAL, "Enable ONLY the provided improvers / metadata loaders (whitelist, e.g. --enable-improvers=ChaptersFromTxt to ONLY load chapters from txt)", "");
         $this->addOption(static::OPTION_DISABLE_IMPROVERS, null, InputOption::VALUE_OPTIONAL, "Disable the provided improvers / metadata loaders (blacklist, e.g. --disable-improvers=ChaptersFromTxt to not load chapters from txt)", "");
