@@ -10,6 +10,7 @@ use M4bTool\Audio\ChapterCollection;
 use M4bTool\Audio\Silence;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Tag\AdjustTooLongChapters;
+use M4bTool\Audio\Tag\AdjustTooShortChapters;
 use M4bTool\Audio\Tag\ChaptersFromEpub;
 use M4bTool\Audio\Tag\TagImproverComposite;
 use M4bTool\Chapter\ChapterHandler;
@@ -325,12 +326,22 @@ class ChaptersCommand extends AbstractCommand
             $this->input->getOption(static::OPTION_MAX_CHAPTER_LENGTH),
             new TimeUnit((int)$this->input->getOption(static::OPTION_SILENCE_MIN_LENGTH))
         );
+
+        $optMinChapterLength = trim($this->input->getOption(static::OPTION_MIN_CHAPTER_LENGTH));
+        [$optMinChapterLength, $optKeepIndexes] = static::parseMinChapterLength($optMinChapterLength);
+        $tooShort = new AdjustTooShortChapters(new TimeUnit($optMinChapterLength, TimeUnit::SECOND), $optKeepIndexes);
+
         try {
             $tooLongAdjustment->setLogger($this);
             $tooLongAdjustment->improve($tag);
+
+            $tooShort->setLogger($this);
+            $tooShort->improve($tag);
         } catch (InvalidArgumentException | Exception $e) {
             // ignore
         }
+
+
 
 
         $this->metaHandler->writeTag($this->filesToProcess, $tag);

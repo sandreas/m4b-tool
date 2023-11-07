@@ -32,6 +32,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
 use Twig\Environment as Twig_Environment;
 use Twig\Error\LoaderError;
 use Twig\Error\SyntaxError;
@@ -218,7 +219,6 @@ class AbstractCommand extends Command implements LoggerInterface
         $this->metaHandler = new BinaryWrapper($this->ffmpeg, $this->mp4v2, $fdkaac, $this->tone);
 
 
-
         // todo: merge these two classes?
         $this->chapterHandler = new ChapterHandler($this->metaHandler);
 
@@ -366,7 +366,6 @@ class AbstractCommand extends Command implements LoggerInterface
         }
 
 
-
         $platformCharset = strtolower($this->input->getOption(static::OPTION_PLATFORM_CHARSET));
         if ($platformCharset === "" && $this->isWindows()) {
             $platformCharset = AbstractMp4v2Executable::CHARSET_WIN_1252;
@@ -408,13 +407,13 @@ class AbstractCommand extends Command implements LoggerInterface
 
     private function loadImprovers($getOption)
     {
-        if($getOption == null || !is_string($getOption))    {
+        if ($getOption == null || !is_string($getOption)) {
             return [];
         }
 
-        return array_filter(array_map(function($element)  {
+        return array_filter(array_map(function ($element) {
             return strtolower(trim($element));
-        }, explode(",", $getOption)), function($element) {
+        }, explode(",", $getOption)), function ($element) {
             return $element !== "";
         });
 
@@ -527,7 +526,7 @@ class AbstractCommand extends Command implements LoggerInterface
      * @throws LoaderError
      * @throws SyntaxError
      */
-    protected function buildFileName(string $template, string $extension, array $templateParameters=[])
+    protected function buildFileName(string $template, string $extension, array $templateParameters = [])
     {
         $env = new Twig_Environment(new Twig_Loader_Array([]));
         $template = $env->createTemplate($template);
@@ -554,11 +553,33 @@ class AbstractCommand extends Command implements LoggerInterface
         return $normalized;
     }
 
-    public static function replaceDirReservedChars($name) {
-        if(!is_string($name))  {
+    public static function replaceDirReservedChars($name)
+    {
+        if (!is_string($name)) {
             return $name;
         }
         return strtr($name, static::DIRECTORY_SPECIAL_CHAR_REPLACEMENTS);
+
+
+    }
+
+    protected static function parseMinChapterLength(string $optMinChapterLength)
+    {
+        $parts = explode("[", $optMinChapterLength);
+        $optMinChapterLength = isset($parts[0]) ? (float)$parts[0] : 2;
+        $optKeepIndexes = null;
+        if (isset($parts[1])) {
+            try {
+                $keepIndexes = json_decode("[" . $parts[1]);
+                if (is_array($keepIndexes)) {
+                    $optKeepIndexes = $keepIndexes;
+                }
+            } catch (Throwable $t) {
+                // ignore
+            }
+        }
+
+        return [$optMinChapterLength, $optKeepIndexes];
     }
 
 }
