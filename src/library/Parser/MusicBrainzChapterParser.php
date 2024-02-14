@@ -43,7 +43,7 @@ class MusicBrainzChapterParser
         $mbJson = $this->cacheAdapterGet($cacheKey, function () use ($retries, $pause, $callback) {
 
             for ($i = 0; $i < $retries; $i++) {
-                $urlToGet = "http://musicbrainz.org/ws/2/release/" . $this->mbId . "?inc=recordings&fmt=json";
+                $urlToGet = "http://musicbrainz.org/ws/2/work/" . $this->mbId . "?inc=recording-rels&fmt=json";
                 $options = [
                     'http' => [
                         'method' => "GET",
@@ -54,6 +54,11 @@ class MusicBrainzChapterParser
                 ];
 
                 $context = stream_context_create($options);
+                $headers = get_headers($urlToGet, false, $context);
+                if (substr($headers[0], 9, 3) === "404") {
+                    $urlToGet = "http://musicbrainz.org/ws/2/release/" . $this->mbId . "?inc=recordings&fmt=json";
+                    $context = stream_context_create($options);
+                }
 
                 $mbJson = @call_user_func_array($callback, [$urlToGet, false, $context]);
                 if ($mbJson) {
