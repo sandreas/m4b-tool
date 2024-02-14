@@ -161,7 +161,7 @@ class ChaptersCommand extends AbstractCommand
             $parsedChapters = $tag->chapters;
         } else if ($this->mbChapterParser) {
             $mbXml = $this->mbChapterParser->loadRecordings();
-            $parsedChapters = $this->mbChapterParser->parseRecordings($mbXml);
+            $this->chapters = $this->mbChapterParser->parseRecordings($mbXml);
         }
 
         $duration = $this->metaHandler->estimateDuration($this->filesToProcess);
