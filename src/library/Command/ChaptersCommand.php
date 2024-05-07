@@ -243,11 +243,12 @@ class ChaptersCommand extends AbstractCommand
 
 
         $chaptersFromEpubImprover = ChaptersFromEpub::fromFile(
-            $this->chapterHandler,
             $epubFileObject,
+            $epubFile,
+            $this->chapterHandler,
             $totalDuration,
-            $this->parseEpubIgnoreChapters($this->input->getOption(static::OPTION_EPUB_IGNORE_CHAPTERS)),
-            $epubFile
+            $this->parseEpubIgnoreChapters($this->input->getOption(static::OPTION_EPUB_IGNORE_CHAPTERS))
+
         );
 
         $chaptersBackupFile = new SplFileInfo($this->filesToProcess->getPath() . "/" . $this->filesToProcess->getBasename($this->filesToProcess->getExtension()) . "chapters.bak.txt");

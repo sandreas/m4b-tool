@@ -16,10 +16,8 @@ use Throwable;
 
 class ChaptersFromEpub extends AbstractTagImprover
 {
-    /** @var ChapterCollection */
-    protected $chapterCollection;
-    /** @var ChapterHandler */
-    protected $chapterHandler;
+    protected ChapterCollection $chapterCollection;
+    protected ?ChapterHandler $chapterHandler;
 
     public function __construct(ChapterCollection $chapterCollection = null, ChapterHandler $chapterHandler = null)
     {
@@ -27,17 +25,20 @@ class ChaptersFromEpub extends AbstractTagImprover
         $this->chapterHandler = $chapterHandler;
     }
 
-    public function getChapterCollection()
+    public function getChapterCollection(): ChapterCollection
     {
         return $this->chapterCollection;
     }
 
-    public static function fromFile(ChapterHandler $chapterHandler, SplFileInfo $reference = null, TimeUnit $totalDuration = null, array $chapterIndexesToRemove = [], $fileName = null)
+    public static function fromFile(SplFileInfo $reference = null, $fileName = null, ChapterHandler $chapterHandler = null, TimeUnit $totalDuration = null, array $chapterIndexesToRemove = []): ChaptersFromEpub|static
     {
         try {
+            if($chapterHandler === null) {
+                return new static();
+            }
             if ($fileName === null || !file_exists($fileName)) {
                 $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-                $fileName = $fileName ? $fileName : $reference->getBasename($reference->getExtension()) . "epub";
+                $fileName = $fileName ?: $reference->getBasename($reference->getExtension()) . "epub";
                 $globPattern = $path . "/" . $fileName;
                 $files = glob($globPattern);
                 if (!is_array($files) || count($files) === 0) {
@@ -94,7 +95,7 @@ class ChaptersFromEpub extends AbstractTagImprover
         return $tag;
     }
 
-    private function improveExtraProperty(Tag $tag, $extraPropertyName, $value)
+    private function improveExtraProperty(Tag $tag, $extraPropertyName, $value): void
     {
 
         if (!isset($tag->extraProperties[$extraPropertyName]) && $value) {
