@@ -1,6 +1,11 @@
 #!/usr/bin/env php
 <?php
 
+// disable E_DEPRECATED errors
+if(!getenv("M4B_TOOL_FORCE_INI_ERROR_REPORTING")) {
+    $errorReportingLevel = error_reporting();
+    error_reporting($errorReportingLevel & ~E_DEPRECATED);
+}
 
 register_shutdown_function(function () {
     if (!is_null($e = error_get_last())) {

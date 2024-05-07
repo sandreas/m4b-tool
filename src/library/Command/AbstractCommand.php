@@ -412,7 +412,7 @@ class AbstractCommand extends Command implements LoggerInterface
         }
 
         return array_filter(array_map(function ($element) {
-            return strtolower(trim($element));
+            return strtolower(trim($element ?? ""));
         }, explode(",", $getOption)), function ($element) {
             return $element !== "";
         });
@@ -479,7 +479,7 @@ class AbstractCommand extends Command implements LoggerInterface
                 continue;
             }
 
-            if (trim($value) === "") {
+            if (trim($value ?? "") === "") {
                 $emptyTagNames[] = $mappedKey;
                 continue;
             }
