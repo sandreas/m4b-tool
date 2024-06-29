@@ -10,6 +10,7 @@ use M4bTool\Audio\Chapter;
 use M4bTool\Audio\CueSheet;
 use M4bTool\Audio\Silence;
 use M4bTool\Audio\Tag;
+use M4bTool\Audio\Tag\ChaptersTxt;
 use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Chapter\ChapterHandler;
 use M4bTool\Common\ConditionalFlags;
@@ -242,7 +243,8 @@ class SplitCommand extends AbstractConversionCommand
                     $this->metaHandler->exportChapters($this->argInputFile, $this->chaptersFile);
                 }
             } else {
-                $this->chaptersFile = new SplFileInfo($this->argInputFile->getPath() . "/chapters.txt");
+                // $this->chaptersFile = new SplFileInfo($this->argInputFile->getPath() . "/chapters.txt");
+                $this->chaptersFile = ChaptersTxt::searchExistingMetaFile($this->argInputFile, ChaptersTxt::DEFAULT_FILENAME);
             }
 
             if ($this->chaptersFile === null || !$this->chaptersFile->isFile()) {
