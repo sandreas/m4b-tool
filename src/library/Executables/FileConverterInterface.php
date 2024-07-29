@@ -55,7 +55,6 @@ interface FileConverterInterface
         self::EXTENSION_AU => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_CAF => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_FLAC => self::FORMAT_FLAC,
-        self::EXTENSION_FLAC => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_M4A => self::FORMAT_MP4,
         self::EXTENSION_M4B => self::FORMAT_MP4,
         self::EXTENSION_M4P => self::FORMAT_MP4,
