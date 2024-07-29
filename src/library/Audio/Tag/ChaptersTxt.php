@@ -14,43 +14,29 @@ use SplFileInfo;
 class ChaptersTxt extends AbstractTagImprover
 {
     const DEFAULT_FILENAME = "chapters.txt";
-    /**
-     * @var TimeUnit
-     */
-    protected $totalLength;
 
-    /**
-     * @var Mp4chaps
-     */
-    private $mp4chaps;
-    private $chaptersContent;
+    protected ?TimeUnit $totalLength;
 
-    public function __construct(Mp4chaps $mp4chaps = null, $chaptersContent = null, TimeUnit $totalLength = null)
+
+    private ?Mp4chaps $mp4chaps;
+    private string $chaptersContent;
+
+    public function __construct(Mp4chaps $mp4chaps = null, string $chaptersContent = null, TimeUnit $totalLength = null)
     {
         $this->mp4chaps = $mp4chaps;
-        $this->chaptersContent = $chaptersContent;
+        $this->chaptersContent = $chaptersContent ?? "";
         $this->totalLength = $totalLength;
     }
 
-    /**
-     * Cover constructor.
-     * @param SplFileInfo $reference
-     * @param null $fileName
-     * @param TimeUnit|null $totalLength
-     * @return ChaptersTxt
-     */
-    public static function fromFile(SplFileInfo $reference, $fileName = null, TimeUnit $totalLength = null)
+
+    public static function fromFile(SplFileInfo $reference, string $fileName = null, TimeUnit $totalLength = null): ChaptersTxt
     {
         $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
         return $fileToLoad ? new static(new Mp4chaps(), file_get_contents($fileToLoad), $totalLength) : new static();
     }
 
 
-
-
     /**
-     * @param Tag $tag
-     * @return Tag
      * @throws Exception
      */
     public function improve(Tag $tag): Tag
