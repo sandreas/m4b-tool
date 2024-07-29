@@ -39,6 +39,8 @@ interface FileConverterInterface
     const FORMAT_MP4 = "mp4";
     const FORMAT_ADTS = "adts";
 
+    const FORMAT_FLAC = "flac";
+
     // const CODEC_MP3 = "mp3";
     const CODEC_AAC = "aac";
     const CODEC_ALAC = "alac";
@@ -52,6 +54,7 @@ interface FileConverterInterface
         self::EXTENSION_APE => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_AU => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_CAF => self::FORMAT_UNSPECIFIED,
+        self::EXTENSION_FLAC => self::FORMAT_FLAC,
         self::EXTENSION_FLAC => self::FORMAT_UNSPECIFIED,
         self::EXTENSION_M4A => self::FORMAT_MP4,
         self::EXTENSION_M4B => self::FORMAT_MP4,
