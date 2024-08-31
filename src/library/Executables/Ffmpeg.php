@@ -293,6 +293,11 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         return $this->runProcessWithTimeout($adjustedArguments);
     }
 
+    protected function ffmpegVerbose($arguments) {
+        $adjustedArguments = $this->ffmpegAdjustArguments($arguments);
+        return $this->runProcessWithTimeout($adjustedArguments);
+    }
+
     protected function ffmpegAdjustArgumentsQuiet($arguments)
     {
         $adjustedArguments = $this->ffmpegAdjustArguments($arguments);
@@ -635,7 +640,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
             $command[] = $tmpOutputFileConverting;
 
-            $process = $this->ffmpegQuiet($command);
+
+            $process = $options->debug ? $this->ffmpegVerbose($command) : $this->ffmpegQuiet($command);
             if ($process->getExitCode() > 0) {
                 throw new Exception(sprintf("Could not extract part of file %s: %s (%s)", $inputFile, $process->getErrorOutput(), $process->getExitCode()));
             }
@@ -736,7 +742,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
         $command[] = $options->destination;
 
-        $process = $this->createNonBlockingProcess($this->ffmpegAdjustArgumentsQuiet($command));
+        $adjustedArguments = $options->debug ? $this->ffmpegAdjustArguments($command) : $this->ffmpegAdjustArgumentsQuiet($command);
+        $process = $this->createNonBlockingProcess($adjustedArguments);
         $process->setTimeout(0);
         $process->start();
         $process->addTerminateEventCallback(function () use ($metaDataFile) {
