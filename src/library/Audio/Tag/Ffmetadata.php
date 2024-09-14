@@ -6,6 +6,7 @@ namespace M4bTool\Audio\Tag;
 
 use Exception;
 use M4bTool\Audio\Tag;
+use M4bTool\Common\Flags;
 use M4bTool\Parser\FfmetaDataParser;
 use SplFileInfo;
 
@@ -30,7 +31,7 @@ class Ffmetadata extends AbstractTagImprover
      * @return Ffmetadata
      * @throws Exception
      */
-    public static function fromFile(SplFileInfo $reference, $fileName = null)
+    public static function fromFile(SplFileInfo $reference, $fileName = null, Flags $flags = null): static
     {
 
         $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);

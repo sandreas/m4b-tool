@@ -7,6 +7,7 @@ namespace M4bTool\Audio\Tag;
 use Exception;
 use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
+use M4bTool\Common\Flags;
 use M4bTool\Executables\Mp4chaps;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -28,8 +29,13 @@ class ChaptersTxt extends AbstractTagImprover
         $this->totalLength = $totalLength;
     }
 
+    public static function fromFile(SplFileInfo $reference, string $fileName = null, Flags $flags = null): static
+    {
+        $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
+        return $fileToLoad ? new static(new Mp4chaps(), file_get_contents($fileToLoad), null) : new static();
+    }
 
-    public static function fromFile(SplFileInfo $reference, string $fileName = null, TimeUnit $totalLength = null): ChaptersTxt
+    public static function fromFileTotalDuration(SplFileInfo $reference, string $fileName = null, TimeUnit $totalLength = null): static
     {
         $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
         return $fileToLoad ? new static(new Mp4chaps(), file_get_contents($fileToLoad), $totalLength) : new static();

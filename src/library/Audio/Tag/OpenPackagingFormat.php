@@ -4,6 +4,7 @@
 namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Tag;
+use M4bTool\Common\Flags;
 use M4bTool\Common\ReleaseDate;
 use SimpleXMLElement;
 use SplFileInfo;
@@ -37,7 +38,7 @@ class OpenPackagingFormat extends AbstractTagImprover
      * @param null $fileName
      * @return OpenPackagingFormat
      */
-    public static function fromFile(SplFileInfo $reference, $fileName = null)
+    public static function fromFile(SplFileInfo $reference, $fileName = null, Flags $flags = null): static
     {
         $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
         return $fileToLoad ? new static(file_get_contents($fileToLoad)) : new static();

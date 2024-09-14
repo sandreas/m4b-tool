@@ -32,7 +32,7 @@ class M4bToolJson extends AbstractTagImprover
      * @param Flags $flags
      * @return M4bToolJson
      */
-    public static function fromFile(SplFileInfo $reference, $fileName = null, Flags $flags = null)
+    public static function fromFile(SplFileInfo $reference, $fileName = null, Flags $flags = null): static
     {
         $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
         return $fileToLoad ? new static(file_get_contents($fileToLoad), $flags) : new static();

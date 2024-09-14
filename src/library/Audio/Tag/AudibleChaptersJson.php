@@ -24,15 +24,12 @@ class AudibleChaptersJson extends ContentMetadataJson
         $this->lengthCalc = $lengthCalc;
     }
 
-    /**
-     * Cover constructor.
-     * @param SplFileInfo $reference
-     * @param null $fileName
-     * @param Flags|null $flags
-     * @param ChapterLengthCalculator|null $lengthCalc
-     * @return ContentMetadataJson
-     */
-    public static function fromFile(SplFileInfo $reference, $fileName = null, Flags $flags = null, ChapterLengthCalculator $lengthCalc = null)
+    public static function fromFile(SplFileInfo $reference, string $fileName = null, Flags $flags = null): static
+    {
+        $fileContents = static::loadFileContents($reference, "audible_chapters.json");
+        return new static($fileContents, $flags, null);
+    }
+    public static function fromFileWithChapterLengthCalc(SplFileInfo $reference, string $fileName = null, Flags $flags = null, ChapterLengthCalculator $lengthCalc = null): static
     {
         $fileContents = static::loadFileContents($reference, "audible_chapters.json");
         return new static($fileContents, $flags, $lengthCalc);

@@ -30,7 +30,7 @@ class ChaptersFromEpub extends AbstractTagImprover
         return $this->chapterCollection;
     }
 
-    public static function fromFile(SplFileInfo $reference = null, $fileName = null, ChapterHandler $chapterHandler = null, TimeUnit $totalDuration = null, array $chapterIndexesToRemove = []): ChaptersFromEpub|static
+    public static function fromFileWithParams(SplFileInfo $reference = null, $fileName = null, ChapterHandler $chapterHandler = null, TimeUnit $totalDuration = null, array $chapterIndexesToRemove = []): ChaptersFromEpub|static
     {
         try {
             if($chapterHandler === null) {

@@ -242,7 +242,7 @@ class ChaptersCommand extends AbstractCommand
         }
 
 
-        $chaptersFromEpubImprover = ChaptersFromEpub::fromFile(
+        $chaptersFromEpubImprover = ChaptersFromEpub::fromFileWithParams(
             $epubFileObject,
             $epubFile,
             $this->chapterHandler,
@@ -295,7 +295,7 @@ class ChaptersCommand extends AbstractCommand
 
         $tagImprover->setLogger($this);
 
-        $tagImprover->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, $chaptersBackupFile->getBasename(), $inputFileDuration));
+        $tagImprover->add(Tag\ChaptersTxt::fromFileTotalDuration($this->filesToProcess, $chaptersBackupFile->getBasename(), $inputFileDuration));
         $tagImprover->add(Tag\ContentMetadataJson::fromFile($this->filesToProcess));
         $tagImprover->add(new Tag\MergeSubChapters($this->chapterHandler));
 
@@ -312,7 +312,7 @@ class ChaptersCommand extends AbstractCommand
         );
         $tagImprover->add(new Tag\RemoveDuplicateFollowUpChapters($this->chapterHandler));
 
-        $tagImprover->add(Tag\ChaptersTxt::fromFile($this->filesToProcess, null, $inputFileDuration));
+        $tagImprover->add(Tag\ChaptersTxt::fromFileTotalDuration($this->filesToProcess, null, $inputFileDuration));
 
         $tagImprover->improve($tag);
 

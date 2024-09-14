@@ -895,7 +895,7 @@ class MergeCommand extends AbstractConversionCommand
         $tagImprover->add(Tag\M4bToolJson::fromFile($this->argInputFile));
         $tagImprover->add(Tag\Description::fromFile($this->argInputFile));
         $tagImprover->add(Tag\ContentMetadataJson::fromFile($this->argInputFile));
-        $tagImprover->add(Tag\AudibleChaptersJson::fromFile($this->argInputFile, null, null, $lengthCalc));
+        $tagImprover->add(Tag\AudibleChaptersJson::fromFileWithChapterLengthCalc($this->argInputFile, null, null, $lengthCalc));
 
         switch ($this->input->getOption(static::OPTION_CHAPTER_ALGORITHM)) {
             case static::CHAPTER_ALGORITHM_GROUPING:

@@ -35,7 +35,7 @@ class ContentMetadataJson extends AbstractTagImprover
      * @param Flags|null $flags
      * @return ContentMetadataJson
      */
-    public static function fromFile(SplFileInfo $reference, $fileName = null, Flags $flags = null)
+    public static function fromFile(SplFileInfo $reference, string $fileName = null, Flags $flags = null): static
     {
         $fileContents = static::loadFileContents($reference, $fileName);
         return new static($fileContents, $flags);

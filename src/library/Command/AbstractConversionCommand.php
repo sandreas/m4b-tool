@@ -226,6 +226,12 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
             throw new Exception(sprintf("%s must contain a value between 0 and 100", static::OPTION_AUDIO_QUALITY));
         }
 
+        if(!empty($this->optAudioSampleRate)) {
+            $key = (int)$this->optAudioSampleRate;
+            if(!isset(static::SAMPLING_RATE_TO_BITRATE_MAPPING[$key])) {
+                $this->warning("The audio sampling rate '".$this->optAudioSampleRate."' is not in the mapping and might result in strange results, are you sure this value is correct?");
+            }
+        }
     }
 
     protected function setOptionIfUndefined($optionName, $optionValue, $input = null)

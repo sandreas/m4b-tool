@@ -5,6 +5,7 @@ namespace M4bTool\Audio\Tag;
 
 
 use M4bTool\Audio\Tag;
+use M4bTool\Common\Flags;
 use M4bTool\Common\ReleaseDate;
 use SplFileInfo;
 
@@ -24,7 +25,7 @@ class AudibleTxt extends AbstractTagImprover
      * @param null $fileName
      * @return AudibleTxt
      */
-    public static function fromFile(SplFileInfo $reference, $fileName = null)
+    public static function fromFile(SplFileInfo $reference, $fileName = null, Flags $flags = null): static
     {
         $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
         return $fileToLoad ? new static(file_get_contents($fileToLoad)) : new static();

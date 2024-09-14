@@ -6,6 +6,7 @@ namespace M4bTool\Audio\Tag;
 
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Traits\LogTrait;
+use M4bTool\Common\Flags;
 use M4bTool\Tags\StringBuffer;
 use SplFileInfo;
 
@@ -18,7 +19,7 @@ abstract class AbstractTagImprover implements TagImproverInterface
     const DUMP_MAX_LEN = 50;
     const DUMP_TRUNCATE_SUFFIX = "...";
 
-    public static function searchExistingMetaFile(SplFileInfo $reference, $defaultFileName, $fileName = null)
+    public static function searchExistingMetaFile(SplFileInfo $reference, string $defaultFileName, ?string $fileName = null): SplFileInfo|null
     {
         $lookupFiles = static::buildFileLookupPriorityList($reference, $defaultFileName, $fileName);
         foreach ($lookupFiles as $fileToLoad) {
@@ -29,7 +30,7 @@ abstract class AbstractTagImprover implements TagImproverInterface
         return null;
     }
 
-    protected static function stripBOM($contents)
+    protected static function stripBOM($contents): string
     {
         if (substr($contents, 0, 3) === static::BOM) {
             return substr($contents, 3);
@@ -37,7 +38,7 @@ abstract class AbstractTagImprover implements TagImproverInterface
         return $contents;
     }
 
-    public static function buildExportMetaFile(SplFileInfo $reference, $defaultFileName, $fileName = null)
+    public static function buildExportMetaFile(SplFileInfo $reference, $defaultFileName, $fileName = null): int|null
     {
         $lookupFiles = static::buildFileLookupPriorityList($reference, $defaultFileName, $fileName);
         return count($lookupFiles) > 0 ? reset($lookupFiles) : null;
@@ -52,7 +53,7 @@ abstract class AbstractTagImprover implements TagImproverInterface
     private static function buildFileLookupPriorityList(SplFileInfo $reference, $defaultFileName, $fileName = null)
     {
         $filePriority = [];
-        $fileName = $fileName ? $fileName : $defaultFileName;
+        $fileName = $fileName ?: $defaultFileName;
 
         if ($reference->isFile()) {
             $filePriority[] = new SplFileInfo($reference->getPath() . "/" . $reference->getBasename($reference->getExtension()) . $fileName);
@@ -109,13 +110,8 @@ abstract class AbstractTagImprover implements TagImproverInterface
         return new SplFileInfo($cover);
     }
 
-    /**
-     * Cover constructor.
-     * @param SplFileInfo $reference
-     * @param null $fileName
-     * @return static
-     */
-    public static function fromFile(SplFileInfo $reference, $fileName = null)
+
+    public static function fromFile(SplFileInfo $reference, string $fileName = null, Flags $flags = null): static
     {
         $fileToLoad = static::searchExistingMetaFile($reference, static::$defaultFileName, $fileName);
         return $fileToLoad ? new static(file_get_contents($fileToLoad)) : new static();

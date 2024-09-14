@@ -6,6 +6,7 @@ namespace M4bTool\Audio;
 
 use Exception;
 use M4bTool\Audio\Tag\AbstractTagImprover;
+use M4bTool\Common\Flags;
 use Sandreas\Strings\Strings;
 use Sandreas\Time\TimeUnit;
 use SplFileInfo;
@@ -46,7 +47,7 @@ class CueSheet extends AbstractTagImprover
         $this->fileContents = $fileContents;
     }
 
-    public static function fromFile(SplFileInfo $reference, $fileName = null)
+    public static function fromFile(SplFileInfo $reference, string $fileName = null, Flags $flags = null): static
     {
         $fileToLoad = static::searchExistingMetaFile($reference, static::DEFAULT_FILENAME, $fileName);
         return new static($fileToLoad);
