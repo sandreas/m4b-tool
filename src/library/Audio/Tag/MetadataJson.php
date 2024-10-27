@@ -11,7 +11,7 @@ use M4bTool\Common\ReleaseDate;
 
 class MetadataJson extends AbstractJsonTagImprover
 {
-    protected static $defaultFileName = "metadata.json";
+    protected static string $defaultFileName = "metadata.json";
 
     /**
      * @param Tag $tag

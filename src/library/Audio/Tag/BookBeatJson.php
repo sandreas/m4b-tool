@@ -7,7 +7,7 @@ use M4bTool\Common\ReleaseDate;
 
 class BookBeatJson extends AbstractJsonTagImprover
 {
-    protected static $defaultFileName = "bookbeat.json";
+    protected static string $defaultFileName = "bookbeat.json";
 
     public function improve(Tag $tag): Tag
     {

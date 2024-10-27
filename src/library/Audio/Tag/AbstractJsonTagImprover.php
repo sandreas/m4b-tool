@@ -4,8 +4,8 @@ namespace M4bTool\Audio\Tag;
 
 abstract class AbstractJsonTagImprover extends AbstractTagImprover
 {
-    protected static $defaultFileName = "";
-    protected $fileContent;
+    protected static string $defaultFileName = "";
+    protected string $fileContent;
 
     public function __construct($fileContents = "")
     {

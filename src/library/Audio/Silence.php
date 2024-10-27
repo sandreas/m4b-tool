@@ -14,13 +14,15 @@ use Sandreas\Time\TimeUnit;
 
 class Silence extends AbstractPart implements JsonSerializable
 {
-    private $isChapterStart = false;
+    private bool $isChapterStart = false;
 
-    public function setChapterStart($chapterStart) {
+    public function setChapterStart($chapterStart): void
+    {
         $this->isChapterStart = $chapterStart;
     }
 
-    public function isChapterStart() {
+    public function isChapterStart(): bool
+    {
         return $this->isChapterStart;
     }
 

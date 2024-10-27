@@ -38,13 +38,13 @@ class OptionNameTagPropertyMapper
     ];
 
 
-    public function mapOptionToTagProperty($optionName)
+    public function mapOptionToTagProperty(string $optionName): string
     {
         $propertyName = array_search($optionName, static::TAG_PROPERTY_TO_OPTION_MAPPING, true);
         return $propertyName === false ? $optionName : $propertyName;
     }
 
-    public function mapTagPropertyToOption($propertyName)
+    public function mapTagPropertyToOption(string $propertyName): string
     {
         return static::TAG_PROPERTY_TO_OPTION_MAPPING[$propertyName] ?? $propertyName;
     }

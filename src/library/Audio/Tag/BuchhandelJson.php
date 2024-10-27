@@ -15,7 +15,7 @@ class BuchhandelJson extends AbstractJsonTagImprover
         // translator
         // "B06" => "",
     ];
-    protected static $defaultFileName = "buchhandel.json";
+    protected static string $defaultFileName = "buchhandel.json";
 
     public function improve(Tag $tag): Tag
     {

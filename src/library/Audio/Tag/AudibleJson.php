@@ -10,7 +10,7 @@ use M4bTool\Common\ReleaseDate;
 
 class AudibleJson extends AbstractJsonTagImprover
 {
-    protected static $defaultFileName = "audible.json";
+    protected static string $defaultFileName = "audible.json";
     public $shouldUseSeriesFromSubtitle = false;
     public array $genreMapping = [];
 

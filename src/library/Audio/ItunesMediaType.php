@@ -18,7 +18,8 @@ class ItunesMediaType
             "Ringtone" => 14,
             "ItunesU"=> 23];
 
-    public static function parseInt($value) {
+    public static function parseInt($value): ?int
+    {
         $stringValue = (string)$value;
         $intValue = (int)$value;
         foreach(static::TYPES as $constantName => $constantValue) {
