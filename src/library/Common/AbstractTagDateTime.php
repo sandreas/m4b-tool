@@ -19,7 +19,7 @@ abstract class AbstractTagDateTime extends DateTime implements JsonSerializable
      * @param $string
      * @return static|null
      */
-    public static function createFromValidString($string)
+    public static function createFromValidString($string): ?AbstractTagDateTime
     {
         if (!isset($string) || trim($string) === "") {
             return null;
@@ -37,17 +37,17 @@ abstract class AbstractTagDateTime extends DateTime implements JsonSerializable
         }
     }
 
-    public function setFormatString($formatString)
+    public function setFormatString($formatString): void
     {
         $this->formatString = $formatString;
     }
 
-    public function __toString()
+    public function __toString(): string
     {
         return $this->format($this->formatString ?? static::$defaultFormatString);
     }
 
-    public function jsonSerialize()
+    public function jsonSerialize(): string
     {
         return $this->__toString();
     }

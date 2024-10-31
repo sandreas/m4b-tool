@@ -6,34 +6,34 @@ namespace M4bTool\Common;
 
 class Flags
 {
-    private $rawValue;
+    private int $rawValue;
 
-    public function __construct($rawValue = 0)
+    public function __construct(int $rawValue = 0)
     {
         $this->rawValue = $rawValue;
     }
 
-    public function equal($flag)
+    public function equal($flag): bool
     {
         return $this->rawValue === $flag;
     }
 
-    public function notEqual($flag)
+    public function notEqual($flag): bool
     {
         return $this->rawValue !== $flag;
     }
 
-    public function insert($flag)
+    public function insert($flag): void
     {
         $this->rawValue |= $flag;
     }
 
-    public function remove($flag)
+    public function remove($flag): void
     {
         $this->rawValue &= ~$flag;
     }
 
-    public function contains($flag)
+    public function contains($flag): bool
     {
         return (bool)($this->rawValue & $flag);
     }
