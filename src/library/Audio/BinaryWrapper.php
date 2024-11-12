@@ -175,7 +175,7 @@ class BinaryWrapper implements TagReaderInterface, TagWriterInterface, DurationD
         if ($path !== "") {
             $path .= DIRECTORY_SEPARATOR;
         }
-        return $destinationFile ? $destinationFile : new SplFileInfo($path . $prefix . $defaultFileName);
+        return $destinationFile ?: new SplFileInfo($path . $prefix . $defaultFileName);
     }
 
     /**

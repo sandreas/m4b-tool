@@ -28,14 +28,14 @@ class DirectoryLoader
             $currentDirAsString = rtrim($current->getPath(), "/") . "/";
 
             foreach ($loadedDirs as $key => $loadedDir) {
-                if (strpos($currentDirAsString, $loadedDir) === 0) {
+                if (str_starts_with($currentDirAsString, $loadedDir)) {
                     continue 2;
                 }
             }
 
             // filter all dirs where parent = currentDirAsString
             $loadedDirs = array_filter($loadedDirs, function ($loadedDir) use ($currentDirAsString) {
-                return strpos($loadedDir, $currentDirAsString) !== 0;
+                return !str_starts_with($loadedDir, $currentDirAsString);
             });
 
             $loadedDirs[] = $currentDirAsString;

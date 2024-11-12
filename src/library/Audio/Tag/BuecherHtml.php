@@ -64,7 +64,7 @@ class BuecherHtml extends AbstractTagImprover
             }
         }
         $tag->album = trim($title);
-        if (strpos($tag->title, "/") !== false) {
+        if (str_contains($tag->title, "/")) {
             $titleParts = array_filter(explode("/", $tag->title));
             $tag->series = trim(array_pop($titleParts));
             $tag->title = trim(implode("/", $titleParts));

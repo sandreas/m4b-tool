@@ -138,7 +138,7 @@ abstract class AbstractExecutable
         if ('\\' !== DIRECTORY_SEPARATOR) {
             return "'" . str_replace("'", "'\\''", $argument) . "'";
         }
-        if (false !== strpos($argument, "\0")) {
+        if (str_contains($argument, "\0")) {
             $argument = str_replace("\0", '?', $argument);
         }
         if (!preg_match('/[\/()%!^"<>&|\s]/', $argument)) {

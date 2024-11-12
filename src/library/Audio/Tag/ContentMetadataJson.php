@@ -44,7 +44,7 @@ class ContentMetadataJson extends AbstractTagImprover
     protected static function loadFileContents(SplFileInfo $reference, $fileName = null)
     {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
-        $fileName = $fileName ? $fileName : "content_metadata_*.json";
+        $fileName = $fileName ?: "content_metadata_*.json";
 
         $globPattern = $path . "/" . $fileName;
         $files = glob($globPattern);

@@ -193,16 +193,16 @@ class FfmetaDataParser
 
     /**
      * @param $chapterProperties
-     * @return bool
+     * @return void
      */
-    private function createChapter($chapterProperties)
+    private function createChapter($chapterProperties): void
     {
         if (!isset($chapterProperties["start"], $chapterProperties["end"], $chapterProperties["timebase"])) {
-            return false;
+            return;
         }
         $timeBaseScanner = new Scanner($chapterProperties["timebase"]);
         if (!$timeBaseScanner->scanForward("/")) {
-            return false;
+            return;
         }
         $timeBaseScanner->scanToEnd();
         $timeBase = (string)$timeBaseScanner->getTrimmedResult();
@@ -216,7 +216,6 @@ class FfmetaDataParser
 
 
         $this->chapters[] = new Chapter($startUnit, $length, (string)$title);
-        return true;
     }
 
     private function unquote(string $propertyValue)
@@ -259,7 +258,6 @@ class FfmetaDataParser
             // Metadata duration (less exact but sometimes the only information available)
             if (preg_match("/^[\s]+Duration:[\s]+([0-9:.]+)/", $line, $matches)) {
                 $this->parseDurationMatches($matches);
-                continue;
             }
         }
 

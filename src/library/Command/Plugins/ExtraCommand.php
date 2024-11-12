@@ -1,9 +1,10 @@
-<?php
+<?php /** @noinspection PhpMultipleClassesDeclarationsInOneFile */
 
 namespace M4bTool\Command\Plugins;
 
 
 use DateTime;
+use DateTimeInterface;
 use DOMDocument;
 use DOMNodeList;
 use Exception;
@@ -296,7 +297,7 @@ class M4bToolJsonDumper extends AbstractMetaDataDumper
         }
 
         $m4bToolProperties = [
-            "purchaseDate" => $date->format(DateTime::ATOM)
+            "purchaseDate" => $date->format(DateTimeInterface::ATOM)
         ];
         $this->fileContents[static::FILENAME_M4BTOOL_JSON] = json_encode($m4bToolProperties);
         return parent::dumpFiles($id, $path, $alreadyDumpedFiles);
@@ -385,7 +386,7 @@ class ExtraCommand extends AbstractConversionCommand
      * @return int
      * @throws Exception
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         libxml_use_internal_errors(true);
 
@@ -516,7 +517,7 @@ class ExtraCommand extends AbstractConversionCommand
         // even if directory structure would lead to different results
         foreach ($bookIdPaths as $bookIdPath) {
             $inputDirectories = array_filter($inputDirectories, function ($dir) use ($bookIdPath) {
-                return strpos($dir, $bookIdPath) !== 0;
+                return !str_starts_with($dir, $bookIdPath);
             });
         }
 
@@ -617,7 +618,7 @@ class ExtraCommand extends AbstractConversionCommand
 //// li.productListItem
 //        return $xpath->query("//li[contains(@class, 'productListItem')]");
 //    }
-
+/*
     private function chooseOption($options)
     {
         $optionValues = array_keys($options);
@@ -641,6 +642,7 @@ class ExtraCommand extends AbstractConversionCommand
         } while ($readline = trim(fgets(STDIN)));
         return null;
     }
+*/
 //
 //    private function isConfidentMatch(Job $job)
 //    {
@@ -733,27 +735,27 @@ class ExtraCommand extends AbstractConversionCommand
         return $mappedGenre;
     }
 
-    private function finishAudioBookDirRenaming($sourceDir, $destinationDir)
+    private function finishAudioBookDirRenaming($sourceDir, $destinationDir): void
     {
         // --force is NOT possible here because its renaming, not copying
         if (is_dir($destinationDir) && $this->doesDirContainFiles($destinationDir)) {
             $this->warning(sprintf("Could not rename %s to %s, destination already exists", $sourceDir, $destinationDir));
-            return false;
+            return;
         }
 
         if ($this->optDryRun) {
-            return true;
+            return;
         }
 
         $baseDir = dirname($destinationDir);
         if (!is_dir($baseDir)) {
             if (!mkdir($baseDir, 0755, true)) {
                 $this->warning(sprintf("Could not rename %s to %s, destination already exists", $sourceDir, $destinationDir));
-                return false;
+                return;
             }
         }
 
-        return (bool)rename($sourceDir, $destinationDir);
+        rename($sourceDir, $destinationDir);
 //        if($result) {
 //            $this->cleanupPath($sourceDir);
 //        }

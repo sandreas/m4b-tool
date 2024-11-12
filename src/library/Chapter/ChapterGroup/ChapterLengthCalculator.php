@@ -103,7 +103,7 @@ class ChapterLengthCalculator
 
         if (count($chapters) <= $originalChapters) {
             foreach ($chapters as $index => $chapter) {
-                $chapters[$index]->setName($originalChapters[$index]->getName());
+                $chapter->setName($originalChapters[$index]->getName());
             }
         }
         return $chapters;

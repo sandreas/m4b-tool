@@ -110,7 +110,7 @@ class Mp4art extends AbstractMp4v2Executable implements TagWriterInterface
         $header = "IDX     BYTES  CRC32     TYPE       FILE
 ----------------------------------------------------------------------
 ";
-        if (strpos($output, $header) === false) {
+        if (!str_contains($output, $header)) {
             return 0;
         }
 

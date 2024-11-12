@@ -112,11 +112,10 @@ class ChaptersCommand extends AbstractCommand
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return int|void|null
+     * @return int
      * @throws InvalidArgumentException
-     * @throws Exception
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
 
         $this->initExecution($input, $output);
@@ -218,7 +217,6 @@ class ChaptersCommand extends AbstractCommand
         $this->filesToProcess = new SplFileInfo($this->input->getArgument(static::ARGUMENT_INPUT));
         if (!$this->filesToProcess->isFile()) {
             $this->notice("Input file is not a valid file, currently directories are not supported");
-            return;
         }
     }
 
@@ -232,7 +230,7 @@ class ChaptersCommand extends AbstractCommand
 
         $epubFileObject = $epubFile === null ? $this->filesToProcess : new SplFileInfo($epubFile);
         if (!($this->filesToProcess instanceof SplFileInfo) || !$this->filesToProcess->isFile()) {
-            $this->error(sprintf("No valid input file provided"));
+            $this->error("No valid input file provided");
             return;
         }
         $totalDuration = $this->metaHandler->estimateDuration($this->filesToProcess);
@@ -460,14 +458,14 @@ class ChaptersCommand extends AbstractCommand
                         $halfLen = (int)round($silenceClone->getLength()->milliseconds() / 2);
                         $potentialChapterStart->add($halfLen);
                         $potentialChapter = new Chapter($potentialChapterStart, clone $silenceClone->getLength(), $silenceChapterPrefix . $chapter->getName() . " - pos: " . $silenceClone->getStart()->format() . ", len: " . $silenceClone->getLength()->format());
-                        $chapterKey = (int)round($potentialChapter->getStart()->milliseconds(), 0);
+                        $chapterKey = (int)round($potentialChapter->getStart()->milliseconds());
                         $this->chapters[$chapterKey] = $potentialChapter;
 
 
                         $specialSilenceOffsetChapterStart = clone $silence->getStart();
                         $specialSilenceOffsetChapterStart->add($misplacedTolerance);
                         $specialSilenceOffsetChapter = new Chapter($specialSilenceOffsetChapterStart, clone $silence->getLength(), $potentialChapter->getName() . ' - tolerance');
-                        $offsetChapterKey = (int)round($specialSilenceOffsetChapter->getStart()->milliseconds(), 0);
+                        $offsetChapterKey = (int)round($specialSilenceOffsetChapter->getStart()->milliseconds());
                         $this->chapters[$offsetChapterKey] = $specialSilenceOffsetChapter;
 
                         $silenceIndex++;

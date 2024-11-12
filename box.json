@@ -7,6 +7,9 @@
         "LICENSE",
         "vendor/autoload.php"
     ],
+    "directories-bin": [
+        "vendor/symfony/console/Resources/bin"
+    ],
     "finder": [
         {
             "name": "*.php",

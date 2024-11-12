@@ -117,7 +117,7 @@ class Mp4chaps extends AbstractMp4v2Executable implements TagWriterInterface
             $trimmedLine = ltrim($line);
 
             // parse comment tags or ignore comment line
-            if (strpos($trimmedLine, "#") === 0) {
+            if (str_starts_with($trimmedLine, "#")) {
                 $commentTags = array_merge($commentTags, $this->parseCommentLineTag($trimmedLine));
                 continue;
             }

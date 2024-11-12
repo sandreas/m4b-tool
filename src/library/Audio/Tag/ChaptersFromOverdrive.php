@@ -126,19 +126,15 @@ class ChaptersFromOverdrive extends AbstractTagImprover
      * @return string
      * @throws Exception
      */
-    private function detectFormat($markerTime)
+    private function detectFormat($markerTime): string
     {
         $parts = explode(":", $markerTime);
         $count = count($parts);
-        switch ($count) {
-            case 1:
-                return "%S.%L";
-            case 2:
-                return "%M:%S.%L";
-            case 3:
-                return "%H:%M:%S.%L";
-            default:
-                throw new Exception(sprintf("Could not detect format for marker time %s", $markerTime));
-        }
+        return match ($count) {
+            1 => "%S.%L",
+            2 => "%M:%S.%L",
+            3 => "%H:%M:%S.%L",
+            default => throw new Exception(sprintf("Could not detect format for marker time %s", $markerTime)),
+        };
     }
 }

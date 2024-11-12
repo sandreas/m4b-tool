@@ -46,7 +46,7 @@ class Cover extends AbstractTagImprover
             $this->coverLoader->addNonRecursive($this->coverDir);
             $this->coverLoader->setIncludeExtensions(static::COVER_EXTENSIONS);
             $this->coverLoader->addNonRecursive($this->coverDir);
-            $tag->cover = $this->coverLoader->current() ? $this->coverLoader->current() : null;
+            $tag->cover = $this->coverLoader->current() ?: null;
         }
 
         return $tag;

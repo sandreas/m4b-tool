@@ -51,11 +51,11 @@ class SilenceParser
         foreach ($this->lines as $line) {
             $trimmedLine = trim($line);
 
-            if(strpos($trimmedLine, "Duration:") !== false) {
+            if(str_contains($trimmedLine, "Duration:")) {
                 $this->parseDuration($trimmedLine);
                 continue;
             }
-            if (strpos($trimmedLine, "silence_end") === false) {
+            if (!str_contains($trimmedLine, "silence_end")) {
                 continue;
             }
 

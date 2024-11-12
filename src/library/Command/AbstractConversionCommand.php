@@ -11,6 +11,7 @@ use M4bTool\Audio\Tag\InputOptions;
 use M4bTool\Audio\Tag\TagInterface;
 use M4bTool\Common\Flags;
 use M4bTool\Executables\Ffmpeg;
+use M4bTool\Executables\FileConverterInterface;
 use M4bTool\Executables\FileConverterOptions;
 use M4bTool\Filesystem\FileLoader;
 use M4bTool\Tags\StringBuffer;
@@ -40,30 +41,30 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
     const OPTION_TRIM_SILENCE = "trim-silence";
 
     const DEFAULT_SUPPORTED_AUDIO_EXTENSIONS = [
-        BinaryWrapper::EXTENSION_AAC,
-        BinaryWrapper::EXTENSION_AAX,
-        BinaryWrapper::EXTENSION_AIF,
-        BinaryWrapper::EXTENSION_AIFF,
-        BinaryWrapper::EXTENSION_ALAC,
-        BinaryWrapper::EXTENSION_APE,
-        BinaryWrapper::EXTENSION_AU,
-        BinaryWrapper::EXTENSION_CAF,
-        BinaryWrapper::EXTENSION_FLAC,
-        BinaryWrapper::EXTENSION_M4A,
-        BinaryWrapper::EXTENSION_M4B,
-        BinaryWrapper::EXTENSION_M4P,
-        BinaryWrapper::EXTENSION_M4R,
-        BinaryWrapper::EXTENSION_MKA,
-        BinaryWrapper::EXTENSION_MP2,
-        BinaryWrapper::EXTENSION_MP3,
-        BinaryWrapper::EXTENSION_MP4,
-        BinaryWrapper::EXTENSION_MPA,
-        BinaryWrapper::EXTENSION_RIF,
-        BinaryWrapper::EXTENSION_OGA,
-        BinaryWrapper::EXTENSION_OGG,
-        BinaryWrapper::EXTENSION_OPUS,
-        BinaryWrapper::EXTENSION_WAV,
-        BinaryWrapper::EXTENSION_WMA,
+        FileConverterInterface::EXTENSION_AAC,
+        FileConverterInterface::EXTENSION_AAX,
+        FileConverterInterface::EXTENSION_AIF,
+        FileConverterInterface::EXTENSION_AIFF,
+        FileConverterInterface::EXTENSION_ALAC,
+        FileConverterInterface::EXTENSION_APE,
+        FileConverterInterface::EXTENSION_AU,
+        FileConverterInterface::EXTENSION_CAF,
+        FileConverterInterface::EXTENSION_FLAC,
+        FileConverterInterface::EXTENSION_M4A,
+        FileConverterInterface::EXTENSION_M4B,
+        FileConverterInterface::EXTENSION_M4P,
+        FileConverterInterface::EXTENSION_M4R,
+        FileConverterInterface::EXTENSION_MKA,
+        FileConverterInterface::EXTENSION_MP2,
+        FileConverterInterface::EXTENSION_MP3,
+        FileConverterInterface::EXTENSION_MP4,
+        FileConverterInterface::EXTENSION_MPA,
+        FileConverterInterface::EXTENSION_RIF,
+        FileConverterInterface::EXTENSION_OGA,
+        FileConverterInterface::EXTENSION_OGG,
+        FileConverterInterface::EXTENSION_OPUS,
+        FileConverterInterface::EXTENSION_WAV,
+        FileConverterInterface::EXTENSION_WMA,
     ];
     const DEFAULT_SUPPORTED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"];
     const DEFAULT_SUPPORTED_DATA_EXTENSIONS = ["txt", "opf", "json"];
@@ -92,6 +93,9 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
 
     /** @var SplFileInfo[] */
     protected $extractFilesAlreadyTried = [];
+
+    protected $outputFile;
+
 
     public function inputOptionsToTag()
     {
@@ -318,7 +322,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
         if ($coverTargetFile->isFile() && $force) {
             $p = $coverTargetFile->getPath();
             $b = $coverTargetFile->getBasename($coverTargetFile->getExtension());
-            $suffix = uniqid("");
+            $suffix = uniqid();
             $movedCoverTargetFile = new SplFileInfo($p . "/" . $b . $suffix . $coverTargetFile->getExtension());
             if (!rename($coverTargetFile, $movedCoverTargetFile)) {
                 $this->notice(sprintf("skipping cover extraction - could not backup existing cover to %s", $movedCoverTargetFile));
@@ -400,7 +404,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
             $this->warning("extracting description to " . $descriptionTargetFile . " failed");
             return null;
         }
-        $this->notice("extracted description to " . $descriptionTargetFile . "");
+        $this->notice("extracted description to " . $descriptionTargetFile);
         return $descriptionTargetFile;
     }
 
@@ -489,7 +493,7 @@ abstract class AbstractConversionCommand extends AbstractMetadataCommand
                 $coverLoader = new FileLoader();
                 $coverLoader->setIncludeExtensions(static::COVER_EXTENSIONS);
                 $coverLoader->addNonRecursive($coverDir);
-                $autoCoverFile = $coverLoader->current() ? $coverLoader->current() : null;
+                $autoCoverFile = $coverLoader->current() ?: null;
             }
 
             if ($autoCoverFile && $autoCoverFile->isFile()) {

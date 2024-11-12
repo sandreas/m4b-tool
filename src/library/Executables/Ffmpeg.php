@@ -161,7 +161,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
     protected function createTempFileInSameDirectory(SplFileInfo $file)
     {
-        return new SplFileInfo((string)$file . "-" . uniqid("", true) . "." . $file->getExtension());
+        return new SplFileInfo($file . "-" . uniqid("", true) . "." . $file->getExtension());
     }
 
     private function determineFormatFromOptions(SplFileInfo $file, $forceFormat = null)
@@ -330,7 +330,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
     public function loadHighestAvailableQualityAacCodec()
     {
         $process = $this->ffmpeg(["-codecs"]);
-        $process->stop(10);
+        $process->stop();
         $codecOutput = $process->getOutput() . $process->getErrorOutput();
 
         if (preg_match("/\b" . preg_quote(static::AAC_BEST_QUALITY_NON_FREE_CODEC) . "\b/i", $codecOutput)) {
@@ -529,7 +529,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
 
         // alac can be used for m4a/m4b, but ffmpeg says it is not mp4 compilant
-        if ($converterOptions->format && $converterOptions->codec !== BinaryWrapper::CODEC_ALAC) {
+        if ($converterOptions->format && $converterOptions->codec !== FileConverterInterface::CODEC_ALAC) {
             $command[] = "-f";
             $command[] = $converterOptions->format;
         }
@@ -604,8 +604,8 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
             return null;
         }
 
-        $tmpOutputFile = new SplFileInfo((string)$outputFile . "-finished." . $inputFile->getExtension());
-        $tmpOutputFileConverting = new SplFileInfo((string)$outputFile . "-converting." . $inputFile->getExtension());
+        $tmpOutputFile = new SplFileInfo($outputFile . "-finished." . $inputFile->getExtension());
+        $tmpOutputFileConverting = new SplFileInfo($outputFile . "-converting." . $inputFile->getExtension());
         if ((!$outputFile->isFile() && !$tmpOutputFile->isFile()) || $options->force) {
             if ($tmpOutputFileConverting->isFile()) {
                 unlink($tmpOutputFileConverting);
@@ -703,7 +703,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $this->appendTrimSilenceOptionsToCommand($command, $options);
 
         // backwards compatibility: ffmpeg needed experimental flag in earlier versions
-        if ($options->codec == BinaryWrapper::CODEC_AAC) {
+        if ($options->codec == FileConverterInterface::CODEC_AAC) {
             $command[] = "-strict";
             $command[] = "experimental";
         }
@@ -736,7 +736,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         $this->appendParameterToCommand($command, "-acodec", $options->codec);
 
         // alac can be used for m4a/m4b, but ffmpeg says it is not mp4 compilant
-        if ($options->format && $options->codec !== BinaryWrapper::CODEC_ALAC) {
+        if ($options->format && $options->codec !== FileConverterInterface::CODEC_ALAC) {
             $this->appendParameterToCommand($command, "-f", $this->mapFormat($options->format));
         }
 

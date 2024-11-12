@@ -17,7 +17,7 @@ class Process extends \Symfony\Component\Process\Process
         $this->eventCallbacks[static::TERMINATED_CALLBACK_EVENT][] = $cb;
     }
 
-    protected function updateStatus($blocking)
+    protected function updateStatus($blocking): void
     {
         // since getStatus is internally also calling updateStatus, this workaround prevents a recursion
         if ($this->disableStatusUpdate) {

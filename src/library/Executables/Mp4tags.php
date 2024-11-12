@@ -127,10 +127,10 @@ class Mp4tags extends AbstractMp4v2Executable implements TagWriterInterface
             // e.g. "    -purchasedate"
             $secondSearchString = sprintf("-%s", $longParam);
 
-            if (strpos($result, $firstSearchString) !== false) {
+            if (str_contains($result, $firstSearchString)) {
                 $this->exceptionDetails[] = "sandreas custom extra features: " . $firstSearchString;
                 $this->extraFeatureParameters[$longParam] = $shortParam;
-            } else if (strpos($result, $secondSearchString) !== false) {
+            } else if (str_contains($result, $secondSearchString)) {
                 $this->exceptionDetails[] = "new maintainer extra features: " . $firstSearchString;
                 $this->extraFeatureParameters[$longParam] = $longParam;
             } else {

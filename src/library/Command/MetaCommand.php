@@ -73,10 +73,9 @@ class MetaCommand extends AbstractMetadataCommand
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return int|void|null
-     * @throws Exception
+     * @return int
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $importFlags = new TaggingFlags();
         $importFlags->insertIf(TaggingFlags::FLAG_ALL, $input->getOption(static::OPTION_IMPORT_ALL) !== false);
@@ -198,7 +197,7 @@ class MetaCommand extends AbstractMetadataCommand
         }
         if ($tagChangerFlags->contains(TaggingFlags::FLAG_TAG_BY_COMMAND_LINE_ARGUMENTS)) {
             $this->notice("trying to load tags from input arguments");
-            $tagImprover->add(new InputOptions($this->input, new Flags(InputOptions::FLAG_ADJUST_FOR_IPOD)));
+            $tagImprover->add(new InputOptions($this->input, new Flags(Tag\TagInterface::FLAG_ADJUST_FOR_IPOD)));
         }
 
         $tag = $tagImprover->improve($tag);
@@ -211,7 +210,7 @@ class MetaCommand extends AbstractMetadataCommand
             $this->notice($outputLine);
         }
         $flags = $this->buildTagFlags();
-        $flags->insert(Tag\AbstractTagImprover::FLAG_USE_EXISTING_FILES);
+        $flags->insert(Tag\TagInterface::FLAG_USE_EXISTING_FILES);
         $this->metaHandler->writeTag($this->argInputFile, $tag, $flags);
 
     }

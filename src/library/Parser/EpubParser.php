@@ -70,7 +70,7 @@ class EpubParser extends \lywzx\epub\EpubParser
             $totalLength = new TimeUnit(ChapterCollection::PERCENT_FAKE_SECONDS, TimeUnit::SECOND); // 27h
         }
         foreach ($toc as $i => $tocItem) {
-            $name = $this->unicodeLtrim($toc[$i]["name"]) ?? "";
+            $name = $this->unicodeLtrim($tocItem["name"]) ?? "";
             $contents = $this->loadTocItemContents($tocItem);
             $isbns = array_merge($isbns, $this->extractValidIsbns($contents));
             $paragraphs = $tocItem["paragraphs"] ?? $this->extractParagraphs($contents);

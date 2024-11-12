@@ -19,6 +19,7 @@ use SplFileInfo;
 use Symfony\Component\Console\Helper\ProcessHelper;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Process;
+use Throwable;
 
 class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterInterface, DurationDetectorInterface
 {
@@ -178,7 +179,7 @@ class Tone extends AbstractExecutable implements TagReaderInterface, TagWriterIn
                 return null;
             }
             return new TimeUnit($milliseconds);
-        } catch(\Throwable $t) {
+        } catch(Throwable $t) {
             return null;
         }
     }

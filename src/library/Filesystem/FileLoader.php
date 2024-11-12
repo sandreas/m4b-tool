@@ -115,8 +115,8 @@ class FileLoader
             }
 
             foreach ($aParts as $index => $part) {
-                if ($aParts[$index] != $bParts[$index]) {
-                    return strnatcmp($aParts[$index], $bParts[$index]);
+                if ($part != $bParts[$index]) {
+                    return strnatcmp($part, $bParts[$index]);
                 }
             }
 

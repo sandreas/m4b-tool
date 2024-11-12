@@ -148,11 +148,11 @@ class MergeCommand extends AbstractConversionCommand
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return int|void|null
+     * @return int
      * @throws Exception
      * @throws InvalidArgumentException
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
 
         try {
@@ -219,24 +219,23 @@ class MergeCommand extends AbstractConversionCommand
         }
     }
 
-    private function loadResumeFile(InputInterface $input)
+    private function loadResumeFile(InputInterface $input): void
     {
         $this->resumeFile = trim((string)$input->getOption(static::OPTION_BATCH_RESUME_FILE));
         if ($this->resumeFile === "" || $this->resumeFile === null) {
-            return true;
+            return;
         }
         if (!file_exists($this->resumeFile)) {
             if (!touch($this->resumeFile)) {
                 $this->error(sprintf("Could not create resume file %s", $this->resumeFile));
-                return false;
+                return;
             }
-            return true;
+            return;
         }
 
         $this->resumeFileLines = array_map(function ($line) {
             return trim($line);
         }, file($this->resumeFile));
-        return true;
     }
 
     /**
@@ -304,7 +303,7 @@ class MergeCommand extends AbstractConversionCommand
             // add a folder for name, if it is not a series
             $title = $formatParser->format("%n");
             $album = $formatParser->format("%m");
-            $m4bFileName = $title ? $title : $album;
+            $m4bFileName = $title ?: $album;
             if ($m4bFileName && !$formatParser->getPlaceHolderValue(static::MAPPING_OPTIONS_PLACEHOLDERS[static::OPTION_TAG_SERIES_PART])) {
                 $fileNamePart .= "/" . $m4bFileName;
                 $this->notice(sprintf("series-part is empty, using containing directory: %s", $fileNamePart));
@@ -1027,7 +1026,7 @@ class MergeCommand extends AbstractConversionCommand
 
     }
 
-    private function deleteFilesAndParentDir(array $files)
+    private function deleteFilesAndParentDir(array $files): void
     {
         $file = null;
         foreach ($files as $file) {
@@ -1036,17 +1035,16 @@ class MergeCommand extends AbstractConversionCommand
             }
         }
         if ($file === null) {
-            return true;
+            return;
         }
         $parentDir = dirname($file);
         $recIt = new RecursiveDirectoryIterator($parentDir, FilesystemIterator::SKIP_DOTS);
         $it = new IteratorIterator($recIt);
         $filesToDelete = iterator_to_array($it);
         if (count($filesToDelete) > 0) {
-            return false;
+            return;
         }
         rmdir($parentDir);
-        return true;
     }
 
     protected function buildTagFlags()

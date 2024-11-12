@@ -121,8 +121,8 @@ class AbstractMetadataCommand extends AbstractCommand
         $this->addOption(static::OPTION_TAG_COMMENT, null, InputOption::VALUE_OPTIONAL, "custom comment, otherwise the existing metadata will be used");
         $this->addOption(static::OPTION_TAG_COPYRIGHT, null, InputOption::VALUE_OPTIONAL, "custom copyright, otherwise the existing metadata will be used");
         $this->addOption(static::OPTION_TAG_ENCODED_BY, null, InputOption::VALUE_OPTIONAL, "custom encoded-by, otherwise the existing metadata will be used");
-        $this->addOption(static::OPTION_TAG_GROUPING, null, InputOption::VALUE_OPTIONAL, sprintf("custom grouping, otherwise existing metadata will be used"));
-        $this->addOption(static::OPTION_TAG_PURCHASE_DATE, null, InputOption::VALUE_OPTIONAL, sprintf("custom purchase date"));
+        $this->addOption(static::OPTION_TAG_GROUPING, null, InputOption::VALUE_OPTIONAL, "custom grouping, otherwise existing metadata will be used");
+        $this->addOption(static::OPTION_TAG_PURCHASE_DATE, null, InputOption::VALUE_OPTIONAL, "custom purchase date");
         $this->addOption(static::OPTION_TAG_ENCODER, null, InputOption::VALUE_OPTIONAL, sprintf("custom encoder, otherwise %s will be used", static::APP_NAME));
 
 

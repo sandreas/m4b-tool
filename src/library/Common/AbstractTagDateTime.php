@@ -5,7 +5,6 @@ namespace M4bTool\Common;
 
 
 use DateTime;
-use Exception;
 use JsonSerializable;
 use Throwable;
 

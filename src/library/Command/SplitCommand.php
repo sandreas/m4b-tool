@@ -50,21 +50,19 @@ class SplitCommand extends AbstractConversionCommand
     /**
      * @var Chapter[]
      */
-    protected $chapters = [];
-    protected $outputDirectory;
+    protected array $chapters = [];
+    protected string $outputDirectory;
 
-    protected $meta = [];
+    protected array $meta = [];
     /**
      * @var BinaryWrapper
      */
     protected $metaHandler;
-    /**
-     * @var TimeUnit|void|null
-     */
-    protected $estimatedTotalDuration;
-    protected $chaptersFileContents = "";
 
-    protected function configure()
+    protected ?TimeUnit $estimatedTotalDuration;
+    protected string $chaptersFileContents = "";
+
+    protected function configure(): void
     {
         parent::configure();
 
@@ -83,13 +81,13 @@ class SplitCommand extends AbstractConversionCommand
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return int|void|null
-     * @throws Throwable
+     * @return int
+     * @throws InvalidArgumentException
      * @throws Twig_Error_Loader
      * @throws Twig_Error_Syntax
-     * @throws InvalidArgumentException
+     * @throws Exception
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->initExecution($input, $output);
         $this->ensureInputFileIsFile();
@@ -187,7 +185,7 @@ class SplitCommand extends AbstractConversionCommand
         $this->chapters = $chapterHandler->adjustChapters($fixedLengthChapters);
     }
 
-    private function makeFixedLengthChapter(int $index, TimeUnit $start, TimeUnit $length)
+    private function makeFixedLengthChapter(int $index, TimeUnit $start, TimeUnit $length): Chapter
     {
         $chapterName = (string)$index;
 
@@ -317,7 +315,7 @@ class SplitCommand extends AbstractConversionCommand
         if (count($optAddSilence) === 1) {
             $optAddSilence[1] = $optAddSilence[0];
         }
-        $tmpDir = $this->optTmpDir ? $this->optTmpDir : sys_get_temp_dir();
+        $tmpDir = $this->optTmpDir ?: sys_get_temp_dir();
         $beforeSilence = null;
         $beforeSilenceFile = null;
         $afterSilence = null;

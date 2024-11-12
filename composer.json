@@ -2,12 +2,12 @@
     "name": "sandreas/m4b-tool",
     "minimum-stability": "dev",
     "prefer-stable": true,
-    "platform":{"php":"7.4"},
+    "platform":{"php":"8.2"},
     "require": {
         "monolog/monolog": "^1.22",
-        "symfony/console": "^4.0",
-        "symfony/process": "^4.0",
-        "symfony/cache": "^4.0",
+        "symfony/console": "^7.0",
+        "symfony/process": "^7.0",
+        "symfony/cache": "^7.0",
         "twig/twig": "^3.0",
         "sandreas/php-time": "dev-master",
         "sandreas/php-strings": "dev-master",
@@ -20,9 +20,9 @@
         "ext-curl": "*",
         "lywzx/php-epub": "^0.1.2",
         "erusev/parsedown": "dev-master#cb17b6477dfff935958ba01325f2e8a2bfa6dab3 as 1.7.1",
-        "doctrine/collections": "^1.6",
+        "doctrine/collections": "^2.0",
         "wapmorgan/media-file": "^0.1.4",
-        "psr/http-message": "^1.0"
+        "psr/http-message": "^2.0"
     },
     "autoload": {
         "psr-4": {
