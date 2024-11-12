@@ -349,7 +349,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
 
         $output = $this->getAllProcessOutput($this->createStreamInfoProcess($file, ["-loglevel", "panic", "-stats"]));
 
-        preg_match_all("/time=([0-9:.]+)/is", $output, $matches);
+        preg_match_all("/time=([0-9:.]+)/i", $output, $matches);
 
         if (!isset($matches[1]) || !is_array($matches[1]) || count($matches[1]) === 0) {
             return $this->estimateDuration($file);
@@ -458,7 +458,7 @@ class Ffmpeg extends AbstractFfmpegBasedExecutable implements TagReaderInterface
         }
         $process = $this->ffmpegQuiet(["-i", $audioFile, "-vn", "-c:a", "copy", "-f", "crc", "-"]);
         $output = trim($this->getAllProcessOutput($process));
-        preg_match("/^CRC=(0x[0-9A-F]+)$/isU", $output, $matches);
+        preg_match("/^CRC=(0x[0-9A-F]+)$/iU", $output, $matches);
         if (!isset($matches[1])) {
             throw new Exception(sprintf("checksum calculation failed - invalid output %s", $output));
         }

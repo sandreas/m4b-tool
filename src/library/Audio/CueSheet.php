@@ -58,8 +58,8 @@ class CueSheet extends AbstractTagImprover
         if ($file !== null) {
             return strtolower($file->getExtension()) === "cue";
         }
-        return preg_match("/\bTRACK\s+[0-9]+\s+AUDIO\b/isU", $contents) &&
-            preg_match("/\bINDEX\s+[0-9]+\s+[0-9]+:[0-9]+:[0-9]+\b/isU", $contents);
+        return preg_match("/\bTRACK\s+[0-9]+\s+AUDIO\b/iU", $contents) &&
+            preg_match("/\bINDEX\s+[0-9]+\s+[0-9]+:[0-9]+:[0-9]+\b/iU", $contents);
     }
 
     public function improve(Tag $tag): Tag

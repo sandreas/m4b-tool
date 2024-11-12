@@ -217,7 +217,7 @@ class ChapterMarker
                 continue;
             }
 
-            if (!preg_match("/^[1-9][0-9]*$/isU", $chapter->getName())) {
+            if (!preg_match("/^[1-9][0-9]*$/iU", $chapter->getName())) {
                 $reindexChapters = false;
             }
 

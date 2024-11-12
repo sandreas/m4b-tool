@@ -29,9 +29,9 @@ class ChaptersFromMusicBrainz extends AbstractTagImprover
         'chapter-pattern' => "/^[^:]+[1-9][0-9]*:[\s]*(.*),.*[1-9][0-9]*[\s]*$/i",
         'chapter-remove-chars' => "„“”",
     ];
-    private TimeUnit $totalDuration;
+    private ?TimeUnit $totalDuration;
 
-    public function __construct(ChapterMarker $marker, ChapterHandler $chapterHandler, MusicBrainzChapterParser $musicBrainsChapterParser = null, TimeUnit $totalDuration = null)
+    public function __construct(ChapterMarker $marker, ChapterHandler $chapterHandler, MusicBrainzChapterParser $musicBrainsChapterParser = null, ?TimeUnit $totalDuration = null)
     {
         $this->marker = $marker;
         $this->chapterParser = $musicBrainsChapterParser;
@@ -53,7 +53,7 @@ class ChaptersFromMusicBrainz extends AbstractTagImprover
         $mbXml = $this->chapterParser->loadRecordings();
         $mbChapters = $this->chapterParser->parseRecordings($mbXml);
 
-
+        $chapters = [];
         if (count($tag->chapters) > 0) {
             $chapters = $this->chapterHandler->overloadTrackChapters($mbChapters, $tag->chapters);
         } else if ($this->totalDuration !== null && $this->totalDuration->milliseconds() > 0) {

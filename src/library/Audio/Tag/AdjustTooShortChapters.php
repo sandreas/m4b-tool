@@ -16,7 +16,7 @@ class AdjustTooShortChapters extends AbstractTagImprover
     /**
      * @var int[]
      */
-    private array $keepIndexes = [];
+    private array $keepIndexes;
 
 
     public function __construct(TimeUnit $minChapterLength = null, array $keepIndexes = null)

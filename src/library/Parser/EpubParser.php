@@ -134,7 +134,7 @@ class EpubParser extends \lywzx\epub\EpubParser
         if ($chapterTitle === "" || $firstParagraph === null) {
             return $paragraphs;
         }
-        if ($firstParagraph === $chapterTitle || $this->normalizeTitle($firstParagraph) === $this->normalizeTitle($chapterTitle) || preg_match("/^[\s0-9.)-]+$/isU", $firstParagraph)) {
+        if ($firstParagraph === $chapterTitle || $this->normalizeTitle($firstParagraph) === $this->normalizeTitle($chapterTitle) || preg_match("/^[\s0-9.)-]+$/iU", $firstParagraph)) {
             array_shift($paragraphs);
         }
         return $paragraphs;

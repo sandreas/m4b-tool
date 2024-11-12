@@ -60,7 +60,7 @@ class ChapterTitleBuilder
 
         foreach($titleContainer as $fileIndex => $titleCandidates) {
             foreach($titleCandidates as $key => $value) {
-                $normalizedValue = trim(mb_strtolower(preg_replace("/[0-9]/isU", "", $value)));
+                $normalizedValue = trim(mb_strtolower(preg_replace("/[0-9]/iU", "", $value)));
 
                 if($key === "meta" && $normalizedValue == "") {
                     continue;
@@ -117,7 +117,7 @@ class ChapterTitleBuilder
 
         return $chapters;
     }
-    
-    
-    
+
+
+
 }

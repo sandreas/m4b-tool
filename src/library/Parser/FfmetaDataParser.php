@@ -316,7 +316,7 @@ class FfmetaDataParser
         $this->cover = $cover;
 
 
-        preg_match("/([1-9][0-9]*x[1-9][0-9]*)/is", $stringLine, $dimensionMatches);
+        preg_match("/([1-9][0-9]*x[1-9][0-9]*)/i", $stringLine, $dimensionMatches);
 
         if (!isset($dimensionMatches[0])) {
             return;

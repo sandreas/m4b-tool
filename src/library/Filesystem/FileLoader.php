@@ -45,7 +45,7 @@ class FileLoader
     public function add(SplFileInfo $fileOrDirectory)
     {
         if (!$fileOrDirectory->isReadable()) {
-            $this->skipFileOrDirectory($fileOrDirectory, static::NOT_READABLE);
+            $this->skipFileOrDirectory($fileOrDirectory);
             return;
         }
 
@@ -56,9 +56,9 @@ class FileLoader
         }
     }
 
-    private function skipFileOrDirectory(SplFileInfo $fileOrDirectory, $skipReason)
+    private function skipFileOrDirectory(SplFileInfo $fileOrDirectory)
     {
-        $this->skippedFiles[(string)$fileOrDirectory] = $skipReason;
+        $this->skippedFiles[(string)$fileOrDirectory] = static::NOT_READABLE;
     }
 
     private function addDirectory(SplFileInfo $directory, $recursive)
@@ -85,7 +85,7 @@ class FileLoader
                 continue;
             }
             if (!$itFile->isReadable()) {
-                $this->skipFileOrDirectory($itFile, static::NOT_READABLE);
+                $this->skipFileOrDirectory($itFile);
                 continue;
             }
 

@@ -451,7 +451,7 @@ class ChapterHandler
 
     private function normalizeChapterName($name)
     {
-        return preg_replace("/[0-9. ]+/is", "", $name);
+        return preg_replace("/[0-9. ]+/i", "", $name);
 
     }
 

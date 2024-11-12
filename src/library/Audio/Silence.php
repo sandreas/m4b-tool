@@ -27,7 +27,7 @@ class Silence extends AbstractPart implements JsonSerializable
     }
 
 
-    public function jsonSerialize(): string
+    public function jsonSerialize(): array
     {
 
         return array_filter([
