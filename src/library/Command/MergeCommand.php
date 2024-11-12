@@ -881,7 +881,7 @@ class MergeCommand extends AbstractConversionCommand
             $mbChapterParser = new MusicBrainzChapterParser($mbId);
             $mbChapterParser->setCacheAdapter($this->cacheAdapter);
 
-            $tagImprover->add(new ChaptersFromMusicBrainz($this->chapterMarker, $this->chapterHandler, $mbChapterParser, $this->metaHandler->estimateDuration($this->outputFile)));
+            $tagImprover->add(new ChaptersFromMusicBrainz($this->chapterMarker, $this->chapterHandler, $mbChapterParser, $this->metaHandler->estimateDuration($outputTmpFile)));
         }
 
 
