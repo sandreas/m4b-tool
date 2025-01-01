@@ -153,7 +153,7 @@ abstract class AbstractExecutable
      * @param array $command
      * @return string
      */
-    protected function buildDebugCommand(array $command)
+    public function buildDebugCommand(array $command): string
     {
         $escapedArguments = array_map(function ($parameter) {
             return $this->escapeNonePipeArgument($parameter);
@@ -161,7 +161,7 @@ abstract class AbstractExecutable
         return implode(" ", $escapedArguments);
     }
 
-    protected function debugCommand(array $command)
+    protected function debugCommand(array $command): void
     {
         $this->debug($this->buildDebugCommand($command));
     }

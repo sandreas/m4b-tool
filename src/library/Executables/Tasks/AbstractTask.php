@@ -12,6 +12,8 @@ abstract class AbstractTask  implements  RunnableInterface, LoggerInterface
 {
     use LogTrait;
 
+    public static array $reportedMessages = [];
+
     /** @var Throwable */
     protected $lastException;
 

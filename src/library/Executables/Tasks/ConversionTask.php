@@ -58,9 +58,9 @@ class ConversionTask extends AbstractTask
             $this->process = $this->metaDataHandler->convertFile($this->options);
 
         } catch (Throwable $e) {
-            $this->lastException = $e;
-            if($e->getMessage() != $this->lastException->getMessage()) {
+            if(!in_array($e->getMessage(), static::$reportedMessages, true)) {
                 $this->error(sprintf("Conversion error: %s", $e->getMessage()));
+                static::$reportedMessages[] = $e->getMessage();
             }
         }
 
