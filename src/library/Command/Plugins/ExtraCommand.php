@@ -29,6 +29,8 @@ interface MetaDataDumperInterface
 }
 
 
+
+
 abstract class AbstractMetaDataDumper implements MetaDataDumperInterface
 {
     use LogTrait;
@@ -206,7 +208,10 @@ class AudibleJsonDumper extends AbstractMetaDataDumper
     public function dumpFiles(string $id, SplFileInfo $path, array $alreadyDumpedFiles = [])
     {
         $destinationFile = new SplFileInfo($path . "/" . static::FILENAME_AUDIBLE_JSON);
-        $url = "https://api.audible.de/1.0/catalog/products/%s?response_groups=media,product_attrs,product_desc,product_extended_attrs,product_plan_details,product_plans,rating,review_attrs,reviews,sample,sku,contributors,series,categories,category_metadata,category_ladders";
+        $url = getenv("M4B_TOOL_AUDIBLE_META_URL_TEMPLATE");
+        if(!$url) {
+            return [];
+        }
         $this->loadFileContents(sprintf($url, $id), $destinationFile, function ($json) {
             return $this->validateJsonWithContent($json);
         });
@@ -226,7 +231,10 @@ class AudibleChaptersJsonDumper extends AbstractMetaDataDumper
     public function dumpFiles(string $id, SplFileInfo $path, array $alreadyDumpedFiles = [])
     {
         $destinationFile = new SplFileInfo($path . "/" . static::FILENAME_AUDIBLE_CHAPTERS_JSON);
-        $url = "https://api.audible.de/1.0/content/%s/metadata?chapter_titles_type=Tree&drm_type=Hls&response_groups=chapter_info";
+        $url = getenv("M4B_TOOL_AUDIBLE_CHAPS_URL_TEMPLATE");
+        if(!$url) {
+            return [];
+        }
         $this->loadFileContents(sprintf($url, $id), $destinationFile, function ($json) {
             return $this->validateJsonWithContent($json);
         });
@@ -246,7 +254,10 @@ class BuchhandelJsonDumper extends AbstractMetaDataDumper
     public function dumpFiles(string $id, SplFileInfo $path, array $alreadyDumpedFiles = [])
     {
         $destinationFile = new SplFileInfo($path . "/" . static::FILENAME_BUCHHANDEL_JSON);
-        $url = "https://buchhandel.de/jsonapi/productDetails/%s";
+        $url = getenv("M4B_TOOL_BUCHHANDEL_META_URL_TEMPLATE");
+        if(!$url) {
+            return [];
+        }
         $this->loadFileContents(sprintf($url, $id), $destinationFile, function ($json) {
             return $this->validateJsonWithContent($json);
         });
@@ -273,9 +284,10 @@ class BookBeatJsonDumper extends AbstractMetaDataDumper
     public function dumpFiles(string $id, SplFileInfo $path, array $alreadyDumpedFiles = [])
     {
         $destinationFile = new SplFileInfo($path . "/" . static::FILENAME_BOOK_BEAT_JSON);
-        // $url = "https://www2.bookbeat.de/api/books;bookId=%s?returnMeta=true";
-        $url = "https://api.bookbeat.com/api/books/%s";
-
+        $url = getenv("M4B_TOOL_BOOKBEAT_META_URL_TEMPLATE");
+        if(!$url) {
+            return [];
+        }
         $replacedUrl = sprintf($url, $id);
 
         $this->info(sprintf("getting url: %s", $replacedUrl));
@@ -370,6 +382,10 @@ class MetadataJsonDumper extends AbstractMetaDataDumper
         $tag = new Tag();
         $tagFound = false;
         //$exportFile = new SplFileInfo(static::FILENAME_METADATA_JSON);
+        $url = getenv("M4B_TOOL_BUECHER_META_URL_TEMPLATE");
+        if(!$url) {
+            return [];
+        }
         foreach ($this->improvers as $improverClass) {
             if ($improverClass === Tag\BuecherHtml::class) {
                 $id = $this->extractBuecherId($path);
@@ -377,8 +393,6 @@ class MetadataJsonDumper extends AbstractMetaDataDumper
                     continue;
                 }
                 $destinationFile = new SplFileInfo($path . "/" . static::FILENAME_METADATA_JSON);
-
-                $url = "https://www.buecher.de/%s/";
                 $html = $this->loadFileContents(sprintf($url, $id), $destinationFile);
                 $improver = new Tag\BuecherHtml($html);
                 $tag = $improver->improve($tag);
