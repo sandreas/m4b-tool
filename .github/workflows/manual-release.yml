@@ -10,7 +10,7 @@ permissions:
 
 env:
   COMPOSER_FLAGS: "--ansi --no-interaction --no-progress"
-
+  PROJECT_NAME: 'm4b-tool'
 jobs:
   build:
     permissions:
@@ -21,40 +21,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: "Install PHP"
-        uses: "shivammathur/setup-php@v2"
+      - name: Install PHP
+        uses: shivammathur/setup-php@v2
         with:
           coverage: "none"
           extensions: "intl"
           ini-values: "memory_limit=128M"
           php-version: "8.2"
 
-      - name: "Install dependencies from composer.lock using composer binary provided by system"
-        run: "composer install ${{ env.COMPOSER_FLAGS }} && composer bin box require --dev humbug/box"
+      - name: Get version
+        id: version
+        uses: battila7/get-version-action@v2
 
-      - name: Build phar file
-        run: "php -d phar.readonly=off vendor/bin/box compile && chmod +x dist/*.phar"
+      - name: Build
+        id: build
+        shell: bash
+        run: |
+          release_name="${{ env.PROJECT_NAME }}-${{ steps.version.outputs.version-without-v }}"
+          sed -i "s/@package_version@/${{ steps.version.outputs.version-without-v }}/g" bin/m4b-tool.php
+          composer install ${{ env.COMPOSER_FLAGS }} \
+            && composer bin box require --dev humbug/box \
+            && php -d phar.readonly=off vendor/bin/box compile \
+            && chmod +x dist/*.phar  \
+            && zip "${release_name}.zip" "./dist/m4b-tool.phar" \
+            && tar czvf "${release_name}.tar.gz" "./dist/m4b-tool.phar" \
+            && echo "GITHUB_SHA_SHORT=$(shasum -a 256 "${release_name}.tar.gz" | cut -d ' ' -f 1)" >> $GITHUB_ENV
 
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
           draft: true
-          body: TODO
-
-      - name: Upload phar
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/m4b-tool.phar
-          asset_name: m4b-tool.phar
-          asset_content_type: application/octet-stream
+          append_body: true
+          body: "\n\nHash: ${{ env.GITHUB_SHA_SHORT }}"
+          body_path: doc/release/release-notes-${{ steps.version.outputs.version }}.md
+          files: |
+            ${release_name}.tar.gz
+            ${release_name}.zip
+            dist/m4b-tool.phar
 
 #      - name: Configure GPG key and sign phar
 #        run: |
