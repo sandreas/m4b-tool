@@ -44,16 +44,11 @@ jobs:
             && php -d phar.readonly=off vendor/bin/box compile \
             && chmod +x dist/*.phar  \
             && zip "${release_name}.zip" "./dist/m4b-tool.phar" \
-            && tar czvf "${release_name}.tar.gz" "./dist/m4b-tool.phar" \
-            && echo "GITHUB_SHA_SHORT=$(shasum -a 256 "${release_name}.tar.gz" | cut -d ' ' -f 1)" >> $GITHUB_ENV
-
+            && tar czvf "${release_name}.tar.gz" "./dist/m4b-tool.phar"
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          draft: true
-          append_body: true
-          body: "\n\nHash: ${{ env.GITHUB_SHA_SHORT }}"
           body_path: doc/release/release-notes-${{ steps.version.outputs.version }}.md
           files: |
             ${release_name}.tar.gz
