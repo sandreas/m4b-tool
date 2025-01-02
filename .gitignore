@@ -7,7 +7,8 @@
 !/dist/.gitkeep
 /data/*
 !/data/.gitkeep
-/vendor
+/vendor/
+/vendor-bin/
 /src/library/M4bTool/Command/Plugins/
 
 .DS_Store

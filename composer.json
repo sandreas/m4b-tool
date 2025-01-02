@@ -30,12 +30,16 @@
         }
     },
     "config": {
-        "optimize-autoloader": true
+        "optimize-autoloader": true,
+        "allow-plugins": {
+            "bamarni/composer-bin-plugin": true
+        }
     },
     "require-dev": {
         "mikey179/vfsstream": "^1.6",
         "phpunit/phpunit": "^9.5",
-        "mockery/mockery": "^1.4"
+        "mockery/mockery": "^1.4",
+        "bamarni/composer-bin-plugin": "^1.8"
     },
     "repositories": [
         {
