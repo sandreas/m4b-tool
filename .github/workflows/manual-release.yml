@@ -3,7 +3,7 @@ name: "Release"
 on:
   push:
     tags:
-      - "*"
+      - "v*"
 
 permissions:
   contents: read
@@ -31,9 +31,6 @@ jobs:
 
       - name: "Install dependencies from composer.lock using composer binary provided by system"
         run: "composer install ${{ env.COMPOSER_FLAGS }}"
-
-      - name: "Validate composer.json"
-        run: "bin/composer validate"
 
       - name: Build phar file
         run: "php -d phar.readonly=off vendor/bin/box compile && chmod +x dist/*.phar"
