@@ -46,8 +46,7 @@ RUN echo "---- INSTALL M4B-TOOL ----" \
             fi \
        fi \
     && mv /tmp/m4b-tool.phar /usr/local/bin/m4b-tool \
-    && tar xzf /tmp/m4b-tool.tar.gz -C /tmp/ && rm /tmp/m4b-tool.tar.gz \
-    && chmod +x /usr/local/bin/m4b-tool /usr/local/bin/m4b-tool-pre
+    && chmod +x /usr/local/bin/m4b-tool
 
 WORKDIR ${WORKDIR}
 CMD ["list"]
