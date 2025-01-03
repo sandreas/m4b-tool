@@ -2,13 +2,7 @@ FROM sandreas/ffmpeg:5.0.1-3 as ffmpeg
 FROM sandreas/tone:v0.2.4 as tone
 FROM sandreas/mp4v2:2.1.1 as mp4v2
 FROM sandreas/fdkaac:2.0.1 as fdkaac
-
-##############################
-#
-#   m4b-tool development image
-#
-##############################
-FROM alpine:3.14
+FROM alpine:3.20.3
 ENV WORKDIR /mnt/
 ENV M4BTOOL_TMP_DIR /tmp/m4b-tool/
 
@@ -18,17 +12,19 @@ RUN echo "---- INSTALL RUNTIME PACKAGES ----" && \
   # mp4v2: required libraries
   libstdc++ \
   # m4b-tool: php cli, required extensions and php settings
-  php8-cli \
-  php8-dom \
-  php8-json \
-  php8-xml \
-  php8-mbstring \
-  php8-phar \
-  php8-tokenizer \
-  php8-xmlwriter \
-  php8-openssl \
-  && echo "date.timezone = UTC" >> /etc/php8/php.ini \
-  && ln -s /usr/bin/php8 /bin/php
+  php83-cli \
+  php83-curl \
+  php83-dom \
+  php83-xml \
+  php83-mbstring \
+  php83-openssl \
+  php83-phar \
+  php83-simplexml \
+  php83-tokenizer \
+  php83-xmlwriter \
+  php83-zip \
+  && echo "date.timezone = UTC" >> /etc/php83/php.ini \
+  && ln -s /usr/bin/php83 /bin/php
 
 
 
@@ -50,13 +46,9 @@ RUN echo "---- INSTALL M4B-TOOL ----" \
             fi \
        fi \
     && mv /tmp/m4b-tool.phar /usr/local/bin/m4b-tool \
-    && M4B_TOOL_PRE_RELEASE_LINK=$(wget -q -O - https://github.com/sandreas/m4b-tool/releases/tag/latest | grep -o 'M4B_TOOL_DOWNLOAD_LINK=[^ ]*' | head -1 | cut -d '=' -f 2) \
-    && echo "!!! DOWNLOADING PRE_RELEASE ${M4B_TOOL_DOWNLOAD_LINK} !!!" && wget "${M4B_TOOL_PRE_RELEASE_LINK}" -O /tmp/m4b-tool.tar.gz \
     && tar xzf /tmp/m4b-tool.tar.gz -C /tmp/ && rm /tmp/m4b-tool.tar.gz \
-    && mv /tmp/m4b-tool.phar /usr/local/bin/m4b-tool-pre \
     && chmod +x /usr/local/bin/m4b-tool /usr/local/bin/m4b-tool-pre
 
 WORKDIR ${WORKDIR}
 CMD ["list"]
 ENTRYPOINT ["m4b-tool"]
-
