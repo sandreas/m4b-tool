@@ -52,7 +52,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           body_path: doc/release/release-notes-${{ steps.version.outputs.version }}.md
-          draft: true
+          draft: false
           files: |
             ${release_name}.tar.gz
             ${release_name}.zip
