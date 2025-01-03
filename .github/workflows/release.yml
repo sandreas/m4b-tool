@@ -37,14 +37,13 @@ jobs:
         id: build
         shell: bash
         run: |
-          release_name="${{ env.PROJECT_NAME }}-${{ steps.version.outputs.version-without-v }}"
           sed -i "s/@package_version@/${{ steps.version.outputs.version-without-v }}/g" bin/m4b-tool.php
           composer install ${{ env.COMPOSER_FLAGS }} \
             && composer bin box require --dev humbug/box \
             && php -d phar.readonly=off vendor/bin/box compile \
             && chmod +x dist/*.phar  \
-            && zip "${release_name}.zip" "./dist/m4b-tool.phar" \
-            && tar czvf "${release_name}.tar.gz" "./dist/m4b-tool.phar"
+            && zip dist/${{ env.PROJECT_NAME }}-${{ steps.version.outputs.version-without-v }}.zip dist/m4b-tool.phar \
+            && tar czvf dist/${{ env.PROJECT_NAME }}-${{ steps.version.outputs.version-without-v }}.tar.gz ./dist/m4b-tool.phar
 
       # RELEASE to github
       - name: Release
@@ -54,8 +53,8 @@ jobs:
           body_path: doc/release/release-notes-${{ steps.version.outputs.version }}.md
           draft: false
           files: |
-            ${release_name}.tar.gz
-            ${release_name}.zip
+            dist/${{ env.PROJECT_NAME }}-${{ steps.version.outputs.version-without-v }}.tar.gz
+            dist/${{ env.PROJECT_NAME }}-${{ steps.version.outputs.version-without-v }}.zip
             dist/m4b-tool.phar
 
       # RELEASE to dockerhub
