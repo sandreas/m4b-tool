@@ -24,5 +24,11 @@ fi
 $COMPOSER install --no-dev --optimize-autoloader --ignore-platform-reqs
 
 # shellcheck disable=SC2164
-php -d phar.readonly=off vendor/bin/box compile && php -d phar.readonly=off -r "${PHP_CODE}" && chmod +x dist/*.phar && tar -C dist -czf dist/m4b-tool.tar.gz m4b-tool.phar && cd dist && zip m4b-tool.zip m4b-tool.phar && cd -
+php -d phar.readonly=off vendor/bin/box compile \
+    && php -d phar.readonly=off -r "${PHP_CODE}" \
+    && chmod +x dist/*.phar \
+    && tar -C dist -czf dist/m4b-tool.tar.gz m4b-tool.phar \
+    && cd dist \
+    && zip m4b-tool.zip m4b-tool.phar \
+    && cd -
 $COMPOSER install

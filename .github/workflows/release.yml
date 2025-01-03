@@ -45,6 +45,8 @@ jobs:
             && chmod +x dist/*.phar  \
             && zip "${release_name}.zip" "./dist/m4b-tool.phar" \
             && tar czvf "${release_name}.tar.gz" "./dist/m4b-tool.phar"
+
+      # RELEASE to github
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
@@ -54,6 +56,49 @@ jobs:
             ${release_name}.tar.gz
             ${release_name}.zip
             dist/m4b-tool.phar
+
+      # RELEASE to dockerhub
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          context: . # uses
+          # file: ${{ github.event.inputs.image }}/${{ github.event.inputs.version }}/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7
+          #platforms: linux/386,linux/ppc64le,linux/s390x,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
+          push: true
+          build-args: |
+            REF_NAME=${{ github.ref_name }}
+
+      # RELEASE to homebrew
+#      - name: Release project to Homebrew tap
+#        uses: Justintime50/homebrew-releaser@v2
+#        with:
+#          homebrew_owner: sandreas
+#          homebrew_tap: homebrew-tap
+#          formula_folder: Formula
+#          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+#          commit_owner: sandreas
+#          commit_email: 2050604+sandreas@users.noreply.github.com
+#          version: ${{ steps.version.outputs.version-without-v }}
+#          install: 'bin.install "m4b-tool.phar" => "m4b-tool"'
+#          test: 'assert_equal "m4b-tool v.#{version}", shell_output("#{bin}/m4b-tool --version").chomp'
+#          depends_on: |
+#            "fdk-aac-encoder"
+#            "mp4v2"
+#            "php"
+#          update_readme_table: false
+#          skip_commit: false
+
+
 
 #      - name: Configure GPG key and sign phar
 #        run: |
