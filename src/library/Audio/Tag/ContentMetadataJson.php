@@ -13,13 +13,11 @@ use SplFileInfo;
 class ContentMetadataJson extends AbstractTagImprover
 {
 
-    public $overloadChapters = [];
+    public array $overloadChapters = [];
 
-    protected $chaptersContent;
-    /** @var Flags */
-    protected $flags;
-    /** @var int */
-    protected $chapterIndex;
+    protected string $chaptersContent;
+    protected Flags $flags;
+    protected int $chapterIndex;
 
     public function __construct($fileContents = "", Flags $flags = null)
     {
@@ -31,17 +29,17 @@ class ContentMetadataJson extends AbstractTagImprover
     /**
      * Cover constructor.
      * @param SplFileInfo $reference
-     * @param null $fileName
+     * @param string|null $fileName
      * @param Flags|null $flags
      * @return ContentMetadataJson
      */
-    public static function fromFile(SplFileInfo $reference, string $fileName = null, Flags $flags = null): static
+    public static function fromFile(SplFileInfo $reference, ?string $fileName = null, Flags $flags = null): static
     {
         $fileContents = static::loadFileContents($reference, $fileName);
         return new static($fileContents, $flags);
     }
 
-    protected static function loadFileContents(SplFileInfo $reference, $fileName = null)
+    protected static function loadFileContents(SplFileInfo $reference, $fileName = null): string
     {
         $path = $reference->isDir() ? $reference : new SplFileInfo($reference->getPath());
         $fileName = $fileName ?: "content_metadata_*.json";
@@ -81,7 +79,7 @@ class ContentMetadataJson extends AbstractTagImprover
             if (isset($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"])) {
                 $chapters[] = new Chapter(new TimeUnit(0), new TimeUnit($decoded["content_metadata"]["chapter_info"]["brandIntroDurationMs"]), Chapter::DEFAULT_INTRO_NAME);
             }
-            $this->createChapters($chapters, $decodedChapters);
+            $this->jsonArrayToChapters($chapters, $this->chapterIndex, $decodedChapters);
 
             $lastChapter = end($chapters);
 
@@ -102,24 +100,5 @@ class ContentMetadataJson extends AbstractTagImprover
     }
 
 
-    /**
-     * @param Chapter[] $chapters
-     * @param $decodedChapters
-     * @param int $level
-     */
-    private function createChapters(&$chapters, $decodedChapters, $level = 0)
-    {
-        foreach ($decodedChapters as $decodedChapter) {
-            $lengthMs = $decodedChapter["length_ms"] ?? 0;
-            $title = trim($decodedChapter["title"]) ?? $this->chapterIndex++;
-            $lastKey = count($chapters) - 1;
-            $lastChapterEnd = isset($chapters[$lastKey]) ? new TimeUnit($chapters[$lastKey]->getEnd()->milliseconds()) : new TimeUnit();
-            $chapters[] = new Chapter($lastChapterEnd, new TimeUnit($lengthMs), $title);
 
-            // handle sub chapters
-            if (isset($decodedChapter["chapters"]) && is_array($decodedChapter["chapters"])) {
-                $this->createChapters($chapters, $decodedChapter["chapters"], $level + 1);
-            }
-        }
-    }
 }

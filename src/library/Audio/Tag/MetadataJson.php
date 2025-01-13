@@ -28,7 +28,7 @@ class MetadataJson extends AbstractJsonTagImprover
         $this->notice(sprintf("%s loaded for tagging", self::$defaultFileName));
 
         foreach ($decoded as $propertyName => $propertyValue) {
-            if (!property_exists($tag, $propertyName)) {
+            if (!property_exists($tag, $propertyName) || $tag->isTransientProperty($propertyName)) {
                 continue;
             }
             if ($propertyName === "year") {
@@ -42,6 +42,22 @@ class MetadataJson extends AbstractJsonTagImprover
             }
             $tag->$propertyName = $propertyValue;
         }
+
+        if(isset($decoded["series"])) {
+            $tag->series = is_scalar($decoded["series"]) ? $decoded["series"] : implode(", ", $decoded["series"]);
+        }
+        if(isset($decoded["seriesPart"])) {
+            $tag->seriesPart = is_scalar($decoded["seriesPart"]) ? $decoded["seriesPart"] : implode(", ", $decoded["seriesPart"]);
+        }
+
+        if(isset($decoded["chapters"]) && is_array($decoded["chapters"])) {
+            if(count($tag->chapters) < count($decoded["chapters"])) {
+                $tag->chapters = [];
+            }
+            $chapterIndex = 1;
+            $this->jsonArrayToChapters($tag->chapters, $chapterIndex, $decoded["chapters"]);
+        }
+
 
         return $tag;
     }

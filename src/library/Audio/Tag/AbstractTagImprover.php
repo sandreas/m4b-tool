@@ -4,10 +4,12 @@
 namespace M4bTool\Audio\Tag;
 
 
+use M4bTool\Audio\Chapter;
 use M4bTool\Audio\Tag;
 use M4bTool\Audio\Traits\LogTrait;
 use M4bTool\Common\Flags;
 use M4bTool\Tags\StringBuffer;
+use Sandreas\Time\TimeUnit;
 use SplFileInfo;
 
 abstract class AbstractTagImprover implements TagImproverInterface
@@ -115,6 +117,34 @@ abstract class AbstractTagImprover implements TagImproverInterface
     {
         $fileToLoad = static::searchExistingMetaFile($reference, static::$defaultFileName, $fileName);
         return $fileToLoad ? new static(file_get_contents($fileToLoad)) : new static();
+    }
+
+    /**
+     * @param Chapter[] $refChapters
+     * @param int $refChapterIndex
+     * @param array $jsonChapters
+     * @param int $level
+     */
+    protected function jsonArrayToChapters(array &$refChapters, int &$refChapterIndex, array $jsonChapters, int $level = 0): void
+    {
+        foreach ($jsonChapters as $decodedChapter) {
+            if(isset($decodedChapter["length_ms"])) {
+                $lengthMs = (int)$decodedChapter["length_ms"];
+            } else if(isset($decodedChapter["start"], $decodedChapter["end"])) {
+                $lengthMs = (float)$decodedChapter["end"] - (float)$decodedChapter["start"];
+            } else {
+                $lengthMs = 0;
+            }
+            $title = trim($decodedChapter["title"]) ?? $refChapterIndex++;
+            $lastKey = count($refChapters) - 1;
+            $lastChapterEnd = isset($refChapters[$lastKey]) ? new TimeUnit($refChapters[$lastKey]->getEnd()->milliseconds()) : new TimeUnit();
+            $refChapters[] = new Chapter($lastChapterEnd, new TimeUnit($lengthMs), $title);
+
+            // handle subchapters
+            if (isset($decodedChapter["chapters"]) && is_array($decodedChapter["chapters"])) {
+                $this->jsonArrayToChapters($refChapters, $refChapterIndex,$decodedChapter["chapters"], $level + 1);
+            }
+        }
     }
 
 }
