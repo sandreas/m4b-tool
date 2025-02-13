@@ -1,5 +1,5 @@
 FROM sandreas/ffmpeg:5.0.1-3 as ffmpeg
-FROM sandreas/tone:v0.2.4 as tone
+FROM sandreas/tone:v0.2.5 as tone
 FROM sandreas/mp4v2:2.1.1 as mp4v2
 FROM sandreas/fdkaac:2.0.1 as fdkaac
 FROM alpine:3.20.3
