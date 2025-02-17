@@ -87,7 +87,7 @@ class ChaptersCommand extends AbstractCommand
         $this->addOption(static::OPTION_EPUB_APPEND_INTRODUCTION, null, InputOption::VALUE_NONE, "If chapter names are numbered, keep original chapter name followed by the first words of the chapter, if available");
 
 
-        $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id to load chapters from");
+        $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "MusicBrainz ID to load chapters from");
         $this->addOption(static::OPTION_MERGE_SIMILAR, "s", InputOption::VALUE_NONE, "merge similar chapter names");
         $this->addOption(static::OPTION_OUTPUT_FILE, static::OPTION_OUTPUT_FILE_SHORTCUT, InputOption::VALUE_OPTIONAL, "write chapters to this output file", "");
         $this->addOption(static::OPTION_ADJUST_BY_SILENCE, null, InputOption::VALUE_NONE, "will try to adjust chapters of a file by silence detection and existing chapter marks");

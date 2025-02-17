@@ -125,7 +125,7 @@ class MergeCommand extends AbstractConversionCommand
         $this->addArgument(static::ARGUMENT_MORE_INPUT_FILES, InputArgument::IS_ARRAY, 'Other Input files or folders');
         $this->addOption(static::OPTION_OUTPUT_FILE, static::OPTION_OUTPUT_FILE_SHORTCUT, InputOption::VALUE_REQUIRED, "output file");
         $this->addOption(static::OPTION_INCLUDE_EXTENSIONS, null, InputOption::VALUE_OPTIONAL, "comma separated list of file extensions to include (others are skipped)", implode(',', static::DEFAULT_SUPPORTED_AUDIO_EXTENSIONS));
-        $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "musicbrainz id to load chapters from");
+        $this->addOption(static::OPTION_MUSICBRAINZ_ID, "m", InputOption::VALUE_REQUIRED, "MusicBrainz ID to load chapters from");
 
         $this->addOption(static::OPTION_BATCH_PATTERN, null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, "multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title) - parameter --output-file must be a directory", []);
         $this->addOption(static::OPTION_BATCH_PATTERN_PATH, null, InputOption::VALUE_OPTIONAL, "optional base path for batch pattern, that is used to trim output paths instead of auto trimming");
