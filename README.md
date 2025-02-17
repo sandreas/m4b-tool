@@ -538,7 +538,7 @@ Options:
       --fix-mime-type                            try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent an empty video window
   -o, --output-file=OUTPUT-FILE                  output file
       --include-extensions[=INCLUDE-EXTENSIONS]  comma separated list of file extensions to include (others are skipped) [default: "aac,alac,flac,m4a,m4b,mp3,oga,ogg,wav,wma,mp4"]
-  -m, --musicbrainz-id=MUSICBRAINZ-ID            musicbrainz id so load chapters from
+  -m, --musicbrainz-id=MUSICBRAINZ-ID            musicbrainz id to load chapters from
       --no-conversion                            skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)
       --batch-pattern[=BATCH-PATTERN]            multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title) - parameter --output-file must be a directory (multiple values allowed)
       --dry-run                                  perform a dry run without converting all the files in batch mode (requires --batch-pattern)
@@ -834,7 +834,7 @@ Options:
   -a, --silence-min-length[=SILENCE-MIN-LENGTH]              silence minimum length in milliseconds [default: 1750]
   -b, --silence-max-length[=SILENCE-MAX-LENGTH]              silence maximum length in milliseconds [default: 0]
       --max-chapter-length[=MAX-CHAPTER-LENGTH]              maximum chapter length in seconds - its also possible to provide a desired chapter length in form of 300,900 where 300 is desired and 900 is max - if the max chapter length is exceeded, the chapter is placed on the first silence between desired and max chapter length [default: "0"]
-  -m, --musicbrainz-id=MUSICBRAINZ-ID                        musicbrainz id so load chapters from
+  -m, --musicbrainz-id=MUSICBRAINZ-ID                        musicbrainz id to load chapters from
   -s, --merge-similar                                        merge similar chapter names
   -o, --output-file[=OUTPUT-FILE]                            write chapters to this output file [default: ""]
       --adjust-by-silence                                    will try to adjust chapters of a file by silence detection and existing chapter marks
