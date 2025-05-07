@@ -1,7 +1,7 @@
 { pkgs, lib, stdenv, fetchFromGitHub, fetchurl
 , runtimeShell
 , php82, php82Packages
-, ffmpeg_5-headless, mp4v2, fdk_aac, fdk-aac-encoder
+, ffmpeg-headless, mp4v2, fdk_aac, fdk-aac-encoder
 , useLibfdkFfmpeg ? false
 }:
 
@@ -24,7 +24,7 @@ let
     phpPackages = m4bToolPhpPackages;
   };
 
-  m4bToolFfmpeg = if useLibfdkFfmpeg then ffmpeg_5-headless.overrideAttrs (prev: rec {
+  m4bToolFfmpeg = if useLibfdkFfmpeg then ffmpeg-headless.overrideAttrs (prev: rec {
     configureFlags = prev.configureFlags ++ [
       "--enable-libfdk-aac"
       "--enable-nonfree"
@@ -32,7 +32,7 @@ let
     buildInputs = prev.buildInputs ++ [
       fdk_aac
     ];
-  }) else ffmpeg_5-headless;
+  }) else ffmpeg-headless;
 in
 m4bToolComposer.overrideAttrs (prev: rec {
   pname = "m4b-tool";
