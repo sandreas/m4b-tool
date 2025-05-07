@@ -36,7 +36,7 @@ let
 in
 m4bToolComposer.overrideAttrs (prev: rec {
   pname = "m4b-tool";
-  version = "0.5";
+  version = "0.5.2";
 
   buildInputs = [
     m4bToolPhp m4bToolFfmpeg mp4v2 fdk-aac-encoder
