@@ -449,7 +449,7 @@ sudo apt install ffmpeg mp4v2-utils fdkaac php-cli
 # install / upgrade m4b-tool
 sudo wget https://github.com/sandreas/m4b-tool/releases/download/v.0.4.0/m4b-tool.phar -O /usr/local/bin/m4b-tool &amp;&amp; sudo chmod +x /usr/local/bin/m4b-tool
 
-# check installed m4b-tool version 
+# check installed m4b-tool version
 m4b-tool --version
 </code></pre>
             <blockquote>
@@ -785,7 +785,7 @@ Options:
       --fix-mime-type                            try to fix MIME-type (e.g. from video/mp4 to audio/mp4) - this is needed for some players to prevent video window
   -o, --output-file=OUTPUT-FILE                  output file
       --include-extensions[=INCLUDE-EXTENSIONS]  comma separated list of file extensions to include (others are skipped) [default: "aac,alac,flac,m4a,m4b,mp3,oga,ogg,wav,wma,mp4"]
-  -m, --musicbrainz-id=MUSICBRAINZ-ID            musicbrainz id so load chapters from
+  -m, --musicbrainz-id=MUSICBRAINZ-ID            MusicBrainz ID to load chapters from
       --mark-tracks                              add chapter marks for each track
       --no-conversion                            skip conversion (destination file uses same encoding as source - all encoding specific options will be ignored)
       --batch-pattern[=BATCH-PATTERN]            multiple batch patterns that can be used to merge all audio books in a directory matching the given patterns (e.g. %a/%t for author/title) (multiple values allowed)
@@ -971,8 +971,8 @@ Help:
                                                                            rel="nofollow">Twig</a> template engine is
                 provided. The following variables are available:</p>
             <pre><code>{{encoder}}
-{{title}}           
-{{artist}}          
+{{title}}
+{{artist}}
 {{genre}}
 {{writer}}
 {{album}}
@@ -1209,7 +1209,7 @@ Options:
   -a, --silence-min-length[=SILENCE-MIN-LENGTH]              silence minimum length in milliseconds [default: 1750]
   -b, --silence-max-length[=SILENCE-MAX-LENGTH]              silence maximum length in milliseconds [default: 0]
       --max-chapter-length[=MAX-CHAPTER-LENGTH]              maximum chapter length in seconds - its also possible to provide a desired chapter length in form of 300,900 where 300 is desired and 900 is max - if the max chapter length is exceeded, the chapter is placed on the first silence between desired and max chapter length [default: "0"]
-  -m, --musicbrainz-id=MUSICBRAINZ-ID                        musicbrainz id so load chapters from
+  -m, --musicbrainz-id=MUSICBRAINZ-ID                        MusicBrainz ID to load chapters from
   -s, --merge-similar                                        merge similar chapter names
   -o, --output-file[=OUTPUT-FILE]                            write chapters to this output file [default: ""]
       --adjust-by-silence                                    will try to adjust chapters of a file by silence detection and existing chapter marks
