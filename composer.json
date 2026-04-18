@@ -37,7 +37,7 @@
     },
     "require-dev": {
         "mikey179/vfsstream": "^1.6",
-        "phpunit/phpunit": "^9.5",
+        "phpunit/phpunit": "^12.5",
         "mockery/mockery": "^1.4",
         "bamarni/composer-bin-plugin": "^1.8"
     },
